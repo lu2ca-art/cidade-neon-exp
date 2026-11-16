@@ -109,6 +109,7 @@ import { definirFinalFeito, definirLotado, type MomentoFinal } from "./disco/fin
 import { motoLiberada } from "./estrada/zonas"
 import { TRANCA_DESERTO, TRANCA_ELEVADOR, pedirSubida, tomarDescida } from "./disco/elevadores"
 import { semVoo } from "./disco/historia"
+import { entregar, entregues, ouvirEntrega, pedirEntrega, recuperar } from "./disco/entrega"
 import { Peca } from "./disco/pecas/Peca"
 import { brilhar } from "./disco/brilho"
 import { avisarRadio, notch, usePedraNaTela } from "./estrada/Holo"
@@ -154,6 +155,8 @@ const GrafiteTrincheiras = dynamic(() => import("./disco/Grafite").then((m) => m
 // os 3 grafites da parede (os mesmos de trincheiras/geo.ts GRAFITES_NA_PAREDE; só os ids, sem puxar o 3D)
 const GRAFITES_IDS = GRAFITES_T12.slice(0, 3).map((g) => g.id)
 const MetroTuneis = dynamic(() => import("./disco/MetroTuneis").then((m) => m.MetroTuneis), { ssr: false })
+// (16/11) a entrega: o hack e o corredor das incubadoras (só baixa quando acontece; disco/entrega.ts)
+const EntregaCena = dynamic(() => import("./disco/EntregaCena").then((m) => m.EntregaCena), { ssr: false })
 
 // (jogador novo 2) o cadeado dos lugares do chão no prólogo (RASCUNHO: o dono reescreve)
 const TRANCA_PROLOGO = "abre mais pra frente na história"
@@ -1158,6 +1161,17 @@ export default function LinhaPage() {
   const [pingpong, setPingpong] = useState(false)
   // (T29) o final passando agora: o momento em que ele começou (disco/Final.tsx toca o resto)
   const [finalAgora, setFinalAgora] = useState<MomentoFinal | null>(null)
+  // (16/11) a entrega (disco/entrega.ts): o cartão chama pedirEntrega(id); aqui o save
+  // muda (a grana, o "entregue") e a cena abre: o hack, depois o corredor das incubadoras
+  const [entregaAgora, setEntregaAgora] = useState<{ amigos: MissaoId[]; agua: number; hack: boolean } | null>(null)
+  useEffect(() => ouvirEntrega((p) => {
+    if (p.t === "incubadoras") { if (p.amigos.length) setEntregaAgora({ amigos: p.amigos, agua: 0, hack: false }); return }
+    const r = entregar(saveRef.current, p.id)
+    if (r.save === saveRef.current) return
+    saveRef.current = r.save
+    setSave(r.save)
+    setEntregaAgora({ amigos: [p.id], agua: r.agua, hack: true })
+  }), [])
   // (trilha sonora, 05/11) a introdução da missão aberta (o balão por cima do mundo)
   // (revisão 05/11) m0/ativa0: a distância até o lugar e a missão pegada quando o balão abriu
   const [introMissao, setIntroMissao] = useState<{ id: MissaoId; quem: string; texto: string; m0: number; ativa0: MissaoId | null } | null>(null)
@@ -1512,6 +1526,8 @@ export default function LinhaPage() {
   useEffect(() => {
     const qual = abrirAoEntrar.current
     if (!HIST || !qual || tela.t !== "corrida" || cena) return
+    // (16/11) a entrega: um personagem entregue de teste (o hack e o corredor)
+    if (qual.startsWith("entrega:")) { abrirAoEntrar.current = null; const id = qual.slice(8) as MissaoId; setTimeout(() => pedirEntrega(id), 1200); return }
     abrirAoEntrar.current = null
     const u = new URL(location.href); u.searchParams.delete("abrir"); history.replaceState(history.state, "", u.pathname + u.search + u.hash)
     setTimeout(() => {
@@ -1526,6 +1542,15 @@ export default function LinhaPage() {
       else if (qual.startsWith("visita:")) visitarSalaRef.current(qual.slice(7) as LugarId)
     }, 1200)
   }, [HIST, tela.t, cena])
+  // (16/11) saiu no meio do corredor (recarregou): quem ainda está entregue volta pras incubadoras (sem o hack)
+  const entregaPendente = useRef(false)
+  useEffect(() => {
+    if (!HIST || entregaPendente.current || entregaAgora || tela.t !== "corrida" || cena) return
+    const pend = entregues(historiaDe(save))
+    if (!pend.length) return
+    entregaPendente.current = true
+    setTimeout(() => setEntregaAgora((a) => a ?? { amigos: pend, agua: 0, hack: false }), 1200)
+  }, [HIST, save, entregaAgora, tela.t, cena])
   // (T47) o elevador: abre (como o posto) e fecha no fim-gesto da sala; as falas
   // que a sala manda (bus.ts) aparecem na legenda dele
   const abrirElevador = () => {
@@ -2559,7 +2584,7 @@ export default function LinhaPage() {
   const app = tela.t === "app" ? APPS.find((a) => a.id === tela.id)! : null
   // o celular aberto por cima da estrada: a Kombi segue sozinha, devagar
   const celularAberto = estrada && (tela.t === "home" || tela.t === "app" || tela.t === "chat")
-  const corridaPausada = (tela.t !== "corrida" && tela.t !== "chegada" && !celularAberto) || !!visor || !!showAgora || !!jornal || pingpong || caderno || !!recompensa || rua || !!provaMissao || !!letraAgora || !!oficinaTela || !!trincheiras || sinucaBar || !!janelaChao || !!esporteEscolha || !!esporteJogo
+  const corridaPausada = (tela.t !== "corrida" && tela.t !== "chegada" && !celularAberto) || !!visor || !!showAgora || !!jornal || pingpong || caderno || !!recompensa || rua || !!provaMissao || !!letraAgora || !!oficinaTela || !!trincheiras || sinucaBar || !!janelaChao || !!esporteEscolha || !!esporteJogo || !!entregaAgora
 
   // (disco) o óculos de realidade aumentada: a tela larga no desktop e o
   // celular translúcido por cima da cidade (LU2CA 19/10)
@@ -2855,6 +2880,9 @@ export default function LinhaPage() {
         {/* (T15–T25, T16) as peças das missões das pessoas (disco/pecas/): acabou, a próxima (ou a porta) segue sozinha */}
         {/* (T29) o final: o gesto no palco e a sequência, com o jogo atrás */}
         {finalAgora && <FinalTela inicio={finalAgora} onFim={fimFinal} onMomento={aoMomentoFinal} />}
+        {/* (16/11) a entrega: o hack e o corredor das incubadoras; achou = volta pro save */}
+        {entregaAgora && <EntregaCena amigos={entregaAgora.amigos} agua={entregaAgora.agua} hack={entregaAgora.hack}
+          onAchou={(id) => setSave((s) => recuperar(s, [id]))} onFim={() => setEntregaAgora(null)} />}
         {introMissao && <IntroMissao quem={introMissao.quem} texto={introMissao.texto} cor={MISSOES13[introMissao.id].cor}
           onBora={() => { const id = introMissao.id; introVista.current.add(id); setIntroMissao(null); setTimeout(() => chegouSemIntro.current(id), 0) }}
           onDepois={() => {

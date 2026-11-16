@@ -175,6 +175,10 @@ function discoDa(parte: string): Record<string, unknown> | null {
   if (parte === "vitrine.bar") return MEIO
   // (vitrine, parte 2) as salas da cidade fora da missão e a casa da D-Bee: a visita abre ao entrar
   if (parte in VISITAS) return MEIO
+  // (16/11) a entrega: o meio da carreira, entrega a Ella ao entrar (o hack e o corredor);
+  // e já entregue e paga: abre direto no corredor das incubadoras
+  if (parte === "entrega.hack") return MEIO
+  if (parte === "entrega.incubadoras") return { ...MEIO, entregues: ["ella"], entreguesPagos: ["ella"] }
   return undefined as unknown as null
 }
 
@@ -204,7 +208,7 @@ const VISITAS: Record<string, string> = { "vitrine.balada": "balada", "vitrine.d
 // (T15–T25, T16) as peças novas, uma de cada, abertas direto
 const PECAS_NOVAS = ["missao.drew.arte", "missao.drew.jogo", "missao.xeriff.arte", "missao.notti.arte", "missao.notti.jogo", "missao.nizzy.arte", "missao.tony.jogo", "missao.tony.arte", "missao.mubarak.arte", "missao.mubarak.jogo"]
 export const OFICINA_PARTES = ["oficina.catar", "oficina.painel", "oficina.bancada", "oficina.goteira", "oficina.pagar", "oficina.loja"]
-export const PARTES_TESTE = ["inicio", "minhoca", "casa", "casa.tambor", "casa.holo", "dunas", "subir.voo", "bar", "oficina", "oficina.show", ...OFICINA_PARTES, "subir", "quebra", "quebra.oficina", "perseguicao", "perseguicao.escolher", "perseguicao.gatilho", "nectar", "carreira.feira", "carreira.meio", "amigos", "amigos.missao", "chegada", "loja", "loja.roupas", "brecho", "palcos", "palcos.topo", "xenom", ...SHOWS_XENOM.map((x) => `xenom.${x.id}`), "xenom.album", ...MISSOES_FEIRA.map((m) => `missao.${m}`), "missao.lu2ca.letra", "missao.lu2ca.show", "missao.quadra.batida", "missao.quadra.basquete", "missao.ella.casa", "missao.tuneis.trincheiras", ...PECAS_NOVAS, ...MISSOES.map((m) => `missao.${m}`), "livre", "rachas", "torre", "torre.ponta", "kombi.dentro", "violao", "metro", "metro.tuneis", "grafite", "grafite.livre", "elevador", "elevador.subir", "elevador.terror", "instrumentos", "casa.instrumentos", "recompensa.instrumento", "vitrine.tunel", "vitrine.bar", ...Object.keys(VISITAS), "final", ...MOMENTOS.map((m) => `final.${m}`), "mundo.depois", "mundo.depois.tuneis", "mundo.depois.floresta", "instrumentos.kombi", "instrumentos.mundo", "elevador.deserto", "metro.passeio", "metro.violao", "loja.violao", "metro.comprado", "metro.sem-instrumento", "povo.pouco", "povo.meio", "povo.cheio"]
+export const PARTES_TESTE = ["inicio", "minhoca", "casa", "casa.tambor", "casa.holo", "dunas", "subir.voo", "bar", "oficina", "oficina.show", ...OFICINA_PARTES, "subir", "quebra", "quebra.oficina", "perseguicao", "perseguicao.escolher", "perseguicao.gatilho", "nectar", "carreira.feira", "carreira.meio", "amigos", "amigos.missao", "chegada", "loja", "loja.roupas", "brecho", "palcos", "palcos.topo", "xenom", ...SHOWS_XENOM.map((x) => `xenom.${x.id}`), "xenom.album", ...MISSOES_FEIRA.map((m) => `missao.${m}`), "missao.lu2ca.letra", "missao.lu2ca.show", "missao.quadra.batida", "missao.quadra.basquete", "missao.ella.casa", "missao.tuneis.trincheiras", ...PECAS_NOVAS, ...MISSOES.map((m) => `missao.${m}`), "livre", "rachas", "torre", "torre.ponta", "kombi.dentro", "violao", "metro", "metro.tuneis", "grafite", "grafite.livre", "elevador", "elevador.subir", "elevador.terror", "instrumentos", "casa.instrumentos", "recompensa.instrumento", "vitrine.tunel", "vitrine.bar", ...Object.keys(VISITAS), "final", ...MOMENTOS.map((m) => `final.${m}`), "mundo.depois", "mundo.depois.tuneis", "mundo.depois.floresta", "instrumentos.kombi", "instrumentos.mundo", "elevador.deserto", "metro.passeio", "metro.violao", "loja.violao", "metro.comprado", "metro.sem-instrumento", "povo.pouco", "povo.meio", "povo.cheio", "entrega.hack", "entrega.incubadoras"]
 
 // (T37) a parte aberta nesta carga da página: um link de parte leva direto ao
 // momento dele, sem a chegada do login na casinha (menos a própria "chegada")
@@ -271,6 +275,7 @@ export function aplicarParteDeTeste(): boolean {
   // (lote D) o que abre direto ao entrar no jogo (page.tsx, abrirAoEntrar)
   const abrir: Record<string, string> = { elevador: "elevador", instrumentos: "casa", "casa.instrumentos": "casa", "recompensa.instrumento": "recompensa", "vitrine.tunel": "tunel", "vitrine.bar": "sinuca" }
   if (abrir[parte]) url.searchParams.set("abrir", abrir[parte])
+  if (parte === "entrega.hack") url.searchParams.set("abrir", "entrega:ella")
   if (VISITAS[parte]) url.searchParams.set("abrir", `visita:${VISITAS[parte]}`)
   // (T29) o final: começa no palco (final) ou no momento pedido (final.andar, .nucleo, .agua, .chuva, .floresta)
   if (parte === "final" || parte.startsWith("final.")) url.searchParams.set("abrir", `final:${parte === "final" ? "palco" : parte.slice(6)}`)

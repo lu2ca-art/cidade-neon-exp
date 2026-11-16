@@ -126,6 +126,10 @@ export interface HistoriaDisco {
   // (08/11) as 8 paredes livres: o desenho de cada uma em texto (grafite/paredes.ts; "" = sem pintar).
   // A tagLivre antiga fica como está: aparece nas paredes que ainda não têm desenho
   paredesLivres?: string[]
+  // (16/11) a entrega (disco/entrega.ts): quem ele entregou e ainda não achou nas
+  // incubadoras; e quem já pagou a recompensa da entrega (não paga duas vezes)
+  entregues?: MissaoId[]
+  entreguesPagos?: MissaoId[]
 }
 
 // (A8) o que o metrô tira dele: fica no save de uma vez (puras, o C2 e a page.tsx chamam)
