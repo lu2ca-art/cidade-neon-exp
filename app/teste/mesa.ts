@@ -25,6 +25,15 @@ export interface Cartao {
 
 export const MESA: Cartao[] = [
   {
+    parte: "final",
+    nome: "O final novo: todos capturados, as incubadoras, a sala de controle e o show",
+    data: "2026-11-16",
+    tarefa: "final",
+    olhar: "Abre no palco do deserto com a plateia cheia: aparece a linha da captura e vem o hack das propagandas. Você acorda no corredor das incubadoras: quebre todas, os nove estão espalhados nelas. Quebrou a última, a porta do elevador no fim da sala acende: toque pra subir. Na sala de controle do Núcleo os nove estão em volta do painel e o plano aparece em três frases. Depois você volta pro palco e o final segue como antes: o gesto, a CHUVA, as torres, o Núcleo, a água, a chuva e a floresta. No jogo de verdade isso acontece quando você chega no palco pro show do ep. 9, e o show do Guitar Driver vem logo depois da sala.",
+    perguntas: ["As três frases da sala (\"a gente tá bolando esse plano desde o início\", \"todo mundo já sabia\", \"a gente veio parar aqui de propósito\") ficam ou você reescreve? Quem fala?", "Do jeito que está, a CHUVA toca no show do Guitar Driver e de novo a partir do gesto. Quer que o final comece direto, sem o Guitar Driver?", "A torneira dos túneis precisa aparecer na tela?"],
+    mais: [{ parte: "final.controle", nome: "direto na sala de controle" }, { parte: "final.incubadoras", nome: "direto no corredor (com o hack)" }, { parte: "final.show", nome: "direto no palco do show" }],
+  },
+  {
     parte: "show.tuneis",
     nome: "Os shows crescem: do bar simples até o show colorido dos túneis",
     data: "2026-11-16",

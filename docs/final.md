@@ -2,6 +2,22 @@
 
 Refeito em 09/11/2026, pelas palavras do dono em `projetos/cidade-neon/episodios.md`, "Pra decidir no final". O foco é o povo: os nove só aparecem à frente das multidões, nos focos. Do final antigo fica só a chuva caindo. **Saíram:** os feixes de luz, a cena dos nove sob os monumentos, a despedida do Criador (vídeo e falas) e a Kombi no quintal.
 
+## A ordem nova (16/11, o dono): a captura vem antes do show
+
+Fonte: `episodios.md`, "A entrega e as incubadoras" e "A ordem do final". Todos capturados → resgate nas incubadoras → elevador até a sala de controle do Núcleo → o show da CHUVA e o resto do final abaixo.
+
+| # | Momento | O que se vê | Tempo | Link |
+|---|---|---|---|---|
+| 0a | A captura | chegou no palco do deserto pro show do ep. 9 (missão `lu2ca`) com o resto feito: em vez do show, a câmera do palco com a plateia e uma linha só, "vistos andando com um veículo desconhecido pela cidade" (RASCUNHO) | 5 s | `?parte=final` ou `?parte=final.captura` |
+| 0b | As incubadoras | o hack das propagandas (sem grana) e o corredor com os nove (`pedirIncubadoras`, `capturados()`); o chamado sem a D-Bee, que também está numa incubadora | espera quebrar todas | `?parte=final.incubadoras` |
+| 0c | A sala de controle | todas quebradas, a porta do elevador no fim da sala acende: tocar sobe (escuro, um zumbido). Na sala, os nove em volta do painel e as três falas do plano, uma por vez (RASCUNHO, `disco/finalTextos.ts`) | ~15 s | `?parte=final.controle` |
+
+Depois da sala, a captura fica no save (`capturaFinal`) e a pessoa está de volta no palco: a missão `lu2ca` segue (chegar, depois o show do Guitar Driver no **degrau "final"** da escada dos shows, `escadaShows.ts`) e, no fim do show, o palco abaixo. `?parte=final.show` abre direto no palco.
+
+**Save antigo:** quem já tinha feito o show e não o final passa pela captura quando o final começa, e da sala segue direto pro palco. Quem já terminou o final não refaz nada. Recarregou no meio da captura: chegar no palco começa de novo.
+
+**A torneira** antiga dos túneis (que desliga a água da cidade) fica sugerida: no momento 3 os veios secam de baixo pra cima ("dos túneis pra cima"). Não aparece na tela: pergunta pro dono.
+
 ## Como destrava e onde começa
 
 - **Destrava** pela regra que já existia (`disco/portas.ts`, `MISSOES13.final.requer`): as 11 missões dos 9 episódios feitas. O Xeriff é livre e não conta.
@@ -34,11 +50,13 @@ Na missão do show da CHUVA (`lu2ca`) e no final, a plateia enche uma meia-lua e
 
 ## Texto na tela
 
-Só o do gesto: **"convocar o povo" (RASCUNHO, `TEXTO_GESTO` em `disco/final.ts`)**. Nenhuma legenda, nenhuma fala. Os textos que falavam dos nove nos pontos e da D-Bee acionando a chuva saíram (`sugestoesDbee.ts`, `vinhetasXenom.ts`); os textos da missão em `portas.ts` também viraram só "convocar o povo" (RASCUNHO).
+Antes do show, as falas de `disco/finalTextos.ts` (RASCUNHO, só palavras do dono). Depois, só o do gesto: **"convocar o povo" (RASCUNHO, `TEXTO_GESTO` em `disco/final.ts`)**. Nenhuma legenda, nenhuma fala. Os textos que falavam dos nove nos pontos e da D-Bee acionando a chuva saíram (`sugestoesDbee.ts`, `vinhetasXenom.ts`); os textos da missão em `portas.ts` também viraram só "convocar o povo" (RASCUNHO).
 
 ## Onde mora cada coisa
 
-- `app/linha/disco/final.ts`: os momentos, os tempos, o texto do gesto e o estado ao vivo (`FINAL_VIVO`).
+- `app/linha/disco/final.ts`: os momentos, os tempos, o texto do gesto e o estado ao vivo (`FINAL_VIVO`); `capturaAntesDoShow`, `capturados`, `seguirFinal`.
+- `app/linha/disco/finalTextos.ts`: as falas da captura, do corredor e da sala (RASCUNHO).
+- `app/linha/disco/EntregaCena.tsx` (com `final`): o corredor com o elevador; `SalaControle.tsx`: a subida e a sala (Canvas próprio, só ali, tudo `MeshBasicMaterial` e instanciado).
 - `app/linha/disco/FinalTela.tsx`: o gesto, a CHUVA e o tempo de cada momento.
 - `app/linha/estrada/FinalPovo.tsx`: o 3D do final (a plateia, os focos, o Núcleo fritando, a água) e a câmera. `FinalMultidao.tsx` é a ponte pra `Multidao` e o povo a pé (`PovoAndando`).
 - `app/linha/estrada/Floresta.tsx`: a floresta e as plantas da Ella.
