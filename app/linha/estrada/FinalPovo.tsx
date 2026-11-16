@@ -241,8 +241,8 @@ function FinalVivo({ M }: { M: MundoDisco }) {
     const t = performance.now() / 1000 - FINAL_VIVO.t0
     const C = CAM_ROTEIRO, p = cena.palco, s0 = FINAL_CFG.aguaDe, L = cena.caminho.L
     let chuvaAlvo = 0
-    if (mo === "palco") {
-      // de cima do palco, olhando a plateia; balança de leve
+    if (mo === "palco" || mo === "captura") {
+      // de cima do palco (16/11: a captura também acontece aqui), olhando a plateia; balança de leve
       const b = Math.sin(t * 0.5) * 0.25
       C.px = p.x; C.py = p.y + b * 0.3; C.pz = p.z
       C.ox = p.olhaX + p.fz * b * 2; C.oy = p.olhaY; C.oz = p.olhaZ - p.fx * b * 2
@@ -301,7 +301,7 @@ function FinalVivo({ M }: { M: MundoDisco }) {
 
   const comPovoNucleo = mo === "nucleo"
   // a plateia fica até o gesto; depois quem aparece são os andantes (a mesma gente, saindo)
-  const comPlateia = mo === "palco" || (mo === null && vivo.lotado)
+  const comPlateia = mo === "palco" || mo === "captura" || (mo === null && vivo.lotado)
   const comAndantes = mo === "andar"
   const comFocos = mo === "andar" || mo === "nucleo"
   const comNucleo = mo === "nucleo" || mo === "agua" || mo === "chuva" || mo === "floresta"

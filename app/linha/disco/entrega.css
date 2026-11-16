@@ -11,6 +11,9 @@
 .en-hack.is-escuro .en-hack-veu { opacity: 1; background: #06040b; transition: opacity 0.9s ease-in, background 0.9s ease-in; }
 @keyframes en-pop { from { opacity: 0; scale: 0.4; } to { opacity: 1; scale: 1; } }
 @keyframes en-tremer { 0% { translate: -6px 3px; } 50% { translate: 7px -4px; } 100% { translate: -3px -2px; } }
+/* (16/11) a perda: entra quando a grana some e fica até escurecer */
+.en-hack-tomado { position: absolute; left: 50%; top: 14%; transform: translateX(-50%); margin: 0; z-index: 2; padding: 8px 16px; border-radius: 999px; background: rgba(40, 4, 10, 0.9); color: #ff5a6e; font: 800 15px var(--font-geist-mono), ui-monospace, monospace; white-space: nowrap; max-width: 94vw; overflow: hidden; text-overflow: ellipsis; opacity: 0; animation: en-tomado 6s ease-out 2.4s forwards; pointer-events: none; }
+@keyframes en-tomado { 0% { opacity: 0; scale: 1.2; } 8% { opacity: 1; scale: 1; } to { opacity: 1; } }
 @keyframes en-grana { 0%, 60% { opacity: 1; } to { opacity: 0; } }
 
 .en-corredor { position: absolute; inset: 0; background: #06040b; }

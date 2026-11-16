@@ -5,6 +5,8 @@
 export const TEXTOS_ENTREGA = {
   // a recompensa, no começo do hack (a descrição da mecânica)
   recompensa: "+{agua} Água$",
+  // (16/11, o dono) no hack, logo depois da grana: tomaram a recompensa e o inventário (a descrição da mecânica)
+  tomado: "tomaram tudo: Água$, instrumentos, roupas, discos",
   // o chamado da D-Bee, depois do terror (RASCUNHO: das palavras do dono, "quebrar
   // todas as incubadoras em busca do amigo que ele entregou")
   chamado: "quebra todas as incubadoras. {quem} tá numa delas",

@@ -6,6 +6,8 @@
 // "lugar" da page.tsx). No "palco", tocar na tela é o gesto (o único do final). Dali a
 // pessoa ANDA: dirige livre até as torres, sem nada na tela (chegar lá é o que segue,
 // FinalPovo.tsx); depois só assiste. A CHUVA toca do gesto até o fim.
+// (16/11) Antes do palco: a captura (uma linha por cima do palco), as incubadoras e a
+// sala de controle (a cena do page.tsx avisa com seguirFinal quando acaba cada uma).
 //
 // Barato: só timers e um <p>; nada em 3D aqui.
 
@@ -13,7 +15,8 @@ import { useEffect, useRef, useState, useSyncExternalStore } from "react"
 import { atalhosLiberados } from "../../teste/atalhos"
 import { silenciarKombi, trilha } from "../som"
 import { SOM_SINAL_FINAL } from "./sons"
-import { FINAL_CFG, TEXTO_GESTO, definirMomento, duracao, lerFinal, ouvirFinal, proximo, type MomentoFinal } from "./final"
+import { FINAL_CFG, TEXTO_GESTO, definirMomento, duracao, esperaAviso, lerFinal, ouvirFinal, proximo, type MomentoFinal } from "./final"
+import { TEXTOS_FINAL } from "./finalTextos"
 
 export function FinalTela({ inicio = "palco", onFim, onMomento }: { inicio?: MomentoFinal; onFim: () => void; onMomento?: (m: MomentoFinal) => void }) {
   const [momento, setMomento] = useState<MomentoFinal>(inicio)
@@ -35,7 +38,7 @@ export function FinalTela({ inicio = "palco", onFim, onMomento }: { inicio?: Mom
   // o "andar": chegou numa torre, segue pro Núcleo (FinalPovo.tsx avisa pela loja)
   const vivo = useSyncExternalStore(ouvirFinal, lerFinal, lerFinal)
   useEffect(() => {
-    if (momento === "andar" && vivo.momento === "andar" && vivo.chegou) seguir("andar")
+    if (esperaAviso(momento) && vivo.momento === momento && vivo.chegou) seguir(momento)
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [momento, vivo])
   useEffect(() => () => definirMomento(null), [])
@@ -85,8 +88,17 @@ export function FinalTela({ inicio = "palco", onFim, onMomento }: { inicio?: Mom
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [momento])
 
-  // o "andar" é o jogo normal: nada de overlay (a pessoa dirige)
-  if (momento === "andar") return null
+  // o "andar" é o jogo normal: nada de overlay (a pessoa dirige). As incubadoras e a sala de
+  // controle são a cena delas (EntregaCena.tsx, aberta pelo page.tsx), por cima de tudo
+  if (momento === "andar" || momento === "incubadoras" || momento === "controle") return null
+  // (16/11) a captura: no palco, com a plateia cheia; uma linha só (RASCUNHO)
+  if (momento === "captura") return (
+    <div className="l-final">
+      <div className="l-filme" data-final={momento}>
+        <p className="l-filme-fala" style={{ ["--cor" as string]: "#ff5a6e" }}>{TEXTOS_FINAL.captura}</p>
+      </div>
+    </div>
+  )
   if (momento !== "palco") return <div className="l-final" data-final={momento} />
   return (
     <div className="l-final">

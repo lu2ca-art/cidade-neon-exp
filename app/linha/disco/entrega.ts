@@ -1,9 +1,10 @@
 // A ENTREGA E AS INCUBADORAS (16/11, episodios.md "A entrega e as incubadoras").
 // O cartão da missão (o mapa ilustrado, outra frente) tem duas ações: liberar ou
-// ENTREGAR o personagem. Aqui mora só o caminho da entrega:
+// ENTREGAR o personagem (só quem já teve a missão completada). Aqui mora o caminho da entrega:
 //
 //   1. entregar   a pessoa ganha a recompensa (Água$, RASCUNHO) e o personagem
-//                 fica "entregue" no save (h.entregues)
+//                 fica "entregue" no save (h.entregues); no hack, perde a recompensa
+//                 e o inventário inteiro (tomarInventario): o preço da traição
 //   2. o hack     logo em seguida: propagandas invadem o holo, a visão turva,
 //                 e ela vai parar no corredor das incubadoras (EntregaCena.tsx)
 //   3. quebrar    quebra todas as incubadoras procurando o amigo; a D-Bee manda
@@ -20,14 +21,17 @@
 import type { Save } from "../estado"
 import { ganhar } from "../economia"
 import { comHistoria, historiaDe, type HistoriaDisco } from "./historia"
-import { MISSOES13, type MissaoId } from "./portas"
+import { MISSOES13, feita13, type MissaoId } from "./portas"
 
 // ═══ RASCUNHO: os números (o dono mexe aqui) ═══
 export const ENTREGA_CFG = {
-  // a recompensa por entregar, em Água$ (RASCUNHO; a missão da cidade paga 120–150, ver PAGA.missao)
-  agua: { quadra: 200, drew: 300, mubarak: 300, xeriff: 300, lu2ca: 400, ella: 300, notti: 300, nizzy: 300, tony: 400 } as Partial<Record<MissaoId, number>>,
-  // entregar de novo (depois de recuperar) não paga outra vez
-  pagaUmaVez: true,
+  // a recompensa por entregar, em Água$ (RASCUNHO). (16/11, o dono) bem mais alta, entre
+  // 1.000 e 2.000 conforme o personagem, pra tentar de verdade (a missão paga 120–150,
+  // PAGA.missao). O cartão mostra este mesmo número (cartoes.ts, entregaDoEp).
+  // Sem o LU2CA e a D-Bee: ver NUNCA_ENTREGAR. As chaves são as MISSÕES (portas.ts):
+  // "notti" é a do Mubarak (ep. 2), "mubarak" a da Nizzy (ep. 4), "nizzy" a do Notti (ep. 8)
+  agua: { quadra: 1000, notti: 2000, mubarak: 1400, tony: 1200, drew: 1600, ella: 1800, nizzy: 1300, xeriff: 1000 } as Partial<Record<MissaoId, number>>,
+  // (16/11, o dono) depois do resgate o botão some: entregou uma vez, nunca mais (podeEntregar)
   // o hack (s): as propagandas aparecendo, a visão turvando, o escuro antes do corredor
   hack: { invade: 6.5, turva: 2.2, escuro: 1.4, primeiraMs: 900, ultimaMs: 90, maxNaTela: 26 },
   // o corredor: quantas incubadoras (as duas fileiras), o espaço entre elas (m)
@@ -35,9 +39,15 @@ export const ENTREGA_CFG = {
   corredor: { incubadoras: 12, espaco: 2.4, largura: 5.2, escuro: 3.2, nevoa: 16 },
 }
 
-/** quem dá pra entregar: as missões com uma pessoa no cartão (sem o prólogo, os túneis e o final) */
-export const ENTREGAVEIS = (Object.keys(ENTREGA_CFG.agua) as MissaoId[]).filter((id) => !MISSOES13[id].prologo)
-export const podeEntregar = (h: HistoriaDisco, id: MissaoId) => ENTREGAVEIS.includes(id) && !entregue(h, id)
+/** (16/11, o dono) nunca dão pra entregar: o LU2CA está sempre fazendo o show e a D-Bee
+ *  é a guia da missão do jogo. Os outros podem */
+export const NUNCA_ENTREGAR: readonly MissaoId[] = ["lu2ca", "dbee"]
+/** quem dá pra entregar: as missões com uma pessoa no cartão (sem o prólogo, os túneis, o final, o LU2CA e a D-Bee) */
+export const ENTREGAVEIS = (Object.keys(ENTREGA_CFG.agua) as MissaoId[]).filter((id) => !MISSOES13[id].prologo && !NUNCA_ENTREGAR.includes(id))
+/** dá pra entregar agora? (16/11, o dono) só depois de completar a missão com aquele personagem:
+ *  entrega quem já conhece. Não: quem não é entregável, quem está nas incubadoras e quem já foi
+ *  entregue uma vez e resgatado (entreguesPagos guarda toda entrega feita) */
+export const podeEntregar = (h: HistoriaDisco, id: MissaoId) => ENTREGAVEIS.includes(id) && feita13(h, id) && !entregue(h, id) && !(h.entreguesPagos ?? []).includes(id)
 export const nomeDe = (id: MissaoId) => MISSOES13[id].quem
 export const corDe = (id: MissaoId) => MISSOES13[id].cor
 
@@ -45,18 +55,31 @@ export const corDe = (id: MissaoId) => MISSOES13[id].cor
 export const entregues = (h: HistoriaDisco | null | undefined): MissaoId[] => h?.entregues ?? []
 export const entregue = (h: HistoriaDisco | null | undefined, id: MissaoId) => entregues(h).includes(id)
 
-/** entregou: a grana (uma vez por personagem) e o "entregue" no save */
+/** (16/11, o dono) O PREÇO DA TRAIÇÃO: a recompensa e o inventário inteiro são tomados.
+ *  Vai: a Água$, o que se compra (instrumentos, roupas, carros: `compras`), os discos, as
+ *  flores do jardim e os instrumentos achados pelo mundo (voltam a aparecer pra coletar de
+ *  novo). FICA: o progresso da história (episódios, missões, portas, músicas) e os
+ *  instrumentos que as missões deram (são progresso). Campos ausentes no save antigo: nada quebra */
+export function tomarInventario(s: Save): Save {
+  const h = historiaDe(s)
+  const semAchados = h.instrumentosAchados?.length || h.instrumentos?.length
+  const s2: Save = { ...s, agua: 0, discos: [], compras: [], jardim: [] }
+  return semAchados ? comHistoria(s2, (x) => ({ ...x, instrumentosAchados: [], instrumentos: [] })) : s2
+}
+
+/** entregou: ganha a recompensa (a tela mostra), fica "entregue" no save e, já no mesmo
+ *  save, perde a recompensa e o inventário (tomarInventario): recarregar no meio do hack
+ *  não salva nada. O hack mostra a perda logo depois da grana */
 export function entregar(s: Save, id: MissaoId): { save: Save; agua: number } {
   const h = historiaDe(s)
   if (!podeEntregar(h, id)) return { save: s, agua: 0 }
-  const jaPago = (h.entreguesPagos ?? []).includes(id)
-  const agua = ENTREGA_CFG.pagaUmaVez && jaPago ? 0 : ENTREGA_CFG.agua[id] ?? 0
-  const save = comHistoria(ganhar(s, agua), (x) => ({
+  const agua = ENTREGA_CFG.agua[id] ?? 0
+  const marcado = comHistoria(ganhar(s, agua), (x) => ({
     ...x,
     entregues: [...entregues(x), id],
-    entreguesPagos: jaPago ? x.entreguesPagos : [...(x.entreguesPagos ?? []), id],
+    entreguesPagos: [...(x.entreguesPagos ?? []), id],
   }))
-  return { save, agua }
+  return { save: tomarInventario(marcado), agua }
 }
 
 /** achou nas incubadoras: volta, deixa de estar entregue e segue nos episódios */

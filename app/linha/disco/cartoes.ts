@@ -16,33 +16,35 @@ import type { LugarId } from "../lugares"
 import { EPISODIOS, MARCOS, episodioFeito, episodiosAbertos, etapaAgora, nomeDaMusica, numeroDe, pecaDoEpFeita, quemAbre, type Episodio } from "./episodios"
 import { MISSOES13, PORTAS, feita13, ordemDe, pecaFeita, type MissaoId } from "./portas"
 import { INSTRUMENTOS_ANCESTRAIS } from "./instrumentos"
+import { ENTREGA_CFG, ENTREGAVEIS, podeEntregar } from "./entrega"
 
 // ═══ O QUE O DONO ESCREVE (RASCUNHO, tudo) ═══
 // - crime: escrito SÓ a partir da bíblia §11 e do episodios.md (o que cada um
 //   faz no jogo); nenhuma história nova. Troque à vontade.
-// - recompensa: quanto vale entregar a pessoa, em Água$. Número de rascunho.
+// - a recompensa (quanto vale entregar a pessoa) NÃO mora aqui: é ENTREGA_CFG.agua
+//   (entrega.ts), o mesmo número que a entrega paga. A D-Bee e o LU2CA não têm.
 // - foto: o caminho de uma imagem (ex.: "/personagens/dbee.webp") quando os
 //   modelos do Tripo chegarem. null = o retrato ilustrado na cor dela.
-export interface TextoCartao { crime: string; recompensa: number; foto: string | null }
+export interface TextoCartao { crime: string; foto: string | null }
 export const CARTOES: Record<PistaId, TextoCartao> = {
   // D-Bee · bíblia §11 e ep. 1: veio do deserto na Kombi; declama a história do mundo; ensina instrumentos ancestrais
-  nectar: { crime: "Veio do deserto de Kombi. Declama a história do mundo como ele é e ensina a tocar instrumentos ancestrais.", recompensa: 300, foto: null },
+  nectar: { crime: "Veio do deserto de Kombi. Declama a história do mundo como ele é e ensina a tocar instrumentos ancestrais.", foto: null },
   // Mubarak · bíblia §11 e ep. 2: fala do Núcleo e da cidade; o revolucionário; o mecânico
-  dopamina: { crime: "Fala coisas subversivas sobre a cidade e o Núcleo. É o revolucionário. Monta motor com o que acha no lixão.", recompensa: 500, foto: null },
+  dopamina: { crime: "Fala coisas subversivas sobre a cidade e o Núcleo. É o revolucionário. Monta motor com o que acha no lixão.", foto: null },
   // Alohan · bíblia §11 e ep. 3: beats, samplear o mundo, o ginásio
-  copo: { crime: "Faz beats sampleando os sons do mundo e leva a galera pro ginásio.", recompensa: 200, foto: null },
+  copo: { crime: "Faz beats sampleando os sons do mundo e leva a galera pro ginásio.", foto: null },
   // Nizzy · ep. 4: os rachas na cidade, a loja de discos
-  ojala: { crime: "Os rachas na cidade. E a loja de discos.", recompensa: 350, foto: null },
+  ojala: { crime: "Os rachas na cidade. E a loja de discos.", foto: null },
   // Tony Gordo · ep. 5: a feira, paga com a Água$ do deserto
-  swav: { crime: "A feira na rua, paga com a água rara do deserto.", recompensa: 250, foto: null },
+  swav: { crime: "A feira na rua, paga com a água rara do deserto.", foto: null },
   // Drew · bíblia §11 e ep. 6: o grafite, a roupa, as corridas nos túneis
-  sexta: { crime: "Grafite nas paredes e corridas na cidade e nos túneis. Se veste e se desafia sem medo.", recompensa: 400, foto: null },
+  sexta: { crime: "Grafite nas paredes e corridas na cidade e nos túneis. Se veste e se desafia sem medo.", foto: null },
   // Ella · ep. 7 e portas.ts: a casa-galeria proibida, a planta, as flores
-  ontem: { crime: "A casa-galeria proibida, a planta e as flores.", recompensa: 450, foto: null },
+  ontem: { crime: "A casa-galeria proibida, a planta e as flores.", foto: null },
   // Notti · bíblia §13: tocar violão no trem começa a fuga do guarda
-  rollercoaster: { crime: "Toca violão no metrô.", recompensa: 300, foto: null },
+  rollercoaster: { crime: "Toca violão no metrô.", foto: null },
   // LU2CA · ep. 9 e "a entrega" (16/11): o racha; visto com um veículo desconhecido pela cidade
-  chuva: { crime: "O racha. Visto andando pela cidade com um veículo desconhecido.", recompensa: 900, foto: null },
+  chuva: { crime: "O racha. Visto andando pela cidade com um veículo desconhecido.", foto: null },
 }
 
 // ── o que o jogo deriva (sem texto novo) ──
@@ -63,6 +65,15 @@ export interface Cartao {
   libera: ItemChecklist[]
   // a missão de agora deste personagem (a que dá pra marcar no mapa), ou null
   proxima: MissaoId | null
+  // (16/11) a entrega: a missão que leva a pessoa, a recompensa (ENTREGA_CFG) e se o botão
+  // aparece agora (podeEntregar). null = não dá pra entregar (a D-Bee, o LU2CA)
+  entrega: { missao: MissaoId; agua: number; pode: boolean } | null
+}
+
+/** a missão "entregável" do episódio (a primeira dele que está em ENTREGAVEIS) */
+export function entregaDoEp(ep: Episodio): MissaoId | null {
+  for (const p of ep.pecas) if (p.t === "missao" && ENTREGAVEIS.includes(p.id)) return p.id
+  return null
 }
 
 // as peças-marco do ep. 1 acontecem no bar
@@ -89,7 +100,13 @@ export function cartaoDe(h: HistoriaDisco, ep: Episodio): Cartao {
     estado: feito ? "feito" : aberto ? "aberto" : "trancado",
     cadeado: feito || aberto ? null : quemAbreAntes(h, ep),
     joga, libera, proxima: aberto ? proxima : null,
+    entrega: entregaDe(h, ep),
   }
+}
+
+function entregaDe(h: HistoriaDisco, ep: Episodio): Cartao["entrega"] {
+  const id = entregaDoEp(ep)
+  return id ? { missao: id, agua: ENTREGA_CFG.agua[id] ?? 0, pode: podeEntregar(h, id) } : null
 }
 
 // trancado: diz o episódio de agora (o que falta pra chegar neste)

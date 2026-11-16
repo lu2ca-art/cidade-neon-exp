@@ -12,11 +12,19 @@
 // segue direto, ali no palco (page.tsx, abrirPortaDe). Save antigo que já tinha o show
 // feito pega o final no mapa e vai até o palco (lugar: chao palcoDeserto).
 //
+// (16/11, o dono, episodios.md "A ordem do final") A CAPTURA VEM ANTES DO SHOW. Chegou no
+// palco do deserto pro show do ep. 9 com o resto feito: em vez do show, a captura.
+//   0a. captura     no palco: todo mundo capturado (visto com um veículo desconhecido)
+//   0b. incubadoras o hack e o corredor com os nove (pedirIncubadoras, EntregaCena.tsx)
+//   0c. controle    o elevador do fim da sala sobe até a sala de controle do Núcleo: o
+//                   plano se revela, foram parar lá de propósito (SalaControle.tsx)
+// Daí volta pro palco: o show da CHUVA (a missão lu2ca, o Guitar Driver) e o resto.
 // A sequência (cada momento tem um link de teste: ?parte=final.<momento>):
 //   1. palco    o show lotado acabou. O jogador convoca o povo: o ÚNICO gesto do final
 //   2. andar    a pessoa dirige livre até as torres, com o povo saindo do deserto; em cada
 //               torre, os focos da revolução (FOCOS). Sem tempo: vale chegar em qualquer torre
-//   3. nucleo   dali em diante só se assiste: o abastecimento é desligado e o Núcleo frita
+//   3. nucleo   dali em diante só se assiste: o abastecimento é desligado (a torneira antiga
+//               dos túneis: os veios secam de baixo pra cima, "dos túneis pra cima") e o Núcleo frita
 //   4. agua     a câmera segue a água do Núcleo pela rua até o deserto
 //   5. chuva    a chuva cai de verdade no deserto
 //   6. floresta o deserto vira floresta
@@ -29,19 +37,29 @@
 // jogo já desenha (manifestos/ceu.ts CHUVA_MANIFESTO). Os focos só montam durante o
 // final e perto da câmera, com as multidões instanciadas.
 //
-// Texto na tela: só o do gesto (TEXTO_GESTO). Nenhuma legenda, nenhuma fala.
+// Texto na tela: o do gesto (TEXTO_GESTO) e, antes do show, as falas RASCUNHO de
+// disco/finalTextos.ts (só palavras do dono).
 
 import { EPISODIOS } from "./episodios"
+import type { HistoriaDisco } from "./historia"
+import { MISSOES13, feita13, type MissaoId } from "./portas"
 
-export type MomentoFinal = "palco" | "andar" | "nucleo" | "agua" | "chuva" | "floresta"
-export const MOMENTOS: MomentoFinal[] = ["palco", "andar", "nucleo", "agua", "chuva", "floresta"]
+// (16/11, o dono) A ORDEM NOVA: a captura vem ANTES do show. Os três primeiros (captura,
+// incubadoras, controle) acontecem antes do show do ep. 9 (missão lu2ca); o resto é o de 09/11
+export type MomentoFinal = "captura" | "incubadoras" | "controle" | "palco" | "andar" | "nucleo" | "agua" | "chuva" | "floresta"
+export const MOMENTOS: MomentoFinal[] = ["captura", "incubadoras", "controle", "palco", "andar", "nucleo", "agua", "chuva", "floresta"]
+/** os momentos de antes do show (a captura e o prédio do Núcleo) */
+export const ANTES_DO_SHOW: MomentoFinal[] = ["captura", "incubadoras", "controle"]
 export const ehMomentoFinal = (x: string | null | undefined): x is MomentoFinal => !!x && (MOMENTOS as string[]).includes(x)
 
 // RASCUNHO: o único texto do final na tela (o dono troca)
 export const TEXTO_GESTO = "convocar o povo"
 
 export const FINAL_CFG = {
-  // os tempos (s) de cada momento. O "palco" espera o gesto e o "andar" espera a pessoa chegar
+  // (16/11) a captura no palco do deserto, antes do hack (s)
+  captura: 5,
+  // os tempos (s) de cada momento. O "palco" espera o gesto e o "andar" espera a pessoa chegar;
+  // "incubadoras" e "controle" esperam a cena deles (EntregaCena.tsx, SalaControle.tsx)
   nucleo: 26,
   agua: 24,
   chuva: 12,
@@ -87,8 +105,20 @@ export const NOVE: { quem: string; cor: string; musica: string }[] = EPISODIOS.m
 
 // quanto dura cada momento (s); null = espera o gesto
 export function duracao(m: MomentoFinal): number | null {
-  return m === "palco" || m === "andar" ? null : FINAL_CFG[m]
+  return m === "palco" || m === "andar" || m === "incubadoras" || m === "controle" ? null : FINAL_CFG[m]
 }
+/** os momentos que esperam um aviso de fora (seguirFinal): chegar nas torres, as cenas do prédio */
+export const esperaAviso = (m: MomentoFinal) => m === "andar" || m === "incubadoras" || m === "controle"
+
+// ── (16/11, o dono) A CAPTURA: "na última missão todo mundo é capturado porque foi visto
+// andando com um veículo desconhecido pela cidade". Todo mundo = os nove donos das músicas;
+// cada um pela missão em que aparece (o corredor acha um por um: disco/entrega.ts) ──
+// (função, não constante: as tabelas se importam em roda e só existem depois de carregar)
+export const capturados = (): MissaoId[] => EPISODIOS.map((e) => e.pecas.find((p) => p.t === "missao" && MISSOES13[p.id].quem === e.quem)).flatMap((p) => (p && p.t === "missao" ? [p.id] : []))
+/** a captura ainda está por vir: tudo feito menos o show do ep. 9, e a captura não aconteceu.
+ *  Save antigo (sem o campo) que já fez o show pega a captura no começo do final (page.tsx) */
+export const capturaAntesDoShow = (h: HistoriaDisco) =>
+  !h.capturaFinal && !feita13(h, "lu2ca") && MISSOES13.final.requer.every((id) => id === "lu2ca" || feita13(h, id))
 export const proximo = (m: MomentoFinal): MomentoFinal | null => MOMENTOS[MOMENTOS.indexOf(m) + 1] ?? null
 
 // ── O FINAL AO VIVO: uma loja fora do React (a tela escreve; o 3D lê por quadro) ──
@@ -114,6 +144,8 @@ export function definirFinalFeito(sim: boolean) {
   FINAL_VIVO.feito = sim
   avisar()
 }
+/** (16/11) o momento que espera de fora acabou (chegou nas torres; as cenas do prédio): segue */
+export function seguirFinal() { marcarChegouNasTorres() }
 export function marcarChegouNasTorres() {
   if (FINAL_VIVO.chegou) return
   FINAL_VIVO.chegou = true

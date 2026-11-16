@@ -130,6 +130,8 @@ export interface HistoriaDisco {
   // incubadoras; e quem já pagou a recompensa da entrega (não paga duas vezes)
   entregues?: MissaoId[]
   entreguesPagos?: MissaoId[]
+  // (16/11) a captura do final (todos capturados, as incubadoras e a sala de controle) já aconteceu
+  capturaFinal?: true
 }
 
 // (A8) o que o metrô tira dele: fica no save de uma vez (puras, o C2 e a page.tsx chamam)

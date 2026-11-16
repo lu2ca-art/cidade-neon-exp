@@ -110,6 +110,7 @@ function Hack({ agua, onFim }: { agua: number; onFim: () => void }) {
   return (
     <div className={`en-hack is-${fase}`} aria-live="polite">
       {agua > 0 && <p className="en-hack-grana">{T.recompensa.replace("{agua}", String(agua))}</p>}
+      {agua > 0 && <p className="en-hack-tomado">{T.tomado}</p>}
       <div className="en-hack-pops">
         {pops.map((p) => (
           // eslint-disable-next-line @next/next/no-img-element

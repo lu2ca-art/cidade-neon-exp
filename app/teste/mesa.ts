@@ -34,6 +34,15 @@ export const MESA: Cartao[] = [
     mais: [{ parte: "show.bar", nome: "o show do bar (o mais simples)" }, { parte: "show.escada", nome: "a escada dos palcos (do bar ao alto das torres)" }],
   },
   {
+    parte: "entrega.hack",
+    nome: "Liberar ou entregar: os botões no cartão e o preço da traição",
+    data: "2026-11-16",
+    tarefa: "entrega e incubadoras",
+    olhar: "Abra o mapa pelo holo e toque num personagem cuja missão você já fez: embaixo do cartão aparecem \"liberar\" (marca a missão no mapa, como antes) e \"entregar\" com a recompensa, agora entre 1.000 e 2.000 Água$. Entregar pede um segundo toque. Aí vem o hack: aparece a grana e logo em vermelho \"tomaram tudo\". Depois do corredor, confira o bolso: Água$ zerada, sem discos, roupas, compras e instrumentos achados; os episódios feitos continuam. O LU2CA e a D-Bee nunca têm o botão, e quem já foi entregue e resgatado também não. Este link entrega a Ella direto, com dinheiro no bolso.",
+    perguntas: ["Os instrumentos que as missões deram também devem ser tomados? (hoje ficam, porque são progresso)", "Os valores por personagem (1.000 a 2.000) estão bons?"],
+    mais: [{ parte: "carreira.meio", nome: "o mapa com os cartões (sem entregar)" }],
+  },
+  {
     parte: "carreira.meio",
     nome: "O mapa ilustrado e os cartões das missões (a feira de recompensas)",
     data: "2026-11-16",
