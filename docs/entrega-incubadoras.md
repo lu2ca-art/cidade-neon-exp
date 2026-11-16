@@ -23,10 +23,11 @@ Por isso a entrega não tira mais ninguém da sequência na prática (a missão 
 ## O preço da traição (16/11, decisão do dono)
 Entrega, ganha a recompensa, vem o hack, e ela **perde a recompensa e o inventário inteiro**
 (`tomarInventario` em `disco/entrega.ts`). Tem de coletar tudo do zero se quiser.
-- **Vai:** a Água$ (vai a 0), o que se compra (`compras`: instrumentos, roupas, carros), os
-  discos, as flores do jardim e os instrumentos achados pelo mundo (voltam a aparecer pra coletar).
-- **Fica:** o progresso da história (episódios, missões, portas, músicas liberadas) e os
-  instrumentos que as próprias missões deram (são progresso; pergunta pro dono se também vão).
+- **Vai TUDO (16/11, o dono):** a Água$ (vai a 0), o que se compra (`compras`: instrumentos,
+  roupas, carros), os discos, as flores do jardim, os instrumentos achados pelo mundo (voltam a
+  aparecer pra coletar) e também os instrumentos que as missões deram (`instrumentosTomados`
+  no save; comprar ou achar de novo devolve).
+- **Fica:** o progresso da história (episódios, missões, portas, músicas liberadas).
 - **No save:** tudo acontece de uma vez, no mesmo save da entrega: recarregar no meio do hack
   não salva o inventário. Save antigo: os campos que faltam ficam vazios, nada quebra.
 - **Na tela:** o "+N Água$" aparece no começo do hack e logo vem, em vermelho,

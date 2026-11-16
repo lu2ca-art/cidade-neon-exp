@@ -39,7 +39,7 @@ export const MESA: Cartao[] = [
     data: "2026-11-16",
     tarefa: "escada dos shows",
     olhar: "Aqui você já desce nos túneis com o jogo quase no fim. Vá de patins até o SALÃO DO METRÔ (pela descida, a TORRE 1 e o RIO SECO A): o palco novo fica no salão, com telão, canhões de luz, a projeção colorida nas paredes e a água no chão refletindo as cores. Chegando perto, o botão \"o show\": escolha a música e assista da plateia (a câmera vai pro meio do povo) ou toque. Nos outros atalhos: o show do bar fica pequeno, com pouca luz e sem telão; os palcos de cima têm mais luz, telão e gente.",
-    perguntas: ["A vista dos túneis ficou bonita como você imaginou? Mais cor, menos?", "O show dos túneis abre depois do ep. 8 (Notti, Rollercoaster), o último antes de CHUVA. É esse o momento?", "O salão do metrô é o lugar certo do palco, ou quer perto de onde vai ficar a torneira?", "O bar está simples o bastante?"],
+    perguntas: ["A vista dos túneis ficou bonita como você imaginou? Mais cor, menos?", "O show dos túneis abre depois do ep. 2 (Mubarak). É esse o momento?", "O salão do metrô é o lugar certo do palco, ou quer perto de onde vai ficar a torneira?", "O bar está simples o bastante?"],
     mais: [{ parte: "show.bar", nome: "o show do bar (o mais simples)" }, { parte: "show.escada", nome: "a escada dos palcos (do bar ao alto das torres)" }],
   },
   {
@@ -47,8 +47,8 @@ export const MESA: Cartao[] = [
     nome: "Liberar ou entregar: os botões no cartão e o preço da traição",
     data: "2026-11-16",
     tarefa: "entrega e incubadoras",
-    olhar: "Abra o mapa pelo holo e toque num personagem cuja missão você já fez: embaixo do cartão aparecem \"liberar\" (marca a missão no mapa, como antes) e \"entregar\" com a recompensa, agora entre 1.000 e 2.000 Água$. Entregar pede um segundo toque. Aí vem o hack: aparece a grana e logo em vermelho \"tomaram tudo\". Depois do corredor, confira o bolso: Água$ zerada, sem discos, roupas, compras e instrumentos achados; os episódios feitos continuam. O LU2CA e a D-Bee nunca têm o botão, e quem já foi entregue e resgatado também não. Este link entrega a Ella direto, com dinheiro no bolso.",
-    perguntas: ["Os instrumentos que as missões deram também devem ser tomados? (hoje ficam, porque são progresso)", "Os valores por personagem (1.000 a 2.000) estão bons?"],
+    olhar: "Abra o mapa pelo holo e toque num personagem cuja missão você já fez: embaixo do cartão aparecem \"liberar\" (marca a missão no mapa, como antes) e \"entregar\" com a recompensa, agora entre 1.000 e 2.000 Água$. Entregar pede um segundo toque. Aí vem o hack: aparece a grana e logo em vermelho \"tomaram tudo\". Depois do corredor, confira o bolso: Água$ zerada, sem discos, roupas, compras e nenhum instrumento (nem os das missões); os episódios feitos continuam. O LU2CA e a D-Bee nunca têm o botão, e quem já foi entregue e resgatado também não. Este link entrega a Ella direto, com dinheiro no bolso.",
+    perguntas: ["Os valores por personagem (1.000 a 2.000) estão bons?"],
     mais: [{ parte: "carreira.meio", nome: "o mapa com os cartões (sem entregar)" }],
   },
   {

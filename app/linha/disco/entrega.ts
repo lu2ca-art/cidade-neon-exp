@@ -21,7 +21,7 @@
 import type { Save } from "../estado"
 import { ganhar } from "../economia"
 import { comHistoria, historiaDe, type HistoriaDisco } from "./historia"
-import { MISSOES13, feita13, type MissaoId } from "./portas"
+import { IDS13, MISSOES13, feita13, type MissaoId } from "./portas"
 
 // ═══ RASCUNHO: os números (o dono mexe aqui) ═══
 export const ENTREGA_CFG = {
@@ -55,16 +55,16 @@ export const corDe = (id: MissaoId) => MISSOES13[id].cor
 export const entregues = (h: HistoriaDisco | null | undefined): MissaoId[] => h?.entregues ?? []
 export const entregue = (h: HistoriaDisco | null | undefined, id: MissaoId) => entregues(h).includes(id)
 
-/** (16/11, o dono) O PREÇO DA TRAIÇÃO: a recompensa e o inventário inteiro são tomados.
- *  Vai: a Água$, o que se compra (instrumentos, roupas, carros: `compras`), os discos, as
- *  flores do jardim e os instrumentos achados pelo mundo (voltam a aparecer pra coletar de
- *  novo). FICA: o progresso da história (episódios, missões, portas, músicas) e os
- *  instrumentos que as missões deram (são progresso). Campos ausentes no save antigo: nada quebra */
+/** (16/11, o dono) O PREÇO DA TRAIÇÃO: quem entrega perde TUDO. Vai: a Água$, o que se
+ *  compra (instrumentos, roupas, carros: `compras`), os discos, as flores do jardim, os
+ *  instrumentos achados pelo mundo (voltam a aparecer pra coletar) e os que as missões deram
+ *  (`instrumentosTomados`). FICA: o progresso da história (episódios, missões, portas,
+ *  músicas). Campos ausentes no save antigo: nada quebra */
 export function tomarInventario(s: Save): Save {
   const h = historiaDe(s)
-  const semAchados = h.instrumentosAchados?.length || h.instrumentos?.length
+  const dasMissoes = IDS13.flatMap((id) => { const x = MISSOES13[id].recompensa.instrumento; return x && feita13(h, id) ? [x] : [] })
   const s2: Save = { ...s, agua: 0, discos: [], compras: [], jardim: [] }
-  return semAchados ? comHistoria(s2, (x) => ({ ...x, instrumentosAchados: [], instrumentos: [] })) : s2
+  return comHistoria(s2, (x) => ({ ...x, instrumentosAchados: [], instrumentos: [], instrumentosTomados: [...new Set([...(x.instrumentosTomados ?? []), ...dasMissoes])] }))
 }
 
 /** entregou: ganha a recompensa (a tela mostra), fica "entregue" no save e, já no mesmo

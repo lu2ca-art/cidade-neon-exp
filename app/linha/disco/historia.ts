@@ -132,6 +132,8 @@ export interface HistoriaDisco {
   entreguesPagos?: MissaoId[]
   // (16/11) a captura do final (todos capturados, as incubadoras e a sala de controle) já aconteceu
   capturaFinal?: true
+  // (16/11) os instrumentos que as missões deram e foram tomados na entrega (o preço da traição)
+  instrumentosTomados?: InstrumentoId[]
 }
 
 // (A8) o que o metrô tira dele: fica no save de uma vez (puras, o C2 e a page.tsx chamam)
