@@ -94,6 +94,7 @@ import { faixaXenom, lerShowXenom, registrarXenom, showXenom, XENOM_CONFIG } fro
 import { Show } from "./disco/ShowBanda"
 import { lotacaoDoPovo } from "./disco/povo"
 import { ShowNoBar } from "./disco/ShowNoBar"
+import { ShowAfinador } from "./disco/ShowAfinador"
 import { ShowTuneis } from "./disco/ShowTuneis"
 import { degrau, degrauDoShow, escalaDoDegrau, genteNoDegrau } from "./disco/escadaShows"
 import { SHOW_TUNEIS_CFG } from "./disco/showNosTuneis"
@@ -1168,6 +1169,13 @@ export default function LinhaPage() {
   const [pingpong, setPingpong] = useState(false)
   // (T29) o final passando agora: o momento em que ele começou (disco/Final.tsx toca o resto)
   const [finalAgora, setFinalAgora] = useState<MomentoFinal | null>(null)
+  // (16/11) o show final: assistir (o final passa junto) ou tocar (a cena curta depois); e a
+  // chave da tela do final (abrir de novo num momento recomeça a tela)
+  const [modoShowFinal, setModoShowFinal] = useState<"ver" | "tocar" | null>(null)
+  const [finalChave, setFinalChave] = useState(0)
+  const modoShowFinalRef = useRef(modoShowFinal)
+  const finalAgoraRef = useRef(finalAgora)
+  useEffect(() => { modoShowFinalRef.current = modoShowFinal; finalAgoraRef.current = finalAgora })
   // (16/11) a entrega (disco/entrega.ts): o cartão chama pedirEntrega(id); aqui o save
   // muda (a grana, o "entregue") e a cena abre: o hack, depois o corredor das incubadoras
   const [entregaAgora, setEntregaAgora] = useState<{ amigos: MissaoId[]; agua: number; hack: boolean; final?: boolean; inicio?: "controle" } | null>(null)
@@ -1368,10 +1376,14 @@ export default function LinhaPage() {
     track("mission_step", { mission_id: `disco-${id}`, step: "porta", perfil: s0.perfil ?? "?", fio_pos: -1 })
     // (09/11, o dono) o show da CHUVA acabou e os 9 episódios estão feitos: o final
     // começa ali mesmo, no palco (pega a missão: recarregar a página volta pro palco)
+    // (16/11, o dono) o jogo acaba no show: assistindo, o final já passou junto e acaba com a
+    // CHUVA; tocando, vem a cena curta (a chuva limpa e a floresta), sem música
     if (id === "lu2ca" && disponiveis(hist13(s1)).includes("final")) {
       setSave((s) => comHistoria(s, (h) => ({ ...h, missao: "final" })))
-      abrirFinal("palco")
+      if (modoShowFinalRef.current === "ver" && finalAgoraRef.current) setTimeout(() => fimFinalRef.current(), 0)
+      else abrirFinal("chuva")
     }
+    if (id === "lu2ca") setModoShowFinal(null)
   }
   // (T63) desceu a rampa da boca do túnel: a porta escurece e, lá embaixo, as
   // trincheiras (no mesmo jogo, sem trocar de página). A estrada sai da cena
@@ -1414,7 +1426,7 @@ export default function LinhaPage() {
   }
   // chegou no lugar da missão: abre a peça de agora; sem peça (feitas ou "em breve"), a porta
   const chegouNaMissao = (id: MissaoId, semIntro = false) => {
-    if (recompensa || pingpong || provaMissao || showAgora || letraAgora || batidaMissao || basquete || esporteEscolha || esporteJogo || cenaAgora || feiraAgora || cena || trincheiras || finalAgora || (introMissao && !semIntro)) return
+    if (recompensa || pingpong || provaMissao || showAgora || letraAgora || batidaMissao || basquete || esporteEscolha || esporteJogo || cenaAgora || feiraAgora || cena || trincheiras || (finalAgora && !(id === "lu2ca" && modoShowFinal === "ver")) || (introMissao && !semIntro)) return
     // (começo novo) abriu (o balão ou a peça): o "toca pra começar" do notch sai
     if (INTRO_ADIADA.missao === id) { INTRO_ADIADA.missao = ""; INTRO_ADIADA.texto = ""; INTRO_ADIADA.toque = null }
     const pc = pecaAgora13(hist13(saveRef.current), id)
@@ -1454,7 +1466,7 @@ export default function LinhaPage() {
     else if (como.t === "casa") entrarNaCasa(id)
     // (T29) o final: a sequência começa no palco do show da CHUVA (disco/final.ts)
     // (16/11) save que já fez o show e não passou pela captura: ela vem antes do palco
-    else if (como.t === "final") abrirFinal(hist13(saveRef.current).capturaFinal ? "palco" : "captura")
+    else if (como.t === "final") abrirFinal(hist13(saveRef.current).capturaFinal ? "chuva" : "captura")
   }
   // (T29) O FINAL: o jogo atrás com as faixas de cinema, a câmera roteirizada
   // (estrada/FinalPovo.tsx) e a tela dos momentos (disco/FinalTela.tsx). Acabou: as
@@ -1464,6 +1476,7 @@ export default function LinhaPage() {
     setIntroMissao(null)
     setCinema("lugar")
     setFinalAgora(m)
+    setFinalChave((k) => k + 1)
     setFinalMomento(m)
     track("mission_step", { mission_id: "disco-final", step: `final:${m}`, perfil: saveRef.current.perfil ?? "?", fio_pos: -1 })
   }
@@ -1483,12 +1496,14 @@ export default function LinhaPage() {
     const s = comHistoria(saveRef.current, (h) => ({ ...h, capturaFinal: true as const }))
     saveRef.current = s
     setSave(s)
-    if (feita13(hist13(s), "lu2ca")) { seguirFinal(); return }
+    // save antigo que já fez o show: a cena curta (a chuva limpa e a floresta)
+    if (feita13(hist13(s), "lu2ca")) { abrirFinal("chuva"); return }
     setFinalAgora(null)
     setFinalMomento(null)
     setCinema(null)
     setTimeout(() => chegouSemIntro.current("lu2ca"), 900)
   }
+  const fimFinalRef = useRef<() => void>(() => {})
   const fimFinal = () => {
     setFinalAgora(null)
     setFinalMomento(null)
@@ -1535,7 +1550,7 @@ export default function LinhaPage() {
   useEffect(() => { chegouSemIntro.current = (m) => chegouNaMissao(m, true) })
   const pecaFeitaNaMissaoRef = useRef(pecaFeitaNaMissao)
   const abrirFinalRef = useRef<(m: MomentoFinal) => void>(() => {})
-  useEffect(() => { chegouRef.current = chegouNaMissao; abrirPortaRef.current = abrirPortaDe; pecaFeitaNaMissaoRef.current = pecaFeitaNaMissao; abrirFinalRef.current = abrirFinal })
+  useEffect(() => { chegouRef.current = chegouNaMissao; abrirPortaRef.current = abrirPortaDe; pecaFeitaNaMissaoRef.current = pecaFeitaNaMissao; abrirFinalRef.current = abrirFinal; fimFinalRef.current = fimFinal })
   // (T29) o final já visto neste save: a floresta e o mundo depois ficam. Vale desde as
   // peças feitas (antes da porta abrir), pra floresta não piscar quando o final acaba
   const finalFeito = HIST && (feita13(hist13(save), "final") || ordemDe("final").every((q) => pecaFeita(hist13(save), "final", q)))
@@ -1566,6 +1581,8 @@ export default function LinhaPage() {
       else if (qual === "recompensa") abrirPortaRef.current("mubarak")
       // (T29) ?parte=final e final.<momento>: a sequência começa direto naquele momento
       else if (qual.startsWith("final:")) abrirFinalRef.current(qual.slice(6) as MomentoFinal)
+      // (16/11) final.show: o show final direto (a captura feita, falta só tocar ou assistir)
+      else if (qual === "missao:lu2ca") chegouSemIntro.current("lu2ca")
       // (vitrine) o túnel no começo e a sinuca do bar
       else if (qual === "tunel") descerTrincheiras(null)
       else if (qual === "sinuca") setSinucaBar(true)
@@ -2615,7 +2632,8 @@ export default function LinhaPage() {
   const app = tela.t === "app" ? APPS.find((a) => a.id === tela.id)! : null
   // o celular aberto por cima da estrada: a Kombi segue sozinha, devagar
   const celularAberto = estrada && (tela.t === "home" || tela.t === "app" || tela.t === "chat")
-  const corridaPausada = (tela.t !== "corrida" && tela.t !== "chegada" && !celularAberto) || !!visor || !!showAgora || !!jornal || pingpong || caderno || !!recompensa || rua || !!provaMissao || !!letraAgora || !!oficinaTela || !!trincheiras || sinucaBar || !!janelaChao || !!esporteEscolha || !!esporteJogo || !!entregaAgora
+  // (16/11) assistindo o show final, o mundo segue vivo atrás (o final acontece nele)
+  const corridaPausada = (tela.t !== "corrida" && tela.t !== "chegada" && !celularAberto) || !!visor || (!!showAgora && !(showAgora === "missao:lu2ca" && modoShowFinal === "ver")) || !!jornal || pingpong || caderno || !!recompensa || rua || !!provaMissao || !!letraAgora || !!oficinaTela || !!trincheiras || sinucaBar || !!janelaChao || !!esporteEscolha || !!esporteJogo || !!entregaAgora
 
   // (disco) o óculos de realidade aumentada: a tela larga no desktop e o
   // celular translúcido por cima da cidade (LU2CA 19/10)
@@ -2826,7 +2844,20 @@ export default function LinhaPage() {
         {tela.t === "entrada" && (D ? <InicioDisco save={save} onEntrar={entrar} /> : <Entrada save={save} onEntrar={entrar} />)}
         {minhoca && <Minhoca onFim={fimMinhoca} dur={chegadaLogin ? CHEGADA.minhocaMsVolta : CHEGADA.minhocaMs} />}
         {rastroMinhoca && <Minhoca saida onFim={() => {}} />}
-        {showAgora && <Show key={showAgora} faixa={showConf!.faixa} lugar={showConf!.lugar} palco={showConf!.palco} cor={showConf!.cor} popularidade={showAgora === "missao:lu2ca" ? 100 : degrauAgora ? genteNoDegrau(degrauAgora, lotacao) : lotacao} escala={degrauAgora ? escalaDoDegrau(degrauAgora) : undefined} letra={hist.letras?.[showConf!.faixa]} onFim={fimShow} />}
+        {/* (16/11, o dono) o show final da CHUVA: escolhe assistir ou tocar, como nos outros. Assistindo, o
+            final acontece ao mesmo tempo no mundo (FinalTela + FinalPovo) e a CHUVA toca uma vez só */}
+        {showAgora === "missao:lu2ca" && modoShowFinal !== "tocar" && (modoShowFinal === "ver"
+          ? <ShowAfinador faixa={showConf!.faixa} lugar={showConf!.lugar} palco={showConf!.palco} cor={showConf!.cor} popularidade={100} noMundo inteira letra={hist.letras?.[showConf!.faixa]} onFim={fimShow} />
+          : (
+            <div className="l-show is-no-mundo" style={{ ["--cor" as string]: showConf!.cor }} onPointerDown={(e) => e.stopPropagation()}>
+              <header className="l-show-topo"><small>o show final · no deserto</small><b className="l-show-revela">CHUVA</b></header>
+              <div className="l-show-escolha">
+                <button type="button" onClick={() => { setModoShowFinal("ver"); abrirFinal("palco") }}><b>assistir</b><small>canta da plateia</small></button>
+                <button type="button" onClick={() => setModoShowFinal("tocar")}><b>tocar</b><small>sobe no palco: guitarra, baixo, bateria ou teclado</small></button>
+              </div>
+            </div>
+          ))}
+        {showAgora && (showAgora !== "missao:lu2ca" || modoShowFinal === "tocar") && <Show key={showAgora} faixa={showConf!.faixa} lugar={showConf!.lugar} palco={showConf!.palco} cor={showConf!.cor} popularidade={showAgora === "missao:lu2ca" ? 100 : degrauAgora ? genteNoDegrau(degrauAgora, lotacao) : lotacao} escala={degrauAgora ? escalaDoDegrau(degrauAgora) : undefined} letra={hist.letras?.[showConf!.faixa]} onFim={fimShow} />}
         {/* (T19) a arte do LU2CA: escrever a letra (rascunho, disco/letras.ts); a estrofe vai pro show */}
         {letraAgora && <Letra conf={letraAgora.conf} cor={MISSOES13[letraAgora.missao].cor} quem={MISSOES13[letraAgora.missao].quem} onFim={(linhas: string[]) => {
           const l = letraAgora
@@ -2910,7 +2941,7 @@ export default function LinhaPage() {
         })()}
         {/* (T15–T25, T16) as peças das missões das pessoas (disco/pecas/): acabou, a próxima (ou a porta) segue sozinha */}
         {/* (T29) o final: o gesto no palco e a sequência, com o jogo atrás */}
-        {finalAgora && <FinalTela inicio={finalAgora} onFim={fimFinal} onMomento={aoMomentoFinal} />}
+        {finalAgora && <FinalTela key={finalChave} inicio={finalAgora} assistindo={modoShowFinal === "ver"} onFim={fimFinal} onMomento={aoMomentoFinal} />}
         {/* (16/11) a entrega: o hack e o corredor das incubadoras; achou = volta pro save */}
         {entregaAgora && <EntregaCena amigos={entregaAgora.amigos} agua={entregaAgora.agua} hack={entregaAgora.hack} final={entregaAgora.final} inicio={entregaAgora.inicio}
           onAchou={(id) => setSave((s) => recuperar(s, [id]))}

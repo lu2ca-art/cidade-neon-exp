@@ -26,13 +26,14 @@ export interface Cartao {
 export const MESA: Cartao[] = [
   {
     parte: "final",
-    nome: "O final novo: todos capturados, as incubadoras, a sala de controle e o show",
+    nome: "O final novo: capturados, a sala de controle e o jogo acabando no show da CHUVA",
     data: "2026-11-16",
     tarefa: "final",
-    olhar: "Abre no palco do deserto com a plateia cheia: aparece a linha da captura e vem o hack das propagandas. Você acorda no corredor das incubadoras: quebre todas, os nove estão espalhados nelas. Quebrou a última, a porta do elevador no fim da sala acende: toque pra subir. Na sala de controle do Núcleo os nove estão em volta do painel e o plano aparece em três frases. Depois você volta pro palco e o final segue como antes: o gesto, a CHUVA, as torres, o Núcleo, a água, a chuva e a floresta. No jogo de verdade isso acontece quando você chega no palco pro show do ep. 9, e o show do Guitar Driver vem logo depois da sala.",
-    perguntas: ["As três frases da sala (\"a gente tá bolando esse plano desde o início\", \"todo mundo já sabia\", \"a gente veio parar aqui de propósito\") ficam ou você reescreve? Quem fala?", "Do jeito que está, a CHUVA toca no show do Guitar Driver e de novo a partir do gesto. Quer que o final comece direto, sem o Guitar Driver?", "A torneira dos túneis precisa aparecer na tela?"],
-    mais: [{ parte: "final.controle", nome: "direto na sala de controle" }, { parte: "final.incubadoras", nome: "direto no corredor (com o hack)" }, { parte: "final.show", nome: "direto no palco do show" }],
+    olhar: "Abre no palco do deserto: a linha da captura, o hack e o corredor das incubadoras com os nove. Quebre todas, toque no elevador e veja o plano na sala de controle. Volta pro palco e começa o show da CHUVA, com a escolha de sempre. Assistindo: a CHUVA toca uma vez só e, enquanto o LU2CA canta, a câmera mostra o palco cheio, a água correndo do Núcleo até o deserto com o povo saindo na rua, a chuva limpa e o deserto virando floresta; o jogo acaba quando a música acaba. Tocando: o show de sempre e, logo depois, uma cena curta (a chuva limpa e a floresta), sem música. Não tem mais o gesto \"convocar o povo\", a ida até as torres nem o Núcleo fritando.",
+    perguntas: ["As três frases da sala ficam ou você reescreve? Quem fala?", "Assistindo, o tempo de cada parte (palco 20 s, água 24 s, chuva 30 s, a floresta até o fim) combina com a música?", "A torneira dos túneis precisa aparecer na tela?"],
+    mais: [{ parte: "final.show", nome: "direto no show final (assistir ou tocar)" }, { parte: "final.controle", nome: "direto na sala de controle" }, { parte: "final.chuva", nome: "só a cena curta de depois (a chuva limpa e a floresta)" }],
   },
+
   {
     parte: "show.tuneis",
     nome: "Os shows crescem: do bar simples até o show colorido dos túneis",
@@ -109,7 +110,7 @@ export const MESA: Cartao[] = [
     tarefa: "final",
     olhar: "Você abre em cima do palco novo, no centro do deserto, olhando a plateia enorme. Toque na tela uma vez: começa a CHUVA e a Kombi fica livre. Siga o GPS até as torres, com o povo saindo a pé do deserto. Em cada torre das pontas há três multidões, cada uma com um dos nove na frente, na cor dele. Chegando em qualquer torre, só assista: a água seca nas paredes do Núcleo, ele frita de dentro pra fora, a água chega nos canais, a chuva cai e o deserto vira floresta.",
     perguntas: ["O lugar do palco parece o centro do deserto, ou prefere outro ponto?", "A plateia ficou enorme o bastante? E o iPhone continua liso?", "Dá pra ver o povo se espalhando enquanto dirige?", "Dá pra reconhecer quem lidera cada multidão só pela cor, ou precisa de mais?", "Chegar em qualquer torre já começa a cena: é isso, ou tem que ser no Núcleo?", "A cena do Núcleo fritando convence? Dá pra entender que cortaram o abastecimento?", "A CHUVA segue inteira, sem corte, do toque até o fim?"],
-    mais: [{ parte: "final.andar", nome: "direto no volante, depois do gesto (sem música)" }, { parte: "final.nucleo", nome: "só o Núcleo fritando" }, { parte: "final.agua", nome: "só a água até o deserto" }, { parte: "final.floresta", nome: "só o deserto virando floresta" }, { parte: "mundo.depois.floresta", nome: "voltando a jogar: a floresta e o subúrbio com as plantas" }],
+    mais: [{ parte: "final.agua", nome: "só a água até o deserto" }, { parte: "final.floresta", nome: "só o deserto virando floresta" }, { parte: "mundo.depois.floresta", nome: "voltando a jogar: a floresta e o subúrbio com as plantas" }],
   },
   {
     parte: "loja.violao",

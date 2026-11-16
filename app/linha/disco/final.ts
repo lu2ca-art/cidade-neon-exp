@@ -47,7 +47,9 @@ import { MISSOES13, feita13, type MissaoId } from "./portas"
 // (16/11, o dono) A ORDEM NOVA: a captura vem ANTES do show. Os três primeiros (captura,
 // incubadoras, controle) acontecem antes do show do ep. 9 (missão lu2ca); o resto é o de 09/11
 export type MomentoFinal = "captura" | "incubadoras" | "controle" | "palco" | "andar" | "nucleo" | "agua" | "chuva" | "floresta"
-export const MOMENTOS: MomentoFinal[] = ["captura", "incubadoras", "controle", "palco", "andar", "nucleo", "agua", "chuva", "floresta"]
+// (16/11, o dono) o jogo acaba no show: saíram da sequência o gesto, o "andar" até as torres,
+// os focos e o Núcleo fritando ("andar" e "nucleo" ficam no tipo só pelo código antigo)
+export const MOMENTOS: MomentoFinal[] = ["captura", "incubadoras", "controle", "palco", "agua", "chuva", "floresta"]
 /** os momentos de antes do show (a captura e o prédio do Núcleo) */
 export const ANTES_DO_SHOW: MomentoFinal[] = ["captura", "incubadoras", "controle"]
 export const ehMomentoFinal = (x: string | null | undefined): x is MomentoFinal => !!x && (MOMENTOS as string[]).includes(x)
@@ -58,6 +60,10 @@ export const TEXTO_GESTO = "convocar o povo"
 export const FINAL_CFG = {
   // (16/11) a captura no palco do deserto, antes do hack (s)
   captura: 5,
+  // (16/11) assistindo o show: o palco com o povo (s) e a chuva limpa mais longa; a floresta
+  // fica até a CHUVA acabar. Tocando: a cena curta depois do show é só a chuva e a floresta
+  palco: 20,
+  chuvaShow: 30,
   // os tempos (s) de cada momento. O "palco" espera o gesto e o "andar" espera a pessoa chegar;
   // "incubadoras" e "controle" esperam a cena deles (EntregaCena.tsx, SalaControle.tsx)
   nucleo: 26,
@@ -104,11 +110,14 @@ export const FINAL_CFG = {
 export const NOVE: { quem: string; cor: string; musica: string }[] = EPISODIOS.map((e) => ({ quem: e.quem, cor: e.cor, musica: e.musica }))
 
 // quanto dura cada momento (s); null = espera o gesto
-export function duracao(m: MomentoFinal): number | null {
-  return m === "palco" || m === "andar" || m === "incubadoras" || m === "controle" ? null : FINAL_CFG[m]
+export function duracao(m: MomentoFinal, assistindo = false): number | null {
+  if (m === "andar" || m === "incubadoras" || m === "controle") return null
+  if (assistindo && m === "floresta") return null // acaba com a CHUVA (page.tsx)
+  if (assistindo && m === "chuva") return FINAL_CFG.chuvaShow
+  return FINAL_CFG[m]
 }
-/** os momentos que esperam um aviso de fora (seguirFinal): chegar nas torres, as cenas do prédio */
-export const esperaAviso = (m: MomentoFinal) => m === "andar" || m === "incubadoras" || m === "controle"
+/** os momentos que esperam um aviso de fora (seguirFinal): as cenas do prédio */
+export const esperaAviso = (m: MomentoFinal) => m === "incubadoras" || m === "controle"
 
 // ── (16/11, o dono) A CAPTURA: "na última missão todo mundo é capturado porque foi visto
 // andando com um veículo desconhecido pela cidade". Todo mundo = os nove donos das músicas;

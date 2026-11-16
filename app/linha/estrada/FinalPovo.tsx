@@ -236,7 +236,8 @@ function FinalVivo({ M }: { M: MundoDisco }) {
     // as câmeras extras do <Perto>: entram aos poucos no Núcleo, inteiras na água, somem depois
     const ex = PERTO_EXTRA.pontos
     const aquecer = cena.aquecer
-    const nEx = mo === "nucleo" ? Math.min(aquecer.length, 1 + Math.floor(((performance.now() / 1000 - FINAL_VIVO.t0) / (FINAL_CFG.nucleo * 0.85)) * aquecer.length)) : mo === "agua" ? aquecer.length : 0
+    // (16/11) sem o Núcleo fritando: o palco é que aquece o caminho da água
+    const nEx = mo === "nucleo" || mo === "palco" ? Math.min(aquecer.length, 1 + Math.floor(((performance.now() / 1000 - FINAL_VIVO.t0) / ((mo === "palco" ? FINAL_CFG.palco : FINAL_CFG.nucleo) * 0.85)) * aquecer.length)) : mo === "agua" ? aquecer.length : 0
     if (ex.length !== nEx) { ex.length = 0; for (let k = 0; k < nEx; k++) ex.push(aquecer[k]) }
     const t = performance.now() / 1000 - FINAL_VIVO.t0
     const C = CAM_ROTEIRO, p = cena.palco, s0 = FINAL_CFG.aguaDe, L = cena.caminho.L
@@ -259,11 +260,12 @@ function FinalVivo({ M }: { M: MundoDisco }) {
       uFrente.value = s0 * suave((t - FINAL_CFG.aguaSai) / (dur - FINAL_CFG.aguaSai))
     } else if (mo === "agua") {
       // a frente da água corre; a câmera vem atrás, olhando pra onde ela vai
-      const f = s0 + (L - s0) * suave(t / FINAL_CFG.agua)
+      // (16/11) a água já foi liberada na sala de controle: corre do Núcleo até a casa
+      const f = L * suave(t / FINAL_CFG.agua)
       uFrente.value = f
       noCaminho(Math.max(0, f - FINAL_CFG.camAtras), aq.a)
       noCaminho(Math.min(L, f + 20), aq.b)
-      C.px = aq.a.x; C.py = aq.a.y + lerp(30, 14, suave((f - s0) / (L - s0))); C.pz = aq.a.z
+      C.px = aq.a.x; C.py = aq.a.y + lerp(30, 14, suave(f / L)); C.pz = aq.a.z
       C.ox = aq.b.x; C.oy = aq.b.y; C.oz = aq.b.z
     } else if (mo === "chuva") {
       // a água chegou na casa: a chuva cai de verdade; olha pro céu aos poucos
@@ -302,10 +304,11 @@ function FinalVivo({ M }: { M: MundoDisco }) {
   const comPovoNucleo = mo === "nucleo"
   // a plateia fica até o gesto; depois quem aparece são os andantes (a mesma gente, saindo)
   const comPlateia = mo === "palco" || mo === "captura" || (mo === null && vivo.lotado)
-  const comAndantes = mo === "andar"
+  // (16/11) o povo sai na rua enquanto a água corre; sem focos e sem o Núcleo fritando
+  const comAndantes = mo === "andar" || mo === "agua"
   const comFocos = mo === "andar" || mo === "nucleo"
-  const comNucleo = mo === "nucleo" || mo === "agua" || mo === "chuva" || mo === "floresta"
-  const comAgua = comNucleo
+  const comNucleo = mo === "nucleo"
+  const comAgua = comNucleo || mo === "agua" || mo === "chuva" || mo === "floresta"
   const pontos = useMemo(() => [cena.centroPalco], [cena])
   return (
     <>
@@ -334,7 +337,7 @@ function FinalVivo({ M }: { M: MundoDisco }) {
         </ModeloSeguro>
       )}
       {comNucleo && <NucleoFrito c={M.central} />}
-      {mo === "palco" && (
+      {mo === "andar" && (
         <mesh ref={anel} position={[cena.palco.x + cena.palco.fx * 3.2, cena.palco.y - 1.1, cena.palco.z + cena.palco.fz * 3.2]}>
           <ringGeometry args={[0.32, 0.36, 40]} />
           <meshBasicMaterial color="#e0ff4f" transparent opacity={0.8} toneMapped={false} depthTest={false} />
