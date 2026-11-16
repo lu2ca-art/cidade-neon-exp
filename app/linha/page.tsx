@@ -94,6 +94,9 @@ import { faixaXenom, lerShowXenom, registrarXenom, showXenom, XENOM_CONFIG } fro
 import { Show } from "./disco/ShowBanda"
 import { lotacaoDoPovo } from "./disco/povo"
 import { ShowNoBar } from "./disco/ShowNoBar"
+import { ShowTuneis } from "./disco/ShowTuneis"
+import { degrau, degrauDoShow, escalaDoDegrau, genteNoDegrau } from "./disco/escadaShows"
+import { SHOW_TUNEIS_CFG } from "./disco/showNosTuneis"
 import { Jornal, calcularManchete } from "./disco/Jornal"
 import type { HistoriaDisco, Manchete } from "./disco/historia"
 import { aplicarRecompensa } from "./disco/recompensas"
@@ -226,6 +229,8 @@ function confShow(id: string): { faixa: FaixaShow; lugar: string; cor: string; p
   // (T20) um palco da carreira: "palco:<palco>:<faixa>" (disco/palcos.ts)
   const pc = lerShowDoPalco(id)
   if (pc) return { faixa: pc.faixa, lugar: nomeDoPalco(pc.palco).no, cor: pc.palco.cor, palco: pc.palco.gd }
+  // (16/11) o show nos túneis: "tuneis:<faixa>" (disco/showTuneis.ts)
+  if (id.startsWith("tuneis:")) { const p = PISTAS.find((x) => x.id === id.slice(7)); return p ? { faixa: p.id, lugar: SHOW_TUNEIS_CFG.no, cor: SHOW_TUNEIS_CFG.cor, palco: "tuneis" } : null }
   if (id.startsWith("rua:")) {
     const p = PISTAS.find((x) => x.id === id.slice(4))
     return p ? { faixa: p.id, lugar: "na rua", cor: COR_PISTA[p.faixa] ?? "#ffc857", palco: "rua" } : null
@@ -359,6 +364,8 @@ export default function LinhaPage() {
   const [trincheiras, setTrincheiras] = useState<{ missao: MissaoId | null; descendo: boolean; chegaNa?: number | null } | null>(null)
   // (T64, 06/11) a fuga do metrô aberta lá embaixo (o trem do salão): as trincheiras pausam
   const [metroTuneis, setMetroTuneis] = useState(false)
+  // (16/11) tocando no palco dos túneis: o canvas das trincheiras pausa
+  const [palcoTuneis, setPalcoTuneis] = useState(false)
   // o Núcleo vindo atrás depois de uma cena que mexeu com ele
   const [perseguido, setPerseguido] = useState(false)
   // a ilha do topo virou bifurcação: a conversa do painel se recolhe
@@ -1229,6 +1236,8 @@ export default function LinhaPage() {
   // o Guitar Driver aberto agora (na rua, ou a peça de tocar ao vivo de uma missão)
   const showAgora = HIST && hist.show && confShow(hist.show) && !cena && tela.t === "corrida" ? hist.show : null
   const showConf = showAgora ? confShow(showAgora)! : null
+  // (16/11) a escada dos shows (disco/escadaShows.ts): cada show no seu degrau (a gente, o palco, a luz, o telão)
+  const degrauAgora = showAgora ? degrauDoShow(showAgora) : null
   // (T19) a peça de escrever a letra aberta agora (a arte do LU2CA)
   const letraAgora = (() => {
     if (!HIST || !hist.aberta13 || cena || tela.t !== "corrida") return null
@@ -1706,8 +1715,9 @@ export default function LinhaPage() {
       setJornal(mx)
       return
     }
-    const faixaDoJornal = pc ? pc.faixa : id.startsWith("rua:") ? id.slice(4) : id
-    const m = { ...calcularManchete(r, faixaDoJornal, conf.lugar, popAntes, Date.now()), neon: pc ? cacheNoPalco(base, pc.palco) : base }
+    const tun = id.startsWith("tuneis:")
+    const faixaDoJornal = pc ? pc.faixa : id.startsWith("rua:") ? id.slice(4) : tun ? id.slice(7) : id
+    const m = { ...calcularManchete(r, faixaDoJornal, conf.lugar, popAntes, Date.now()), neon: pc ? cacheNoPalco(base, pc.palco) : tun ? Math.round(base * SHOW_TUNEIS_CFG.paga) : base }
     const reg = pc ? registrarShow(hist13(saveRef.current), pc.palco.id, pc.faixa, r.nota) : null
     setSave((s) => comHistoria({ ...ganhar(s, m.neon), popularidade: Math.min(100, (s.popularidade ?? 0) + m.pop) }, (h) => ({ ...(pc ? registrarShow(h, pc.palco.id, pc.faixa, r.nota).h : h), show: undefined, shows: [...(h.shows ?? []), m] })))
     if (reg && reg.nivel > reg.nivelAntes) {
@@ -2795,7 +2805,7 @@ export default function LinhaPage() {
         {tela.t === "entrada" && (D ? <InicioDisco save={save} onEntrar={entrar} /> : <Entrada save={save} onEntrar={entrar} />)}
         {minhoca && <Minhoca onFim={fimMinhoca} dur={chegadaLogin ? CHEGADA.minhocaMsVolta : CHEGADA.minhocaMs} />}
         {rastroMinhoca && <Minhoca saida onFim={() => {}} />}
-        {showAgora && <Show key={showAgora} faixa={showConf!.faixa} lugar={showConf!.lugar} palco={showConf!.palco} cor={showConf!.cor} popularidade={showAgora === "missao:lu2ca" ? 100 : lotacao} letra={hist.letras?.[showConf!.faixa]} onFim={fimShow} />}
+        {showAgora && <Show key={showAgora} faixa={showConf!.faixa} lugar={showConf!.lugar} palco={showConf!.palco} cor={showConf!.cor} popularidade={showAgora === "missao:lu2ca" ? 100 : degrauAgora ? genteNoDegrau(degrauAgora, lotacao) : lotacao} escala={degrauAgora ? escalaDoDegrau(degrauAgora) : undefined} letra={hist.letras?.[showConf!.faixa]} onFim={fimShow} />}
         {/* (T19) a arte do LU2CA: escrever a letra (rascunho, disco/letras.ts); a estrofe vai pro show */}
         {letraAgora && <Letra conf={letraAgora.conf} cor={MISSOES13[letraAgora.missao].cor} quem={MISSOES13[letraAgora.missao].quem} onFim={(linhas: string[]) => {
           const l = letraAgora
@@ -3056,7 +3066,7 @@ export default function LinhaPage() {
           <button type="button" className="l-home-bar" onClick={() => setTela({ t: "home" })} aria-label="início" />
         )}
         {cena && cenaDe(cena.lugar) && (
-          <Interior key={`sala:${cena.lugar}:${cena.especial ?? ""}`} lugar={cena.lugar} sala={cena.especial === "ella-galeria" ? "galeria-ella" : undefined} objetos={save.objetos} inicio={!!cena.inicio} copos={save.copos} popularidade={lotacao} disco={cena.especial === "disco-casa" || cena.especial === "disco-bar" || cena.especial === "show-nectar" || cena.especial === "visita-bar" || cena.especial === "dbee-instrumentos"} instrumentos={cena.lugar === "casa-dbee" ? instrumentosGanhos(h13) : undefined} novos={cena.especial === "dbee-instrumentos" ? instrumentosNovos(h13) : undefined} />
+          <Interior key={`sala:${cena.lugar}:${cena.especial ?? ""}`} lugar={cena.lugar} sala={cena.especial === "ella-galeria" ? "galeria-ella" : undefined} objetos={save.objetos} inicio={!!cena.inicio} copos={save.copos} popularidade={cena.lugar === "bar" ? genteNoDegrau(degrau("bar"), lotacao) : lotacao} disco={cena.especial === "disco-casa" || cena.especial === "disco-bar" || cena.especial === "show-nectar" || cena.especial === "visita-bar" || cena.especial === "dbee-instrumentos"} instrumentos={cena.lugar === "casa-dbee" ? instrumentosGanhos(h13) : undefined} novos={cena.especial === "dbee-instrumentos" ? instrumentosNovos(h13) : undefined} />
         )}
         {cena && (
           <CenaLugar
@@ -3073,7 +3083,7 @@ export default function LinhaPage() {
             onTom={(tom) => setSave((s) => ({ ...s, tons: { ...s.tons, [tom]: (s.tons?.[tom] ?? 0) + 1 } }))}
             onFim={cena.especial === "visita" ? fimVisita : cena.especial === "visita-bar" ? fimVisitaBar : cena.especial === "ella-galeria" ? fimCasaMissao : cena.especial === "disco-casa" ? fimCasaDisco : cena.especial === "dbee-instrumentos" ? fimCasaInstrumentos : cena.especial === "disco-bar" ? fimBarDisco : cena.especial === "show-nectar" ? fimShowNectar : cena.especial === "disco-oficina" ? fimOficina : cena.inicio ? fimInicio : cena.especial === "mubarak-drew" ? fimMubarakDrew : fimCena}
             onNeon={(n) => setSave((s) => ganhar(s, n))}
-            gestoShow={(pronto) => <ShowNoBar popularidade={lotacao} onTocar={() => { showNoBar.current = { r: null, tocar: true }; pronto() }} onFim={(r) => { showNoBar.current = { r, tocar: false }; pronto() }} />}
+            gestoShow={(pronto) => <ShowNoBar popularidade={genteNoDegrau(degrau("bar"), lotacao)} onTocar={() => { showNoBar.current = { r: null, tocar: true }; pronto() }} onFim={(r) => { showNoBar.current = { r, tocar: false }; pronto() }} />}
           />
         )}
         {/* (T63) a porta do túnel: escurece; lá embaixo, as trincheiras (a estrada sai da cena) */}
@@ -3085,7 +3095,7 @@ export default function LinhaPage() {
         })()}
         {janelaChao && <div className="l-janela-mundo"><AppJanela app={janelaChao.app} rota={janelaChao.rota} onFechar={fecharJanelaChao} /></div>}
         {sinucaBar && <SinucaBar tranca={trancaSinuca(h13)} onSair={() => { setSinucaBar(false); barFechou.current = Date.now() }} />}
-        {trincheiras && !trincheiras.descendo && <Trincheiras noJogo={{ missao: trincheiras.missao, onSubir: subirDasTrincheiras, pausado: metroTuneis, tranca: HIST && hist.fase !== "carreira" && hist.fase !== "livre" ? "chegue na cidade pra correr" : null, motos: HIST && motoLiberada(hist), chegaNa: trincheiras.chegaNa ?? null,
+        {trincheiras && !trincheiras.descendo && <Trincheiras noJogo={{ missao: trincheiras.missao, onSubir: subirDasTrincheiras, pausado: metroTuneis || palcoTuneis, tranca: HIST && hist.fase !== "carreira" && hist.fase !== "livre" ? "chegue na cidade pra correr" : null, motos: HIST && motoLiberada(hist), chegaNa: trincheiras.chegaNa ?? null,
           elevador: HIST ? { tranca: trancaElevador, onSubir: subirPeloElevador } : undefined }} />}
         {/* (notas 04/11) a rádio livre: fora da estrada (túneis, salas) ela também liga */}
         {D && emSala && !trincheiras?.descendo && <button type="button" className={`l-radio-livre${radioManda ? " is-on" : ""}`} onPointerDown={(e) => e.stopPropagation()} onClick={alternarRadioLivre}>{radioManda ? "rádio · desligar" : "rádio · ligar"}</button>}
@@ -3094,6 +3104,8 @@ export default function LinhaPage() {
           tag={hist.tagLivre ?? null} livre={HIST && (feita13(hist, "tuneis") || GRAFITES_IDS.every((g) => (hist.grafites ?? []).includes(g)))} trancaLivre={facaMissao("tuneis", "pintar a parede")}
           paredes={hist.paredesLivres ?? []} onParede={(i, d) => setSave((s) => comHistoria(s, (h) => ({ ...h, paredesLivres: comParede(h.paredesLivres, i, d) })))} />}
         {/* (T64, 06/11) o trem do salão do metrô: depois da fuga de quando te pegam, a fuga de novo; antes, o cadeado */}
+        {/* (16/11) o palco dos túneis: perto dele, o show (assistir da plateia ou tocar) */}
+        {HIST && trincheiras && !trincheiras.descendo && <ShowTuneis h={h13} popularidade={save.popularidade ?? 0} escondido={metroTuneis} onPausa={setPalcoTuneis} onFim={(r, id) => fimShow(r, id)} />}
         {HIST && trincheiras && !trincheiras.descendo && <MetroTuneis liberado={metroFeito(hist)} onAberto={setMetroTuneis} />}
         {viagem && (
           <Viagem

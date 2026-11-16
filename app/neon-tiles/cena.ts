@@ -44,6 +44,30 @@ export interface EstadoPalco {
   imgs?: Partial<Record<Instrumento, HTMLImageElement>> // os instrumentos de verdade (instrumentos.ts)
   publico?: number // quanta gente veio (sai da popularidade)
   show?: boolean // durante o show a galera fica dos lados da pista (como no GH)
+  // (16/11, a escada dos shows: linha/disco/escadaShows.ts) o tamanho do palco, os canhões e o telão
+  escala?: EscalaPalco
+}
+export interface EscalaPalco { palco: number; luzes: number; telao: number }
+
+// (16/11) o painel de LED em cima da banda: 0 nada; 1 um painel; 2 o telão; 3 o do final
+function desenharTelao(g: CanvasRenderingContext2D, w: number, h: number, nivel: number, cor: string, t: number, batida: number) {
+  if (nivel <= 0) return
+  const tw = w * (0.18 + 0.14 * nivel), th = h * (0.06 + 0.03 * nivel)
+  const tx = (w - tw) / 2, ty = h * 0.035
+  const nx = 8 + nivel * 4, ny = 3 + nivel
+  g.fillStyle = "#07061a"
+  g.fillRect(tx - 3, ty - 3, tw + 6, th + 6)
+  for (let x = 0; x < nx; x++)
+    for (let y = 0; y < ny; y++) {
+      const v = Math.sin(x * 0.55 + t * 3 + y * 0.9) * 0.5 + 0.5
+      g.fillStyle = hexA(cor, 0.14 + v * 0.4 * (0.5 + batida * 0.5))
+      g.fillRect(tx + (x * tw) / nx + 1, ty + (y * th) / ny + 1, tw / nx - 2, th / ny - 2)
+    }
+  g.fillStyle = "rgba(255,255,255,0.92)"
+  g.font = `700 ${Math.round(th * 0.5)}px "Arial Narrow", system-ui, sans-serif`
+  g.textAlign = "center"
+  g.textBaseline = "middle"
+  g.fillText("LU2CA", w / 2, ty + th / 2)
 }
 
 export function desenharPalco(g: CanvasRenderingContext2D, w: number, h: number, e: EstadoPalco) {
@@ -78,8 +102,9 @@ export function desenharPalco(g: CanvasRenderingContext2D, w: number, h: number,
     g.fillStyle = "#1a1a2e"
     g.fillRect(0, ty - 10, w, 6)
     g.globalCompositeOperation = "lighter"
-    for (let i = 0; i < 6; i++) {
-      const x = (w / 6) * (i + 0.5)
+    const nArena = e.escala ? Math.max(2, Math.round(e.escala.luzes)) : 6
+    for (let i = 0; i < nArena; i++) {
+      const x = (w / nArena) * (i + 0.5)
       const ang = Math.sin(e.t * 1.3 + i) * 0.5 + (i % 2 ? 0.2 : -0.2)
       const len = h * 0.85
       const lx = x + Math.sin(ang) * len
@@ -108,8 +133,9 @@ export function desenharPalco(g: CanvasRenderingContext2D, w: number, h: number,
     g.fillStyle = "rgba(6,4,18,0.42)"
     g.fillRect(0, 0, w, h)
     g.globalCompositeOperation = "lighter"
-    for (let i = 0; i < 4; i++) {
-      const x = (w / 4) * (i + 0.5)
+    const nLuz = e.escala ? Math.max(1, Math.round(e.escala.luzes)) : 4
+    for (let i = 0; i < nLuz; i++) {
+      const x = (w / nLuz) * (i + 0.5)
       const ang = Math.sin(e.t * 0.9 + i * 1.7) * 0.45
       const len = h * 0.75
       const lx = x + Math.sin(ang) * len, ly = Math.cos(ang) * len
@@ -123,12 +149,14 @@ export function desenharPalco(g: CanvasRenderingContext2D, w: number, h: number,
     g.globalCompositeOperation = "source-over"
     // o modo NEON tinge qualquer lugar
     if (e.neon) { g.fillStyle = hexA("#b38cff", 0.18); g.fillRect(0, 0, w, h) }
+    // (16/11) a escada: do telão pra cima, o lugar ganha o painel de LED
+    if (e.escala) desenharTelao(g, w, h, e.escala.telao, cor, e.t, e.batida)
   }
 
   // a banda, no palco de cada lugar (no fundo, atrás do braço, como no GH)
   const bob = Math.sin(e.t * Math.PI * 2 * 1.8) * 3 * (0.4 + e.energia)
   const fundo = disp ? disp.fundo : h * 0.5
-  const k = disp ? disp.escala : 1
+  const k = (disp ? disp.escala : 1) * (e.escala?.palco ?? 1)
   const bx = disp ? disp.baixo[0] : w * 0.2
   const gx = disp ? disp.guitarra[0] : w * 0.8
   const bat = disp ? disp.bateria : [w * 0.5, h * 0.12]
@@ -872,7 +900,7 @@ export type Tomada = "fachada" | "backstage" | "contagem" | "final" | "estrada" 
 
 export function desenharTomada(
   g: CanvasRenderingContext2D, w: number, h: number, tomada: Tomada, t: number,
-  d: { palco: Palco; modelo: Modelo; contagem?: number; sucesso?: boolean; grana?: number; imgs?: Partial<Record<Instrumento, HTMLImageElement>>; titulo?: string; sub?: string; publico?: number },
+  d: { palco: Palco; modelo: Modelo; contagem?: number; sucesso?: boolean; grana?: number; imgs?: Partial<Record<Instrumento, HTMLImageElement>>; titulo?: string; sub?: string; publico?: number; escala?: EscalaPalco },
 ) {
   const cor = d.palco.cor
   g.fillStyle = "#04030b"
@@ -1082,7 +1110,7 @@ export function desenharTomada(
   } else if (tomada === "final") {
     const ok = d.sucesso
     // galera enorme de mãos pra cima, papel picado caindo
-    const e = { palco: d.palco, energia: ok ? 1 : 0.05, neon: false, batida: ok ? Math.abs(Math.sin(t * 6)) : 0, t, instrumento: d.modelo.tipo, modelo: d.modelo, vaia: !ok, imgs: d.imgs, publico: d.publico }
+    const e = { palco: d.palco, energia: ok ? 1 : 0.05, neon: false, batida: ok ? Math.abs(Math.sin(t * 6)) : 0, t, instrumento: d.modelo.tipo, modelo: d.modelo, vaia: !ok, imgs: d.imgs, publico: d.publico, escala: d.escala }
     desenharPalco(g, w, h, e)
     if (ok) {
       for (let i = 0; i < 60; i++) {

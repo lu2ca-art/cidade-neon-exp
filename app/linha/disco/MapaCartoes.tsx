@@ -26,6 +26,7 @@ import { cartaoDe, cartoesDe, iconesDosCartoes, iniciais, type Cartao, type Icon
 import { EPISODIOS } from "./episodios"
 import type { PistaId } from "../estrada/pistas"
 import type { MissaoId } from "./portas"
+import { PALCO_TUNEIS, SHOW_TUNEIS_CFG, tuneisAberto } from "./showNosTuneis"
 import "./mapaCartoes.css"
 
 export type AbaMapa = "cidade" | "suburbio" | "tuneis" | "feira"
@@ -102,7 +103,7 @@ export function MapaCartoes({ M, historia, pose, apagada, aba: abaInicial, onIr,
       <div key={aba} className={`l-mc-vista is-${aba}`}>
         {aba === "cidade" && <VistaCidade M={M} apagada={apagada} icones={icones} estadoDe={estadoDe} eu={eu?.camada === "cidade" ? eu : null} onIcone={setAberto} />}
         {aba === "suburbio" && <VistaSuburbio M={M} icones={icones} estadoDe={estadoDe} eu={eu?.camada === "suburbio" ? eu : null} onIcone={setAberto} />}
-        {aba === "tuneis" && <VistaTuneis icones={icones} estadoDe={estadoDe} onIcone={setAberto} />}
+        {aba === "tuneis" && <VistaTuneis palcoAberto={tuneisAberto(historia)} icones={icones} estadoDe={estadoDe} onIcone={setAberto} />}
         {aba === "feira" && <Feira cartoes={cartoes} onAbrir={setAberto} />}
       </div>
       {aba !== "feira" && (
@@ -246,7 +247,7 @@ function VistaSuburbio({ M, icones, estadoDe, eu, onIcone }: { M: MundoDisco; ic
 }
 
 // ── OS TÚNEIS: os rios secos e os salões (trincheiras/mapa.ts) ──
-function VistaTuneis({ icones, estadoDe, onIcone }: { icones: IconeCartao[]; estadoDe: Map<string, Cartao["estado"]>; onIcone: (ep: PistaId) => void }) {
+function VistaTuneis({ palcoAberto, icones, estadoDe, onIcone }: { palcoAberto: boolean; icones: IconeCartao[]; estadoDe: Map<string, Cartao["estado"]>; onIcone: (ep: PistaId) => void }) {
   const d = useMemo(() => {
     let r = 0
     for (const s of SALOES) r = Math.max(r, Math.hypot(s.c.x, s.c.z) + s.r)
@@ -268,6 +269,11 @@ function VistaTuneis({ icones, estadoDe, onIcone }: { icones: IconeCartao[]; est
           <text y={sa.r + f * 1.1} fontSize={f * 0.85} textAnchor="middle">{sa.nome}</text>
         </g>
       ))}
+      {/* (16/11) o palco dos túneis, como o palco do deserto lá em cima (com o cadeado enquanto fechado) */}
+      <g className="l-mc-lugar is-deserto" transform={`translate(${PALCO_TUNEIS.x} ${PALCO_TUNEIS.z})`} style={{ ["--cor" as string]: SHOW_TUNEIS_CFG.cor }} data-palco-tuneis>
+        <circle r={f * 0.6} />
+        <text y={-f * 1.1} fontSize={f * 0.85} textAnchor="middle">{palcoAberto ? "PALCO DOS TÚNEIS" : "PALCO DOS TÚNEIS · trancado"}</text>
+      </g>
       {d.pts.map(({ ic, x, z }) => <Icone key={ic.chave} ic={ic} x={x} z={z} s={s} estado={estadoDe.get(ic.ep)} onIcone={onIcone} />)}
     </svg>
   )

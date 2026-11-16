@@ -23,7 +23,7 @@
 import { useEffect, useMemo, useRef, useState } from "react"
 import { NOME_INST, ShowPista, ajustarShow, musicaDoShow, type InstrumentoShow, type PropsShow } from "./Show"
 import { xenomDaFaixa } from "./xenom"
-import { desenharTomada, type Tomada } from "../../neon-tiles/cena"
+import { desenharTomada, type EscalaPalco, type Tomada } from "../../neon-tiles/cena"
 import { MODELOS, PALCOS, type Palco } from "../../neon-tiles/dados"
 import { imagemInstrumento } from "../../neon-tiles/instrumentos"
 import { ac, montarShow } from "../../neon-tiles/som"
@@ -36,7 +36,7 @@ export const PRELUDIO: { t: Tomada; dur: number }[] = [
 ]
 const DUR_PRELUDIO = PRELUDIO.reduce((a, x) => a + x.dur, 0)
 
-function Preludio({ faixa, lugar, palco: palcoId, cor, onFim, sub, publico = 20 }: { faixa: string; lugar: string; palco?: string; cor: string; onFim: () => void; sub?: string; publico?: number }) {
+function Preludio({ faixa, lugar, palco: palcoId, cor, onFim, sub, publico = 20, escala }: { faixa: string; lugar: string; palco?: string; cor: string; onFim: () => void; sub?: string; publico?: number; escala?: EscalaPalco }) {
   const cvs = useRef<HTMLCanvasElement>(null)
   const fim = useRef(onFim)
   useEffect(() => { fim.current = onFim })
@@ -61,7 +61,7 @@ function Preludio({ faixa, lugar, palco: palcoId, cor, onFim, sub, publico = 20 
       som?.galera(Math.min(0.6, 0.15 + tt * 0.09))
       ajustarShow(c)
       const w = c.width, h = c.height
-      desenharTomada(g, w, h, atual.t, tl, { palco, modelo, imgs, titulo: palco.nome, sub: sub ?? `hoje: LU2CA · ${faixa}`, publico })
+      desenharTomada(g, w, h, atual.t, tl, { palco, modelo, imgs, titulo: palco.nome, sub: sub ?? `hoje: LU2CA · ${faixa}`, publico, escala })
       // o fade de entrada e o de saída
       const fade = Math.max(0, 1 - tt / 0.35, (tt - (DUR_PRELUDIO - 0.4)) / 0.4)
       if (fade > 0) { g.fillStyle = `rgba(0,0,0,${Math.min(1, fade)})`; g.fillRect(0, 0, w, h) }
@@ -73,7 +73,7 @@ function Preludio({ faixa, lugar, palco: palcoId, cor, onFim, sub, publico = 20 
     window.addEventListener("keydown", k, true)
     ;(window as unknown as { __cnPreludio?: () => void }).__cnPreludio = sair
     return () => { acabou = true; cancelAnimationFrame(raf); window.removeEventListener("keydown", k, true); som?.parar() }
-  }, [palco, modelo, imgs, lugar, sub])
+  }, [palco, modelo, imgs, lugar, sub, escala])
   return (
     <div className="l-show is-preludio" style={{ ["--cor" as string]: cor }} onPointerDown={(e) => { e.stopPropagation(); fim.current() }} aria-label="o prelúdio do show">
       <canvas ref={cvs} />
@@ -98,7 +98,7 @@ export function Show(props: PropsShow) {
   const pista = musicaDoShow(props.faixa)
   // (T21) o show xenom: o prelúdio conta o multiverso e o jogo é o Guitar Driver com a regra dele
   const xenom = xenomDaFaixa(props.faixa)
-  if (preludio) return <Preludio faixa={pista.faixa} lugar={props.lugar} palco={props.palco} cor={props.cor} sub={xenom ? `${xenom.preludio} · ${pista.faixa}` : undefined} publico={Math.round(2 + (Math.min(100, props.popularidade) / 100) * 70)} onFim={() => setPreludio(false)} />
+  if (preludio) return <Preludio faixa={pista.faixa} lugar={props.lugar} palco={props.palco} cor={props.cor} sub={xenom ? `${xenom.preludio} · ${pista.faixa}` : undefined} publico={Math.round(2 + (Math.min(100, props.popularidade) / 100) * 70)} escala={props.escala} onFim={() => setPreludio(false)} />
   if (xenom) return <ShowPista {...props} inst="guitarra" />
   // (§12) terminou: pode repetir (volta pra escolha)
   const deNovo = () => setInst(null)

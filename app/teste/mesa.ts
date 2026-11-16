@@ -25,6 +25,15 @@ export interface Cartao {
 
 export const MESA: Cartao[] = [
   {
+    parte: "show.tuneis",
+    nome: "Os shows crescem: do bar simples até o show colorido dos túneis",
+    data: "2026-11-16",
+    tarefa: "escada dos shows",
+    olhar: "Aqui você já desce nos túneis com o jogo quase no fim. Vá de patins até o SALÃO DO METRÔ (pela descida, a TORRE 1 e o RIO SECO A): o palco novo fica no salão, com telão, canhões de luz, a projeção colorida nas paredes e a água no chão refletindo as cores. Chegando perto, o botão \"o show\": escolha a música e assista da plateia (a câmera vai pro meio do povo) ou toque. Nos outros atalhos: o show do bar fica pequeno, com pouca luz e sem telão; os palcos de cima têm mais luz, telão e gente.",
+    perguntas: ["A vista dos túneis ficou bonita como você imaginou? Mais cor, menos?", "O show dos túneis abre depois do ep. 8 (Notti, Rollercoaster), o último antes de CHUVA. É esse o momento?", "O salão do metrô é o lugar certo do palco, ou quer perto de onde vai ficar a torneira?", "O bar está simples o bastante?"],
+    mais: [{ parte: "show.bar", nome: "o show do bar (o mais simples)" }, { parte: "show.escada", nome: "a escada dos palcos (do bar ao alto das torres)" }],
+  },
+  {
     parte: "carreira.meio",
     nome: "O mapa ilustrado e os cartões das missões (a feira de recompensas)",
     data: "2026-11-16",

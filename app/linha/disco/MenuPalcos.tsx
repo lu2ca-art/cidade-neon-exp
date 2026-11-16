@@ -15,6 +15,7 @@ import { facaMissao } from "./vitrine"
 import { Cadeado } from "../Trancado"
 import { linkDaFaixa, salvarFaixa } from "./linksFaixas"
 import { SHOWS_XENOM, XENOM_CONFIG, albumLiberado, travaXenom, xenomAberto, xenomCumpridos, type XenomId } from "./xenom"
+import { SHOW_TUNEIS_CFG, travaTuneis, tuneisAberto } from "./showNosTuneis"
 import { NIVEL_MAX, NOME_ALTURA, PALCOS_CARREIRA, PALCOS_CONFIG, alturaDe, estrelasDoPalco, estrelasTotais, menuDo, nivelDe, nomeDoPalco, travaDo } from "./palcos"
 
 const Estrelas = ({ n }: { n: number }) => <i className="l-palcos-estrelas" aria-label={`${n} de 5 estrelas`}>{"★".repeat(n)}<span>{"★".repeat(5 - n)}</span></i>
@@ -108,6 +109,18 @@ export function Palcos({ h, onTocar, onFechar, onXenom }: { h: HistoriaDisco; on
             })}
           </ul>
           {albumLiberado(h) && <a className="l-xenom-album" href={XENOM_CONFIG.album.link} target="_blank" rel="noreferrer">o álbum {XENOM_CONFIG.album.nome} é seu · ouvir no untitled →</a>}
+        </section>
+        {/* (16/11) o palco dos túneis: o show é lá embaixo, no mundo (aqui só diz onde e o que libera) */}
+        <section className="l-palcos-menu" aria-label={SHOW_TUNEIS_CFG.nome} data-palco-tuneis>
+          <small>{SHOW_TUNEIS_CFG.nome} · o salão do metrô, nas trincheiras</small>
+          <ul>
+            <li style={{ ["--cor" as string]: SHOW_TUNEIS_CFG.cor }} className={tuneisAberto(h) ? "" : "is-fechada"}>
+              <span className={tuneisAberto(h) ? "" : "cn-card-trancado"}>
+                <b>{!tuneisAberto(h) && <Cadeado />}o show mais colorido · cachê ×{SHOW_TUNEIS_CFG.paga}</b>
+                <small>{tuneisAberto(h) ? "desce pela boca do túnel e vai até o salão do metrô: assistir da plateia ou tocar" : travaTuneis()}</small>
+              </span>
+            </li>
+          </ul>
         </section>
       </div>
     </div>
