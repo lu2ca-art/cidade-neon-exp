@@ -14,8 +14,7 @@
 // o túnel e o final enchem quando o povo veio. Os degraus vão em ordem: cada um é
 // maior que o de baixo (a ordem da tabela é a ordem do jogo).
 //
-// O FINAL: outra frente refaz o show final (CHUVA). Ele não lê esta tabela ainda;
-// o degrau "final" fica pronto pra ele ser o maior (escalaDoDegrau("final")).
+// O FINAL (16/11): o show da CHUVA no palco do deserto (missão lu2ca) usa o degrau "final".
 //
 // Tudo que é número aqui é RASCUNHO pro dono ajustar. Função pura, sem 3D.
 
@@ -44,10 +43,10 @@ export const alturaNaEscada = (id: DegrauId) => ESCADA_SHOWS.findIndex((d) => d.
 // o show nos túneis: o id no save (hist.show) é "tuneis:<faixa>"
 export const showDosTuneis = (faixa: string) => `tuneis:${faixa}`
 
-/** o degrau de um show pelo id dele no save (hist.show). null = fora da escada
- *  (a missão do LU2CA, "missao:lu2ca": é o show final, que outra frente refaz) */
+/** o degrau de um show pelo id dele no save (hist.show). null = fora da escada.
+ *  (16/11) a missão do LU2CA ("missao:lu2ca") é o show final de CHUVA: o degrau mais alto */
 export function degrauDoShow(id: string): Degrau | null {
-  if (id === "missao:lu2ca") return null
+  if (id === "missao:lu2ca") return degrau("final")
   if (id.startsWith("tuneis:")) return degrau("tuneis")
   if (id.startsWith("xenom:") || id.startsWith("missao:")) return degrau("suburbio")
   if (id.startsWith("rua:")) return degrau("calcada")

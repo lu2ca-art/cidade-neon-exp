@@ -108,7 +108,7 @@ import { EscolhaEsporte, type EsporteId } from "./disco/EscolhaEsporte"
 import { faixaDaMissao } from "./disco/pistasLiberadas"
 import { IDS13, ehMissao13, MISSOES13, alvo13, checklist13, concluir, contarEvento, disponiveis, emTeste, feita13, instrumentosGanhos, ordemDe, kombiNoConserto, portaAberta, normalizarMissao, ofertas13, pecaAgora13, pecaFeita, sincronizar, trancado, type CenaId, type MissaoId, type Oferta13, type PortaId, type Recompensa13 } from "./disco/portas"
 import { FinalTela } from "./disco/FinalTela"
-import { definirFinalFeito, definirLotado, type MomentoFinal } from "./disco/final"
+import { capturaAntesDoShow, capturados, definirFinalFeito, definirLotado, seguirFinal, FINAL_VIVO, type MomentoFinal } from "./disco/final"
 import { motoLiberada } from "./estrada/zonas"
 import { TRANCA_DESERTO, TRANCA_ELEVADOR, pedirSubida, tomarDescida } from "./disco/elevadores"
 import { semVoo } from "./disco/historia"
@@ -1170,7 +1170,7 @@ export default function LinhaPage() {
   const [finalAgora, setFinalAgora] = useState<MomentoFinal | null>(null)
   // (16/11) a entrega (disco/entrega.ts): o cartão chama pedirEntrega(id); aqui o save
   // muda (a grana, o "entregue") e a cena abre: o hack, depois o corredor das incubadoras
-  const [entregaAgora, setEntregaAgora] = useState<{ amigos: MissaoId[]; agua: number; hack: boolean } | null>(null)
+  const [entregaAgora, setEntregaAgora] = useState<{ amigos: MissaoId[]; agua: number; hack: boolean; final?: boolean; inicio?: "controle" } | null>(null)
   useEffect(() => ouvirEntrega((p) => {
     if (p.t === "incubadoras") { if (p.amigos.length) setEntregaAgora({ amigos: p.amigos, agua: 0, hack: false }); return }
     const r = entregar(saveRef.current, p.id)
@@ -1425,6 +1425,9 @@ export default function LinhaPage() {
     if (!como || como.t === "historia" || como.t === "evento") return
     // (09/11, ep. 5) sem o dinheiro de um saco, a feira espera: o aviso só diz quanto falta
     if (como.t === "feira" && faltaProBolso(saveRef.current.agua ?? 0) > 0) { avisar("A FEIRA", avisoSemAgua(saveRef.current.agua ?? 0), CHAO_LUGARES.feira.cor); return }
+    // (16/11, o dono) chegou no palco do deserto pro show do ep. 9 com o resto feito: antes
+    // do show, todo mundo é capturado (disco/final.ts: captura → incubadoras → sala de controle)
+    if (id === "lu2ca" && capturaAntesDoShow(hist13(saveRef.current))) { abrirFinal("captura"); return }
     // (bloco 1 · D) chegar já é a peça (o caminho de patins e jetpack até o Drew): fica feita e a próxima segue
     if (como.t === "chegar") { pecaFeitaNaMissao(id, pc.qual); return }
     // (trilha sonora, 05/11; bíblia 9) nenhum jogo surge do nada: antes da peça, quem
@@ -1450,7 +1453,8 @@ export default function LinhaPage() {
     // (T22) a casa da pessoa: entra e só sai depois de passar por tudo
     else if (como.t === "casa") entrarNaCasa(id)
     // (T29) o final: a sequência começa no palco do show da CHUVA (disco/final.ts)
-    else if (como.t === "final") abrirFinal("palco")
+    // (16/11) save que já fez o show e não passou pela captura: ela vem antes do palco
+    else if (como.t === "final") abrirFinal(hist13(saveRef.current).capturaFinal ? "palco" : "captura")
   }
   // (T29) O FINAL: o jogo atrás com as faixas de cinema, a câmera roteirizada
   // (estrada/FinalPovo.tsx) e a tela dos momentos (disco/FinalTela.tsx). Acabou: as
@@ -1467,6 +1471,23 @@ export default function LinhaPage() {
   const aoMomentoFinal = (m: MomentoFinal) => {
     setFinalMomento(m)
     setCinema(m === "andar" ? null : "lugar")
+    // (16/11) o prédio do Núcleo: o hack e o corredor com todos; o atalho do controle abre direto na sala
+    if (m === "incubadoras") setEntregaAgora({ amigos: capturados(), agua: 0, hack: true, final: true })
+    if (m === "controle") setEntregaAgora((a) => a ?? { amigos: capturados(), agua: 0, hack: false, final: true, inicio: "controle" })
+  }
+  // (16/11) a sala de controle acabou: a captura fica no save e o show segue. Se o show do
+  // ep. 9 ainda não foi feito, o final fecha e a missão lu2ca continua ali no palco (chegar,
+  // depois o show; no fim dele o final volta no palco). Se já foi (save antigo), segue pro palco
+  const fimCaptura = () => {
+    setEntregaAgora(null)
+    const s = comHistoria(saveRef.current, (h) => ({ ...h, capturaFinal: true as const }))
+    saveRef.current = s
+    setSave(s)
+    if (feita13(hist13(s), "lu2ca")) { seguirFinal(); return }
+    setFinalAgora(null)
+    setFinalMomento(null)
+    setCinema(null)
+    setTimeout(() => chegouSemIntro.current("lu2ca"), 900)
   }
   const fimFinal = () => {
     setFinalAgora(null)
@@ -2891,8 +2912,10 @@ export default function LinhaPage() {
         {/* (T29) o final: o gesto no palco e a sequência, com o jogo atrás */}
         {finalAgora && <FinalTela inicio={finalAgora} onFim={fimFinal} onMomento={aoMomentoFinal} />}
         {/* (16/11) a entrega: o hack e o corredor das incubadoras; achou = volta pro save */}
-        {entregaAgora && <EntregaCena amigos={entregaAgora.amigos} agua={entregaAgora.agua} hack={entregaAgora.hack}
-          onAchou={(id) => setSave((s) => recuperar(s, [id]))} onFim={() => setEntregaAgora(null)} />}
+        {entregaAgora && <EntregaCena amigos={entregaAgora.amigos} agua={entregaAgora.agua} hack={entregaAgora.hack} final={entregaAgora.final} inicio={entregaAgora.inicio}
+          onAchou={(id) => setSave((s) => recuperar(s, [id]))}
+          onControle={() => { if (FINAL_VIVO.momento === "incubadoras") seguirFinal() }}
+          onFim={entregaAgora.final ? fimCaptura : () => setEntregaAgora(null)} />}
         {introMissao && <IntroMissao quem={introMissao.quem} texto={introMissao.texto} cor={MISSOES13[introMissao.id].cor}
           onBora={() => { const id = introMissao.id; introVista.current.add(id); setIntroMissao(null); setTimeout(() => chegouSemIntro.current(id), 0) }}
           onDepois={() => {

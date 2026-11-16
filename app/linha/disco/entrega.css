@@ -27,3 +27,10 @@
 .en-dica { position: absolute; left: 0; right: 0; bottom: calc(env(safe-area-inset-bottom, 0px) + 22px); margin: 0; text-align: center; font: 700 11px var(--font-geist-mono), ui-monospace, monospace; letter-spacing: 0.1em; color: rgba(242, 238, 250, 0.6); pointer-events: none; }
 .en-aviso { position: absolute; left: 0; right: 0; top: 42%; margin: 0; text-align: center; font: 900 22px var(--font-geist-mono), ui-monospace, monospace; text-shadow: 0 2px 0 #000; pointer-events: none; animation: en-aviso 1.8s ease-out forwards; }
 @keyframes en-aviso { 0% { opacity: 0; scale: 0.8; } 15% { opacity: 1; scale: 1; } 70% { opacity: 1; } to { opacity: 0; } }
+
+/* (16/11, o final) o elevador e a sala de controle do Núcleo */
+.en-corredor.is-subindo .en-corredor-veu { animation: en-entra-veu 1.6s ease-in forwards; }
+.en-dica.is-elevador { color: #9ff7ff; font-size: 13px; }
+.en-controle { position: absolute; inset: 0; background: #05060a; }
+.en-controle-fala { position: absolute; left: 0; right: 0; bottom: calc(env(safe-area-inset-bottom, 0px) + 13vh); margin: 0 24px; text-align: center; font: 500 19px/1.4 var(--font-geist-sans), system-ui, sans-serif; color: #fff; text-shadow: 0 1px 10px rgba(0, 0, 0, 0.9); pointer-events: none; animation: en-pop 0.6s ease-out both; }
+.en-controle.is-subindo .en-corredor-veu { animation: none; opacity: 1; }

@@ -29,6 +29,8 @@ import { TERROR } from "./terror"
 import { ENTREGA_CFG, corDe, nomeDe, novaQuebra, quebraAcabou, quebrarCapsula, quantasQuebradas, type Quebra } from "./entrega"
 import type { MissaoId } from "./portas"
 import { TEXTOS_ENTREGA as T, juntarNomes } from "./entregaTextos"
+import { TEXTOS_FINAL } from "./finalTextos"
+import { SalaControle } from "./SalaControle"
 import "./entrega.css"
 
 const H = ENTREGA_CFG.hack, C = ENTREGA_CFG.corredor
@@ -124,7 +126,7 @@ function Hack({ agua, onFim }: { agua: number; onFim: () => void }) {
 
 // ═══ 2. o corredor das incubadoras ═══
 type Parte = { geo: THREE.BufferGeometry; mat: THREE.MeshBasicMaterial; grupo: Grupo }
-type Ctl = { quebrar: (i: number, amigo: MissaoId | null) => void; luz: (v: number, tt: number) => void }
+type Ctl = { quebrar: (i: number, amigo: MissaoId | null) => void; luz: (v: number, tt: number) => void; porta: (on: boolean) => void }
 
 // onde fica cada incubadora: duas fileiras, frente a frente, pelo corredor (-z)
 function lugar(i: number) {
@@ -164,6 +166,9 @@ function montarCorredor(partes: Parte[] | null, n: number) {
   const paredes = new THREE.InstancedMesh(caixa, mat("#120d19"), 4)
   ;[mt(0, -0.05, zm, L, 0.1, COMPRIDO + Z0), mt(0, 3.4, zm, L, 0.1, COMPRIDO + Z0), mt(-L / 2, 1.7, zm, 0.1, 3.4, COMPRIDO + Z0), mt(L / 2, 1.7, zm, 0.1, 3.4, COMPRIDO + Z0)].forEach((m, i) => paredes.setMatrixAt(i, m))
   const fundo = new THREE.InstancedMesh(caixa, mat("#0c0812"), 1); fundo.setMatrixAt(0, mt(0, 1.7, -COMPRIDO, L, 3.4, 0.1))
+  // (16/11, o final) o elevador no fim da sala: a porta acende quando todas estão quebradas
+  const matPorta = mat("#1a1622", { toneMapped: false })
+  const porta = new THREE.InstancedMesh(caixa, matPorta, 1); porta.setMatrixAt(0, mt(0, 1.3, -COMPRIDO + 0.08, 1.6, 2.6, 0.05))
   const nl = Math.ceil(COMPRIDO / C.espaco)
   const matLuz = mat("#bfffe0", { toneMapped: false }), baseLuz = matLuz.color.clone()
   const luzes = new THREE.InstancedMesh(caixa, matLuz, nl)
@@ -171,7 +176,7 @@ function montarCorredor(partes: Parte[] | null, n: number) {
   const alvos = new THREE.InstancedMesh(caixa, mat("#000"), n)
   ms.forEach((_, i) => { const l = lugar(i); alvos.setMatrixAt(i, mt(l.x, 1.25, l.z, 1.2, 2.6, 1.2)) })
   alvos.visible = false
-  for (const im of [paredes, fundo, luzes, alvos]) { im.frustumCulled = false; descarta.push(im) }
+  for (const im of [paredes, fundo, porta, luzes, alvos]) { im.frustumCulled = false; descarta.push(im) }
   const corAmigo = new THREE.Color(), escura = new THREE.Color(0.32, 0.3, 0.36)
   const ctl: Ctl = {
     // quebrou: o vidro e a luz da cápsula somem; vazia escurece, com o amigo acende na cor dele
@@ -181,6 +186,7 @@ function montarCorredor(partes: Parte[] | null, n: number) {
         else if (p.grupo === "solido") { im.setColorAt(i, amigo ? corAmigo.set(corDe(amigo)).multiplyScalar(2.2) : escura); if (im.instanceColor) im.instanceColor.needsUpdate = true }
       }
     },
+    porta(on) { matPorta.color.set(on ? "#9ff7ff" : "#1a1622") },
     // a luz do corredor (0–1) e a respiração das cápsulas (o mesmo ritmo das máquinas do T47)
     luz(v, tt) {
       const b = 0.5 + 0.5 * Math.sin(tt * Math.PI * 2 * TERROR.respira)
@@ -192,12 +198,12 @@ function montarCorredor(partes: Parte[] | null, n: number) {
     },
   }
   return {
-    objetos: [...caps.map((c) => c.im), paredes, fundo, luzes], alvos, ctl,
+    objetos: [...caps.map((c) => c.im), paredes, fundo, porta, luzes], alvos, ctl,
     descartar() { caps.forEach((c) => c.im.dispose()); descarta.forEach((x) => x.dispose()) },
   }
 }
 
-type Estado = { q: Quebra; fase: "escuro" | "chamado" | "fim"; ultimo: { i: number; achou: MissaoId | null; t: number } | null }
+type Estado = { q: Quebra; fase: "escuro" | "chamado" | "fim" | "elevador" | "subindo"; ultimo: { i: number; achou: MissaoId | null; t: number } | null }
 
 type Quebradas = React.MutableRefObject<{ i: number; a: MissaoId | null }[]>
 function Mundo({ partes, ctlRef, quebradas, onToque }: { partes: Parte[] | null; ctlRef: React.MutableRefObject<Ctl | null>; quebradas: Quebradas; onToque: (i: number) => void }) {
@@ -245,6 +251,8 @@ function Cena({ est, olhar, onToque, quebradas, ctl }: { est: React.MutableRefOb
     let alvo = 1.2
     for (let i = 0; i < q.total; i++) if (!q.quebradas[i]) { alvo = lugar(i).z + C.espaco * 0.9; break }
     if (e.fase === "fim") alvo = lugar(q.total - 1).z + C.espaco * 0.9
+    if (e.fase === "elevador") { alvo = lugar(q.total - 1).z + C.espaco * 0.9; olhar.current = 0 }
+    if (e.fase === "subindo") { alvo = -COMPRIDO + 1.2; olhar.current = 0 }
     z.current += (alvo - z.current) * Math.min(1, dt * 1.6)
     yaw.current += (olhar.current - yaw.current) * Math.min(1, dt * 8)
     // o tranco da quebra
@@ -258,7 +266,9 @@ function Cena({ est, olhar, onToque, quebradas, ctl }: { est: React.MutableRefOb
   return <ModeloSeguro nome="incubadoras-glb" reserva={reserva}><MundoGlb ctlRef={ctl} quebradas={quebradas} onToque={onToque} /></ModeloSeguro>
 }
 
-function Corredor({ amigos, onAchou, onFim }: { amigos: MissaoId[]; onAchou: (id: MissaoId) => void; onFim: () => void }) {
+// final: o corredor do final (todos capturados): o chamado sem a D-Bee (ela também está
+// numa incubadora) e, no fim, o elevador em vez de escurecer sozinho
+function Corredor({ amigos, final = false, onAchou, onFim }: { amigos: MissaoId[]; final?: boolean; onAchou: (id: MissaoId) => void; onFim: () => void }) {
   const est = useRef<Estado>({ q: novaQuebra(amigos), fase: "escuro", ultimo: null })
   const [ui, setUi] = useState<{ fase: Estado["fase"]; faltam: number; aviso: { txt: string; cor: string; k: number } | null }>({ fase: "escuro", faltam: est.current.q.total, aviso: null })
   const quebradas = useRef<{ i: number; a: MissaoId | null }[]>([])
@@ -288,28 +298,39 @@ function Corredor({ amigos, onAchou, onFim }: { amigos: MissaoId[]; onAchou: (id
     vib(r.achou ? [40, 50, 120] : 35)
     if (r.achou) achou.current(r.achou)
     const acabou = quebraAcabou(e.q)
-    if (acabou) { e.fase = "fim"; setTimeout(() => fim.current(), 3600) }
+    if (acabou && final) { e.fase = "elevador"; setTimeout(() => ctl.current?.porta(true), 900) }
+    else if (acabou) { e.fase = "fim"; setTimeout(() => fim.current(), 3600) }
     setUi((u) => ({
       fase: e.fase, faltam: e.q.total - quantasQuebradas(e.q),
       aviso: r.achou ? { txt: T.achou.replace("{quem}", nomeDe(r.achou)), cor: corDe(r.achou), k: (u.aviso?.k ?? 0) + 1 } : { txt: T.vazia, cor: "#9a92a8", k: (u.aviso?.k ?? 0) + 1 },
     }))
-  }, [])
+  }, [final])
+  // (o final) todas quebradas: tocar sobe pelo elevador
+  const subir = () => {
+    const e = est.current
+    if (e.fase !== "elevador") return
+    e.fase = "subindo"
+    setUi((u) => ({ ...u, fase: "subindo" }))
+    vib(30)
+    setTimeout(() => fim.current(), 1700)
+  }
   const toque = useRef<{ x: number; y0: number } | null>(null)
   const quem = juntarNomes(amigos.map(nomeDe))
   return (
     <div className={`en-corredor is-${ui.fase}`}
       onPointerDown={(e) => { toque.current = { x: e.clientX, y0: olhar.current } }}
       onPointerMove={(e) => { const tq = toque.current; if (!tq) return; olhar.current = Math.max(-1.3, Math.min(1.3, tq.y0 - (e.clientX - tq.x) * 0.006)) }}
-      onPointerUp={() => { toque.current = null }} onPointerCancel={() => { toque.current = null }}>
+      onPointerUp={() => { toque.current = null }} onClick={subir} onPointerCancel={() => { toque.current = null }}>
       <Canvas className="en-corredor-cvs" dpr={DPR.v ?? 1} gl={{ antialias: false, powerPreference: "high-performance", stencil: false }} camera={{ fov: 70, near: 0.05, far: C.nevoa + 4 }}>
         <Cena est={est} olhar={olhar} onToque={tocar} quebradas={quebradas} ctl={ctl} />
       </Canvas>
       {ui.fase !== "escuro" && (
         <div className="en-chamado" aria-live="polite">
-          <b>{T.quemChama}</b>
-          <span>{T.chamado.replace("{quem}", quem)}</span>
+          {!final && <b>{T.quemChama}</b>}
+          <span>{final ? TEXTOS_FINAL.chamado : T.chamado.replace("{quem}", quem)}</span>
         </div>
       )}
+      {ui.fase === "elevador" && <p className="en-dica is-elevador">{TEXTOS_FINAL.elevador}</p>}
       {ui.fase === "chamado" && <p className="en-dica">{T.dica} · {T.faltam.replace("{n}", String(ui.faltam))}</p>}
       {ui.aviso && <p key={ui.aviso.k} className="en-aviso" style={{ color: ui.aviso.cor }}>{ui.aviso.txt}</p>}
       <i className="en-corredor-veu" aria-hidden="true" />
@@ -317,12 +338,19 @@ function Corredor({ amigos, onAchou, onFim }: { amigos: MissaoId[]; onAchou: (id
   )
 }
 
-/** a cena inteira: o hack (se `hack`) e o corredor. onAchou: cada amigo achado (o save); onFim: acabou */
-export function EntregaCena({ amigos, agua, hack, onAchou, onFim }: { amigos: MissaoId[]; agua: number; hack: boolean; onAchou: (id: MissaoId) => void; onFim: () => void }) {
-  const [fase, setFase] = useState<"hack" | "corredor">(hack ? "hack" : "corredor")
+/** a cena inteira: o hack (se `hack`) e o corredor. onAchou: cada amigo achado (o save); onFim: acabou.
+ *  (16/11) `final`: o corredor do final, com o elevador e a sala de controle do Núcleo depois
+ *  (SalaControle.tsx); `inicio` "controle" abre direto na sala (o atalho); onControle: entrou na sala */
+export function EntregaCena({ amigos, agua, hack, final = false, inicio, onAchou, onControle, onFim }: { amigos: MissaoId[]; agua: number; hack: boolean; final?: boolean; inicio?: "controle"; onAchou: (id: MissaoId) => void; onControle?: () => void; onFim: () => void }) {
+  const [fase, setFase] = useState<"hack" | "corredor" | "controle">(inicio ?? (hack ? "hack" : "corredor"))
+  const ctlRef = useRef(onControle)
+  useEffect(() => { ctlRef.current = onControle })
+  useEffect(() => { if (fase === "controle") ctlRef.current?.() }, [fase])
   return (
     <div className="en-cena" onClick={(e) => e.stopPropagation()}>
-      {fase === "hack" ? <Hack agua={agua} onFim={() => setFase("corredor")} /> : <Corredor amigos={amigos} onAchou={onAchou} onFim={onFim} />}
+      {fase === "hack" ? <Hack agua={agua} onFim={() => setFase("corredor")} />
+        : fase === "corredor" ? <Corredor amigos={amigos} final={final} onAchou={onAchou} onFim={final ? () => setFase("controle") : onFim} />
+        : <SalaControle amigos={amigos} onFim={onFim} />}
     </div>
   )
 }
