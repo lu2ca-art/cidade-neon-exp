@@ -12,8 +12,25 @@ D-Bee é a guia da missão do jogo. Os outros podem. Fica em `NUNCA_ENTREGAR` (`
 - **Bem mais alta, pra tentar de verdade:** entre 1.000 e 2.000 Água$ conforme o personagem
   (RASCUNHO, `ENTREGA_CFG.agua`). É o MESMO número que o cartão mostra (`cartoes.ts`, `entrega`
   do cartão): não existe mais um valor separado em `CARTOES`.
-- **Depois do resgate, não dá pra entregar de novo:** o botão some pra aquele personagem.
+- **Depois do resgate, não dá pra entregar de novo** (e a recompensa nunca é paga duas vezes): o botão some pra aquele personagem.
   `podeEntregar` olha `entreguesPagos` (toda entrega já feita fica ali, inclusive no save de antes).
+
+## Só quem você já conhece (16/11, decisão do dono)
+O botão "entregar" só aparece **depois que a pessoa completou a missão com aquele personagem**
+(`podeEntregar` pede `feita13`): entrega quem já conhece, o que pesa mais e acontece menos.
+Por isso a entrega não tira mais ninguém da sequência na prática (a missão já está feita).
+
+## O preço da traição (16/11, decisão do dono)
+Entrega, ganha a recompensa, vem o hack, e ela **perde a recompensa e o inventário inteiro**
+(`tomarInventario` em `disco/entrega.ts`). Tem de coletar tudo do zero se quiser.
+- **Vai:** a Água$ (vai a 0), o que se compra (`compras`: instrumentos, roupas, carros), os
+  discos, as flores do jardim e os instrumentos achados pelo mundo (voltam a aparecer pra coletar).
+- **Fica:** o progresso da história (episódios, missões, portas, músicas liberadas) e os
+  instrumentos que as próprias missões deram (são progresso; pergunta pro dono se também vão).
+- **No save:** tudo acontece de uma vez, no mesmo save da entrega: recarregar no meio do hack
+  não salva o inventário. Save antigo: os campos que faltam ficam vazios, nada quebra.
+- **Na tela:** o "+N Água$" aparece no começo do hack e logo vem, em vermelho,
+  "tomaram tudo: Água$, instrumentos, roupas, discos" (RASCUNHO, `entregaTextos.ts`).
 
 ## O cartão (ligado em 16/11)
 No lugar `l-cartao-escolha` do `MapaCartoes.tsx`: **liberar** (o caminho de aceitar a missão:
