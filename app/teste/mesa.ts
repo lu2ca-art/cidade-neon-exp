@@ -25,6 +25,15 @@ export interface Cartao {
 
 export const MESA: Cartao[] = [
   {
+    parte: "carreira.meio",
+    nome: "O mapa ilustrado e os cartões das missões (a feira de recompensas)",
+    data: "2026-11-16",
+    tarefa: "mapa e cartões",
+    olhar: "Com o holo ligado, toque no ícone novo do cartão, ao lado do mapa: abre a feira com um cartão por personagem (foto, recompensa, o crime e o checklist do que você encontra e libera). As abas de cima trocam o mapa: cidade, subúrbio com o deserto em volta e túneis. Cada ícone de missão fica no lugar dela; toque e o cartão abre. O mesmo mapa abre pelo botão novo na vista do drone. No subúrbio, a rua clara é a da corrida e a rosa é a da feira.",
+    perguntas: ["No subúrbio, agora dá pra entender as ruas?", "O crime e a recompensa de cada um estão certos? (são rascunho, ficam em app/linha/disco/cartoes.ts)", "O ícone do cartão no holo ficou num bom lugar no seu celular, em pé e deitado?", "A foto ilustrada serve até chegarem os personagens do Tripo?"],
+    mais: [{ parte: "carreira.feira", nome: "começo da carreira (poucas missões abertas)" }],
+  },
+  {
     parte: "missao.tony.jogo",
     nome: "Revisão: feira só leva se tiver saldo; tecla solta não prende o acelerador",
     data: "2026-11-09",

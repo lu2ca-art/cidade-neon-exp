@@ -1,0 +1,132 @@
+/* O MAPA ILUSTRADO E OS CARTÕES (disco/MapaCartoes.tsx). Celular em pé, deitado e computador */
+.l-mc { position: fixed; inset: 0; z-index: 62; display: flex; flex-direction: column; background: radial-gradient(120% 90% at 50% 40%, #171329 0%, #07060e 70%); color: #fff; touch-action: manipulation; font: 600 13px var(--font-geist-sans), system-ui, sans-serif; }
+.l-mc-topo { display: flex; align-items: center; gap: 8px; padding: calc(10px + env(safe-area-inset-top)) calc(12px + env(safe-area-inset-right)) 8px calc(12px + env(safe-area-inset-left)); }
+.l-mc-abas { display: flex; gap: 6px; flex: 1; overflow-x: auto; scrollbar-width: none; }
+.l-mc-abas button { flex: 0 0 auto; padding: 9px 14px; border-radius: 999px; border: 2px solid rgba(255, 255, 255, 0.16); background: rgba(255, 255, 255, 0.06); color: #e9e6f2; font: 800 13px var(--font-geist-sans), system-ui, sans-serif; cursor: pointer; }
+.l-mc-abas button.is-on { background: #ffc857; border-color: #ffc857; color: #14121c; }
+.l-mc-x { flex: 0 0 auto; width: 40px; height: 40px; border-radius: 50%; border: 0; background: rgba(255, 255, 255, 0.12); color: #fff; font: 800 22px/1 system-ui, sans-serif; cursor: pointer; }
+.l-mc button:focus-visible, .l-mc-ic:focus-visible { outline: 3px solid #2fe8ff; outline-offset: 2px; }
+.l-mc-vista { position: relative; flex: 1; min-height: 0; animation: l-mc-vira 0.32s ease-out; }
+@keyframes l-mc-vira { from { opacity: 0; transform: translateY(14px) scale(0.98); } }
+.l-mc-svg { position: absolute; inset: 0; width: 100%; height: 100%; }
+.l-mc-legenda { margin: 0; padding: 6px 12px calc(10px + env(safe-area-inset-bottom)); text-align: center; color: rgba(255, 255, 255, 0.6); font: 700 11px var(--font-geist-mono), ui-monospace, monospace; }
+.l-mc-legenda i { display: inline-block; width: 9px; height: 9px; margin: 0 5px 0 12px; border-radius: 50%; vertical-align: -1px; }
+.l-mc-legenda i.is-aberto { background: #ffc857; box-shadow: 0 0 8px #ffc857; }
+.l-mc-legenda i.is-feito { background: transparent; border: 2px solid rgba(255, 255, 255, 0.5); }
+.l-mc-legenda i.is-trancado { background: #4a4560; }
+
+/* a cidade: o vinil e as pistas */
+.l-mc-vinil circle { fill: none; stroke: rgba(255, 255, 255, 0.05); stroke-width: 18; }
+.l-mc-vinil circle.is-selo { fill: rgba(255, 200, 87, 0.12); stroke: rgba(255, 200, 87, 0.35); stroke-width: 6; }
+.l-mc-pista { fill: none; stroke: var(--cor); stroke-width: 5; stroke-linecap: round; stroke-linejoin: round; vector-effect: non-scaling-stroke; opacity: 0.9; }
+.l-mc-pista.is-saida { stroke: rgba(255, 255, 255, 0.25); stroke-width: 2; }
+.l-mc-pista.is-apagada { opacity: 0.5; stroke-dasharray: 4 6; }
+.l-mc-rotulo-pista { fill: var(--cor); font-family: var(--font-geist-sans), system-ui, sans-serif; font-weight: 900; paint-order: stroke; stroke: #07060e; stroke-width: 0.35em; letter-spacing: 0.04em; }
+.l-mc-rotulo-pista.is-apagada { opacity: 0.45; }
+.l-mc-torre circle { fill: #14121c; stroke: rgba(255, 255, 255, 0.55); stroke-width: 2; vector-effect: non-scaling-stroke; }
+.l-mc-torre text { fill: rgba(255, 255, 255, 0.8); font-weight: 900; font-family: var(--font-geist-mono), ui-monospace, monospace; }
+
+/* lá embaixo: o deserto, o subúrbio, as quadras e as ruas claras */
+.l-mc-deserto { fill: #3b2a1b; }
+.l-mc-dunas path { fill: none; stroke: rgba(255, 196, 128, 0.12); stroke-width: 6; }
+.l-mc-zona { fill: rgba(255, 214, 160, 0.45); font-weight: 900; letter-spacing: 0.3em; font-family: var(--font-geist-sans), system-ui, sans-serif; }
+.l-mc-zona.is-sub { fill: rgba(255, 255, 255, 0.55); }
+.l-mc-sub { fill: #231d2c; stroke: rgba(255, 200, 87, 0.4); stroke-width: 3; stroke-dasharray: 10 8; vector-effect: non-scaling-stroke; }
+.l-mc-quadra { fill: #4b3f5e; stroke: #2a2236; stroke-width: 1; vector-effect: non-scaling-stroke; }
+.l-mc-rua { fill: none; stroke: #f4e7c8; stroke-width: 12; stroke-linejoin: round; stroke-linecap: round; opacity: 0.92; }
+.l-mc-rua.is-feira { stroke: #ff8fd0; }
+.l-mc-rua-meio { fill: none; stroke: #8d7a55; stroke-width: 1.5; stroke-dasharray: 6 6; vector-effect: non-scaling-stroke; }
+.l-mc-lugar circle, .l-mc-lugar rect { fill: #14121c; stroke: var(--cor); stroke-width: 2.5; vector-effect: non-scaling-stroke; }
+.l-mc-lugar text { fill: var(--cor); font-weight: 900; font-family: var(--font-geist-mono), ui-monospace, monospace; paint-order: stroke; stroke: #07060e; stroke-width: 0.3em; }
+.l-mc-lugar.is-deserto circle { fill: var(--cor); }
+
+/* os túneis */
+.l-mc-terra { fill: #1a1410; }
+.l-mc-rio { fill: none; stroke: var(--cor); stroke-width: 9; stroke-linecap: round; stroke-linejoin: round; vector-effect: non-scaling-stroke; opacity: 0.75; }
+.l-mc-salao circle { fill: #2a2236; stroke: rgba(255, 255, 255, 0.5); stroke-width: 2; vector-effect: non-scaling-stroke; }
+.l-mc-salao.is-descida circle { stroke: #9b8cff; }
+.l-mc-salao text { fill: rgba(255, 255, 255, 0.75); font-weight: 900; font-family: var(--font-geist-mono), ui-monospace, monospace; paint-order: stroke; stroke: #07060e; stroke-width: 0.3em; }
+
+/* os ícones das missões (SVG num quadro 24x24) */
+.l-mc-ic { cursor: pointer; outline: none; }
+.l-mc-ic-fundo { fill: #0b0a12; stroke: var(--cor); stroke-width: 2.5; }
+.l-mc-ic-glifo { fill: none; stroke: var(--cor); stroke-width: 2; stroke-linecap: round; stroke-linejoin: round; }
+.l-mc-ic-nome { fill: #fff; font: 900 7px var(--font-geist-sans), system-ui, sans-serif; paint-order: stroke; stroke: #07060e; stroke-width: 2.5px; }
+.l-mc-ic-pulso { fill: var(--cor); opacity: 0.25; transform-box: fill-box; transform-origin: center; animation: l-mc-pulso 1.4s ease-in-out infinite; }
+@keyframes l-mc-pulso { 50% { opacity: 0.5; transform: scale(1.18); } }
+.l-mc-ic.is-aberto .l-mc-ic-fundo { fill: color-mix(in srgb, var(--cor) 22%, #0b0a12); }
+.l-mc-ic.is-feito { opacity: 0.6; }
+.l-mc-ic-ok { fill: none; stroke: #5dffa0; stroke-width: 3; stroke-linecap: round; stroke-linejoin: round; }
+.l-mc-ic.is-trancado .l-mc-ic-fundo, .l-mc-ic.is-trancado .l-mc-ic-glifo { stroke: color-mix(in srgb, var(--cor) 45%, #555); }
+.l-mc-ic-cadeado rect { fill: #e9e6f2; }
+.l-mc-ic-cadeado path { fill: none; stroke: #e9e6f2; stroke-width: 1.6; }
+.l-mc-voce circle { fill: rgba(47, 232, 255, 0.3); stroke: #2fe8ff; stroke-width: 2; }
+.l-mc-voce circle.is-miolo { fill: #2fe8ff; }
+.l-mc-voce text { fill: #2fe8ff; font: 900 7px var(--font-geist-mono), ui-monospace, monospace; paint-order: stroke; stroke: #07060e; stroke-width: 2.5px; }
+
+/* a feira: os cartões em lista */
+.l-mc-feira { list-style: none; margin: 0; padding: 6px 12px calc(16px + env(safe-area-inset-bottom)); position: absolute; inset: 0; overflow-y: auto; display: grid; gap: 10px; grid-template-columns: repeat(auto-fill, minmax(min(100%, 300px), 1fr)); align-content: start; }
+.l-mc-mini { width: 100%; display: flex; align-items: center; gap: 12px; padding: 10px; border-radius: 14px; border: 2px solid color-mix(in srgb, var(--cor) 60%, transparent); background: color-mix(in srgb, var(--cor) 10%, #0f0d18); color: #fff; text-align: left; cursor: pointer; }
+.l-mc-mini.is-trancado { filter: saturate(0.4); opacity: 0.8; }
+.l-mc-mini .l-mc-foto { width: 58px; flex: 0 0 auto; }
+.l-mc-mini-txt { flex: 1; display: flex; flex-direction: column; gap: 2px; min-width: 0; }
+.l-mc-mini-txt small { color: rgba(255, 255, 255, 0.6); font: 700 11px var(--font-geist-mono), ui-monospace, monospace; }
+.l-mc-mini-txt b { font: 900 17px var(--font-geist-sans), system-ui, sans-serif; }
+.l-mc-mini-txt em { font-style: normal; color: #ffc857; font: 800 13px var(--font-geist-mono), ui-monospace, monospace; }
+.l-mc-mini-est { font: 800 11px var(--font-geist-mono), ui-monospace, monospace; color: var(--cor); }
+
+/* a foto (o retrato ilustrado, trocável por imagem) */
+.l-mc-foto { display: block; aspect-ratio: 5 / 6; border-radius: 10px; overflow: hidden; background: #14121c; }
+.l-mc-foto img, .l-mc-foto svg { display: block; width: 100%; height: 100%; object-fit: cover; }
+.l-mc-foto .is-fundo { fill: color-mix(in srgb, var(--cor) 35%, #0b0a12); }
+.l-mc-foto .is-sulco { fill: none; stroke: color-mix(in srgb, var(--cor) 50%, transparent); stroke-width: 1.5; }
+.l-mc-foto .is-corpo { fill: var(--cor); }
+.l-mc-foto .is-cabeca { fill: #0b0a12; stroke: var(--cor); stroke-width: 3; }
+.l-mc-foto .is-ini { fill: var(--cor); font: 900 18px var(--font-geist-sans), system-ui, sans-serif; }
+.l-mc-foto .is-faixa { fill: #0b0a12; }
+.l-mc-foto .is-nome { fill: #fff; font: 900 9px var(--font-geist-mono), ui-monospace, monospace; letter-spacing: 0.08em; }
+
+/* o cartão */
+.l-mc-fundo { position: absolute; inset: 0; z-index: 2; display: flex; align-items: center; justify-content: center; padding: calc(12px + env(safe-area-inset-top)) 12px calc(12px + env(safe-area-inset-bottom)); background: rgba(5, 4, 10, 0.6); }
+.l-cartao { width: min(440px, 100%); max-height: 100%; overflow-y: auto; padding: 14px; border-radius: 18px; background: #f4ecd8; color: #1b1624; border: 4px solid var(--cor); box-shadow: 0 0 0 4px #0b0a12, 0 18px 50px rgba(0, 0, 0, 0.6); transform: rotate(-0.6deg); animation: l-mc-cartao 0.28s cubic-bezier(0.2, 1.4, 0.4, 1); }
+@keyframes l-mc-cartao { from { opacity: 0; transform: rotate(-4deg) scale(0.9); } }
+.l-cartao-topo { display: flex; align-items: center; justify-content: space-between; }
+.l-cartao-topo small { font: 800 12px var(--font-geist-mono), ui-monospace, monospace; color: #5a4f6b; }
+.l-cartao .l-mc-x { background: #1b1624; color: #fff; width: 34px; height: 34px; font-size: 18px; }
+.l-cartao-cara { display: grid; grid-template-columns: 112px 1fr; gap: 12px; margin-top: 8px; }
+.l-cartao-cara .l-mc-foto { border: 3px solid #1b1624; }
+.l-cartao h3 { margin: 0; font: 900 24px var(--font-geist-sans), system-ui, sans-serif; text-transform: uppercase; }
+.l-cartao p { margin: 6px 0 0; line-height: 1.35; }
+.l-cartao p small, .l-cartao h4 { display: block; margin: 0; font: 800 10px var(--font-geist-mono), ui-monospace, monospace; letter-spacing: 0.12em; text-transform: uppercase; color: #7a6d8c; }
+.l-cartao-recompensa b { font: 900 28px var(--font-geist-sans), system-ui, sans-serif; color: color-mix(in srgb, var(--cor) 60%, #1b1624); margin-right: 4px; }
+.l-cartao-lista { margin-top: 12px; padding: 10px 12px; border-radius: 12px; background: #fffaf0; border: 2px dashed color-mix(in srgb, var(--cor) 50%, #1b1624); }
+.l-cartao-lista h4 + ul { margin-top: 4px; }
+.l-cartao-lista ul { list-style: none; margin: 0 0 8px; padding: 0; }
+.l-cartao-lista li { display: flex; gap: 8px; padding: 3px 0; line-height: 1.3; }
+.l-cartao-lista li i { flex: 0 0 auto; width: 18px; height: 18px; border-radius: 50%; display: inline-flex; align-items: center; justify-content: center; font: 900 11px system-ui, sans-serif; font-style: normal; background: var(--cor); color: #0b0a12; }
+.l-cartao-lista li.is-feito { color: #7a6d8c; text-decoration: line-through; }
+.l-cartao-lista li.is-feito i { background: #5dffa0; }
+.l-cartao-escolha:empty { display: none; }
+.l-cartao-pe { display: flex; justify-content: flex-end; align-items: center; margin-top: 12px; min-height: 8px; }
+.l-cartao-est { font: 800 13px var(--font-geist-mono), ui-monospace, monospace; color: #1b1624; }
+.l-cartao-est.is-tranca { display: inline-flex; align-items: center; gap: 8px; color: #5a4f6b; }
+.l-cartao-cadeado { width: 12px; height: 9px; border-radius: 2px; background: #5a4f6b; position: relative; margin-top: 5px; }
+.l-cartao-cadeado::before { content: ""; position: absolute; left: 2px; top: -6px; width: 8px; height: 7px; border: 2px solid #5a4f6b; border-bottom: 0; border-radius: 5px 5px 0 0; box-sizing: border-box; }
+.l-cartao-ir { padding: 11px 18px; border-radius: 999px; border: 0; background: #1b1624; color: var(--cor); font: 900 14px var(--font-geist-sans), system-ui, sans-serif; cursor: pointer; }
+.l-cartao.is-trancado { filter: saturate(0.6); }
+
+/* deitado (pouca altura): o cartão em duas colunas */
+@media (orientation: landscape) and (max-height: 520px) {
+  .l-mc-topo { padding-top: calc(6px + env(safe-area-inset-top)); padding-bottom: 4px; }
+  .l-mc-abas button { padding: 6px 12px; }
+  .l-mc-legenda { display: none; }
+  .l-cartao { width: min(720px, 100%); display: grid; grid-template-columns: 1fr 1fr; column-gap: 14px; }
+  .l-cartao-topo { grid-column: 1 / -1; }
+  .l-cartao-cara { grid-template-columns: 86px 1fr; }
+  .l-cartao-lista { margin-top: 8px; grid-row: span 3; }
+  .l-cartao-escolha, .l-cartao-pe { grid-column: 1; }
+}
+@media (prefers-reduced-motion: reduce) {
+  .l-mc-vista, .l-cartao { animation: none; }
+  .l-mc-ic-pulso { animation: none; opacity: 0.35; }
+}

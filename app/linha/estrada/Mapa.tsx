@@ -189,10 +189,12 @@ function seta(g: CanvasRenderingContext2D, x: number, y: number, ang: number, k 
 
 const km = (m: number) => (m >= 1000 ? `${(m / 1000).toFixed(1).replace(".", ",")} km` : `${Math.round(m / 10) * 10} m`)
 
-export function Mapa({ M, apagada = null, aberta = null, foco = null, pose, missao, marca, onMarcar, onAberto, viagens = 0, onViajar, onToqueMini, pedido = 0, missoes = null, painel = null, onIcone, onDrone, fase = null, alvoChao = null, corridaRua = false, trancaPorta }: {
+export function Mapa({ M, apagada = null, aberta = null, foco = null, pose, missao, marca, onMarcar, onAberto, viagens = 0, onViajar, onToqueMini, pedido = 0, onIlustrado, missoes = null, painel = null, onIcone, onDrone, fase = null, alvoChao = null, corridaRua = false, trancaPorta }: {
   M: Mundo
   // (05/11) a largada da corrida de rua no mapa: só depois de chegar ao subúrbio
   corridaRua?: boolean
+  // (16/11) o mapa ilustrado com os cartões das missões (disco/MapaCartoes.tsx)
+  onIlustrado?: () => void
   // (09/11) a porta do deserto (pontosMapa.ts)
   trancaPorta?: string | null
   // (notas 04/11) a fase da história e o lugar do chão de agora: o que o mapa mostra (pontosMapa.ts)
@@ -559,6 +561,7 @@ export function Mapa({ M, apagada = null, aberta = null, foco = null, pose, miss
               ? <button type="button" className="is-viagem" onClick={() => { if (onViajar()) abrir(false) }}>viagem rápida · {viagens}</button>
               : <button type="button" className="is-viagem" disabled>viagem rápida · 0</button>)}
             {marca && <button type="button" onClick={() => onMarcar(null)}>tirar a marca</button>}
+            {onIlustrado && <button type="button" onClick={() => { abrir(false); onIlustrado() }}>o mapa ilustrado</button>}
             <button type="button" onClick={() => abrir(false)}>voltar pra estrada</button>
           </footer>
         </div>

@@ -3115,3 +3115,8 @@ button.l-aneis.is-agua { cursor: pointer; font: inherit; color: inherit; }
 .l-janela-mundo { position: fixed; inset: 0; z-index: 75; }
 /* (revisão 06/11) o "entrar" dos lugares do chão fica abaixo do "voltar pra Kombi"/moto (196/250px), sem se sobrepor */
 .l-regar-btn.is-chao { top: calc(304px + env(safe-area-inset-top)); }
+
+/* (16/11) a feira de missões e recompensas no holo (Holo.tsx, HoloFeira): ao lado do anel do mapa */
+.l-holo-feira { position: absolute; z-index: 6; right: calc(160px + env(safe-area-inset-right)); top: calc(52px + env(safe-area-inset-top)); width: 44px; height: 44px; padding: 0 !important; border-radius: 50%; border: 2px solid #ffc857 !important; background: rgba(11, 10, 18, 0.82) !important; color: #ffc857; display: flex; align-items: center; justify-content: center; cursor: pointer; pointer-events: auto; box-shadow: 0 0 14px rgba(255, 200, 87, 0.35); }
+.l-holo-feira b { position: absolute; right: -5px; top: -5px; min-width: 18px; height: 18px; padding: 0 4px; border-radius: 999px; background: #ff3fb0; color: #fff; font: 900 11px/18px var(--font-geist-mono), ui-monospace, monospace; }
+@media (max-width: 600px), (max-height: 480px) { .l-holo-feira { right: calc(136px + env(safe-area-inset-right)); top: calc(84px + env(safe-area-inset-top)); width: 40px; height: 40px; } }

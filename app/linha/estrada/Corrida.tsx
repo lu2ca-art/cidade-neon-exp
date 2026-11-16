@@ -63,7 +63,7 @@ import { gravarOndeParou, lerOndeParou, nasceuOndeParou, ondeNasceu, type Desemb
 import { FeixeGuia } from "./FeixeGuia"
 import { CAM_FEIRA } from "../disco/feira"
 import { CHEGADA_MISSAO, chegouNoAlvo, escreverGuia, escreverPiloto, INTRO_ADIADA, pontoDoAlvo, type LugarMissao } from "./alvoMissao"
-import { NAV, ladoDaFaixa } from "./nav"
+import { NAV, ladoDaFaixa, pistaPerto } from "./nav"
 import { temJetpack } from "../disco/metro"
 import { falaMetroQuebra } from "../disco/quebra"
 import { foraNaBoca, nascerNoTunel, pararNaBoca, saidaDoTunel } from "../disco/tuneis"
@@ -77,8 +77,8 @@ import { ATROPELO, forcaAtropelo, G_DISCO, VIB_ATROPELO } from "./atropelo"
 import { RobosCaidos } from "../disco/RobosCaidos"
 import { COL_PASSO, Campo, type ToqueCampo } from "../disco/Campo"
 import { guitarLivre } from "../disco/capsula"
-import { luzDosEpisodios } from "../disco/episodios"
-import { feita13, type MissaoId } from "../disco/portas"
+import { episodiosAbertos, luzDosEpisodios } from "../disco/episodios"
+import { MISSOES13, feita13, type MissaoId } from "../disco/portas"
 import { RachasCena, RachasHud, novoEstadoRacha, type EstadoRacha } from "../disco/Rachas"
 import { CorridaRuaCena, CorridaRuaHud } from "../disco/CorridaDeRua"
 import { CORRIDA_RUA_CFG, RUA, naVoltaRua, type PoseRua, type ResultadoRua } from "../disco/corridaRua"
@@ -97,7 +97,7 @@ import { NIVEIS, QUALIDADE, guardarQualidade, ouvirQualidade } from "./qualidade
 import { MedirAparelho } from "./MedirAparelho"
 import { qualMapa } from "./qualMapa"
 import { OculosMapa } from "./Oculos"
-import { avisarRadio, notch, HoloAjuda, HoloAjustes, HoloAnel, type AnelApi, HoloApps, HoloClima, HoloDestaque, HoloIcones, HoloIlha, HoloLetreiro, HoloSom, INFO, useNexoTutorial, type ChecklistHolo, type Clima, type NexoAgora } from "./Holo"
+import { avisarRadio, notch, HoloAjuda, HoloAjustes, HoloAnel, type AnelApi, HoloApps, HoloClima, HoloDestaque, HoloFeira, HoloIcones, HoloIlha, HoloLetreiro, HoloSom, INFO, useNexoTutorial, type ChecklistHolo, type Clima, type NexoAgora } from "./Holo"
 import type { AppId } from "../os"
 import { faixaContinua } from "../disco/pistasLiberadas"
 import { PISTAS, faixaDaPista, velocidade as velPista, type Pista as PistaFaixa } from "./pistas"
@@ -596,6 +596,8 @@ type ItemGuia = { k: string; d: number; cor: string; rot: string; tipo: "estacao
 // (09/11) o interior do metrô: só baixa quando alguém entra numa estação
 const MetroDentro = dynamic(() => import("../metro/Metro").then((m) => m.Metro), { ssr: false })
 const MetroFugaDentro = dynamic(() => import("../disco/MetroFuga").then((m) => m.MetroFuga), { ssr: false })
+// (16/11) o mapa ilustrado e os cartões das missões: só baixa no primeiro toque
+const MapaCartoes = dynamic(() => import("../disco/MapaCartoes").then((m) => m.MapaCartoes), { ssr: false })
 type Viagem9 = { h: ViagemLinha9; dest: number | null; rotulo: string; fuga: Pick<MetroFugaProps, "historia" | "onPasso" | "onSair"> | null }
 const PERTO_9: number[] = []
 
@@ -621,6 +623,9 @@ export function Corrida({ alohanNoMapa = false, onVisitar, save, nivel, destino:
   const lugarDaMissao: LugarId | null = !caido && alvo?.t === "lugar" ? alvo.lugar : null
   // o destino que você marcou no mapa (senão, o mapa aponta a missão)
   const [marca, setMarca] = useState<Marca | null>(null)
+  // (16/11) o mapa ilustrado com os cartões (disco/MapaCartoes.tsx): "mapa" abre na camada de onde
+  // ele está, "feira" na lista dos cartões (o ícone do holo). null = fechado (nem montado)
+  const [cartoesAba, setCartoesAba] = useState<"mapa" | "feira" | null>(null)
   // os ANÉIS (17/10, mapa 2.0): cada 100 que você pega viram duas viagens
   // rápidas pelo mapa. Ficam guardados no aparelho
   // a dica do mapa 2.0 (nas 3 primeiras entradas, fora da abertura): o que é novo
@@ -1367,6 +1372,19 @@ export function Corrida({ alohanNoMapa = false, onVisitar, save, nivel, destino:
   // (27/10) o drone é da D-Bee: no disco, só depois que ela dá (nas dunas); quem já passou de lá já tem
   const droneOk = !MAPA_2D && (!discoM || !historia || !!historia.drone || !(historia.fase === "minhoca" || historia.fase === "casa" || historia.fase === "dunas"))
   // (LU2CA 21/10) celular (em pé ou deitado): os widgets do holo numa ilha só
+  // (16/11) abre o mapa ilustrado (o drone desce: por baixo dele nada desenha à toa)
+  const abrirCartoes = (aba: "mapa" | "feira") => { ligarDrone(false); jogo.current.noMapa = true; setCartoesAba(aba) }
+  // (16/11) o "marcar no mapa" do cartão: a marca no lugar da missão (a rota acende; chegando, começa)
+  const irPraMissao = (id: MissaoId) => {
+    const l = MISSOES13[id].lugar, m = MISSOES13[id]
+    if (l.chao) {
+      const c = CHAO_LUGARES[l.chao], pp = pistaPerto(M, `cartao:${l.chao}`, c.x, c.z, viaApagada)
+      if (pp.via >= 0) setMarca({ via: pp.via, u: pp.u, nome: `${m.quem} · ${c.nome.toLowerCase()}`, cor: m.cor, wx: c.x, wz: c.z })
+      return
+    }
+    const p = pontoDoAlvo(M, l)
+    if (p && p.via !== undefined && p.u !== undefined) setMarca({ via: p.via, u: p.u, nome: m.quem, cor: m.cor })
+  }
   const [holoCelular, setHoloCelular] = useState(() => typeof window !== "undefined" && window.matchMedia("(max-width: 600px), (max-height: 480px)").matches)
   useEffect(() => {
     const mq = window.matchMedia("(max-width: 600px), (max-height: 480px)")
@@ -3114,6 +3132,7 @@ export function Corrida({ alohanNoMapa = false, onVisitar, save, nivel, destino:
             </>
           )}
           <HoloAnel missao={missaoHolo} checklist={checklistHolo} agora={nexoAgora} onMissoes={() => setPedeMapa((n) => n + 1)} api={anelApi} />
+          {historia && !drone && <HoloFeira n={episodiosAbertos(historia).length} onAbrir={() => abrirCartoes("feira")} />}
         </>
       )}
       {discoM && ajuda && <HoloAjuda ativa onSair={sairAjuda} />}
@@ -3231,8 +3250,12 @@ export function Corrida({ alohanNoMapa = false, onVisitar, save, nivel, destino:
         </div>
       )}
       {!andandoAlgo && (
-        <Mapa M={M} apagada={viaApagada} aberta={viaAberta} foco={viaFoco} pose={jogo} missao={lugarDaMissao} marca={marca} onMarcar={setMarca} onAberto={(a) => { jogo.current.noMapa = a }} viagens={aneis.viagens} onViajar={viajar} onToqueMini={() => !!(discoM && oculos && anelApi.current?.toque())} pedido={pedeMapa} missoes={discoM ? mapaMissoes : null} painel={discoM ? mapaPainel : null} onIcone={onMapaIcone} fase={historia?.fase ?? null} alvoChao={alvoChao} corridaRua={corridaNoMapa} trancaPorta={trancaPortaMapa}
+        <Mapa M={M} apagada={viaApagada} aberta={viaAberta} foco={viaFoco} pose={jogo} missao={lugarDaMissao} marca={marca} onMarcar={setMarca} onAberto={(a) => { jogo.current.noMapa = a }} viagens={aneis.viagens} onViajar={viajar} onToqueMini={() => !!(discoM && oculos && anelApi.current?.toque())} pedido={pedeMapa} onIlustrado={discoM && historia ? () => abrirCartoes("mapa") : undefined} missoes={discoM ? mapaMissoes : null} painel={discoM ? mapaPainel : null} onIcone={onMapaIcone} fase={historia?.fase ?? null} alvoChao={alvoChao} corridaRua={corridaNoMapa} trancaPorta={trancaPortaMapa}
           onDrone={droneOk ? (via) => { if (via === "mini" && DRONE.alvo) ligarDrone(false); else { ligarDrone(true); setDronePainel(via === "pedido" && !!(discoM && mapaPainel)) } return true } : undefined} />
+      )}
+      {discoM && historia && cartoesAba && (
+        <MapaCartoes M={discoM} historia={historia} pose={jogo as unknown as React.RefObject<{ via: number; u: number; wx?: number; wz?: number; livreOk?: boolean; voo?: boolean }>} apagada={viaApagada} aba={cartoesAba}
+          onIr={irPraMissao} onFechar={() => { setCartoesAba(null); jogo.current.noMapa = false }} />
       )}
       {drone && (
         <div className="l-drone" aria-label="a vista do drone">
@@ -3276,6 +3299,11 @@ export function Corrida({ alohanNoMapa = false, onVisitar, save, nivel, destino:
             <button type="button" data-info="drone-mover" aria-label="mover o mapa" className={voar ? "is-on" : ""} onClick={() => setVoar((v) => !v)}>
               <svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M8 13V5.5a1.5 1.5 0 0 1 3 0V12M11 11.5v-8a1.5 1.5 0 0 1 3 0V12M14 11.5V5a1.5 1.5 0 0 1 3 0v7M17 8.5a1.5 1.5 0 0 1 3 0V15a7 7 0 0 1-7 7h-1.5a7 7 0 0 1-5.6-2.8L3.3 15.4a1.6 1.6 0 0 1 2.5-2L8 15.5" /></svg>
             </button>
+            {discoM && historia && (
+              <button type="button" data-info="feira" aria-label="o mapa ilustrado e os cartões das missões" onClick={() => abrirCartoes("mapa")}>
+                <svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M3 6l6-3 6 3 6-3v15l-6 3-6-3-6 3z M9 3v15 M15 6v15" /></svg>
+              </button>
+            )}
             {discoM && mapaPainel && (
               <button type="button" data-info="drone-missoes" aria-label="as missões" className={dronePainel ? "is-on" : ""} onClick={() => setDronePainel((v) => !v)}>
                 <svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round"><path d="M5 6h14M5 12h14M5 18h9" /></svg>
