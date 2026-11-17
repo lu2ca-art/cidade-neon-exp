@@ -30,7 +30,7 @@ jobs:
           node scripts/gerar-mapa.mjs
 
       - name: PR com a documentação atualizada
-        uses: peter-evans/create-pull-request@v7
+        uses: peter-evans/create-pull-request@v8
         with:
           branch: feature/infra/docs-automaticas
           title: "docs: dependências e arquitetura atualizadas pelo vigia"
