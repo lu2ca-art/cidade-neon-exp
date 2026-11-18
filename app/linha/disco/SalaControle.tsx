@@ -6,6 +6,8 @@
 // Núcleo, dentro do prédio. Ali o plano se revela: todo mundo já sabia, foram parar lá
 // de propósito. Só se assiste: a câmera anda devagar até o painel, os nove em volta
 // dele (na cor de cada um), e as falas (RASCUNHO, disco/finalTextos.ts) uma por vez.
+// (18/11, o dono) cada frase é dita por um amigo diferente: quem fala dá um passo pro
+// painel (só muda a matriz dele quando a fala troca) e a legenda leva o nome e a cor.
 //
 // Desempenho: só monta neste momento (dentro do EntregaCena, que o page.tsx abre com
 // next/dynamic). Canvas próprio, MeshBasicMaterial, uma InstancedMesh por peça (as
@@ -17,7 +19,7 @@ import { useEffect, useMemo, useRef, useState } from "react"
 import * as THREE from "three"
 import { DPR } from "@/app/linha/estrada/resolucao"
 import { audioCtx, saidaSom } from "../som"
-import { corDe } from "./entrega"
+import { corDe, nomeDe } from "./entrega"
 import type { MissaoId } from "./portas"
 import { TEXTOS_FINAL } from "./finalTextos"
 
@@ -71,11 +73,15 @@ function montarSala(amigos: MissaoId[]) {
   painel.setMatrixAt(0, mt(0, 1.02, -F * 0.55, 4.6, 0.04, 1.3))
   // os nove em volta do painel, de frente pra quem chega
   const gente = new THREE.InstancedMesh(corpo, mat("#ffffff"), Math.max(1, amigos.length))
-  amigos.forEach((id, i) => {
+  const lugarDe = (i: number, passo: number) => {
     const a = (i / Math.max(1, amigos.length - 1) - 0.5) * 2.4 // em leque atrás do painel, de frente pra câmera
-    gente.setMatrixAt(i, mt(Math.sin(a) * 3.6, 0, -F * 0.55 - 1.5 + (1 - Math.cos(a)) * 1.4))
+    return mt(Math.sin(a) * 3.6, 0, -F * 0.55 - 1.5 + (1 - Math.cos(a)) * 1.4 + passo, 1 + passo * 0.08, 1 + passo * 0.08, 1 + passo * 0.08)
+  }
+  amigos.forEach((id, i) => {
+    gente.setMatrixAt(i, lugarDe(i, 0))
     gente.setColorAt(i, corTela.set(corDe(id)))
   })
+  let falando = -1
   for (const im of [sala, telas, painel, gente]) { im.frustumCulled = false; descarta.push(im) }
   return {
     objetos: [sala, telas, painel, gente],
@@ -84,14 +90,24 @@ function montarSala(amigos: MissaoId[]) {
       for (let k = 0; k < K.piscam; k++) telas.setColorAt(Math.floor(Math.random() * K.telas), corTela.setHSL(0.5 + Math.random() * 0.12, 0.85, 0.12 + Math.random() * 0.32))
       if (telas.instanceColor) telas.instanceColor.needsUpdate = true
     },
+    // (18/11) quem fala dá um passo pro painel; quem falou volta pro lugar
+    falar(id: MissaoId | null) {
+      const i = id ? amigos.indexOf(id) : -1
+      if (i === falando) return
+      if (falando >= 0) gente.setMatrixAt(falando, lugarDe(falando, 0))
+      if (i >= 0) gente.setMatrixAt(i, lugarDe(i, 0.9))
+      falando = i
+      gente.instanceMatrix.needsUpdate = true
+    },
     descartar() { descarta.forEach((x) => x.dispose()) },
   }
 }
 
-function Cena({ amigos }: { amigos: MissaoId[] }) {
+function Cena({ amigos, quem }: { amigos: MissaoId[]; quem: MissaoId | null }) {
   const { scene, camera } = useThree()
   const m = useMemo(() => montarSala(amigos), [amigos])
   useEffect(() => () => m.descartar(), [m])
+  useEffect(() => { m.falar(quem) }, [m, quem])
   useEffect(() => {
     scene.fog = new THREE.Fog("#05060a", 2, K.nevoa)
     scene.background = new THREE.Color("#05060a")
@@ -127,10 +143,13 @@ export function SalaControle({ amigos, onFim }: { amigos: MissaoId[]; onFim: () 
     <div className={`en-controle is-${fase}`}>
       {fase === "sala" && (
         <Canvas className="en-corredor-cvs" dpr={DPR.v ?? 1} gl={{ antialias: false, powerPreference: "high-performance", stencil: false }} camera={{ fov: 62, near: 0.05, far: K.nevoa + 4 }}>
-          <Cena amigos={amigos} />
+          <Cena amigos={amigos} quem={fala >= 0 ? TEXTOS_FINAL.controle[fala].quem : null} />
         </Canvas>
       )}
-      {fala >= 0 && <p key={fala} className="en-controle-fala" aria-live="polite">{TEXTOS_FINAL.controle[fala]}</p>}
+      {fala >= 0 && (() => {
+        const f = TEXTOS_FINAL.controle[fala]
+        return <p key={fala} className="en-controle-fala" aria-live="polite"><b style={{ color: corDe(f.quem), display: "block", fontSize: 13, letterSpacing: "0.08em", textTransform: "uppercase" }}>{nomeDe(f.quem)}</b>{f.texto}</p>
+      })()}
       <i className="en-corredor-veu" aria-hidden="true" />
     </div>
   )
