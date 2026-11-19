@@ -6626,8 +6626,8 @@ function CenaBase({
     // (música contínua, 03/11) no deserto não tem pista: a faixa some em fade
     if (faixasDisco.length && semPista) { if (pistaSom.src) pistaSom.sair(2); pistaTocando.current = -1 }
     // (música contínua, 03/11; bíblia §3, 08/11) entrou numa pista, o instrumental
-    // dela; nas torres continua o que estava. Com a completa da missão soando
-    // (page.tsx → pistaSom.tocarDaMissao) a troca de pista não mexe nela. Nada aqui
+    // dela; nas torres continua o que estava. Na pista da missão aceita, a completa
+    // (pistaSom.tocarFaixa); com ela soando, a troca de pista não mexe nela. Nada aqui
     // pausa nem muda o ritmo (turbo, pulo, missão): no ar só abafa
     else if (faixasDisco.length) {
       const inf = (M as MundoDisco).info[j.via]

@@ -599,6 +599,8 @@ function medir(el: HTMLAudioElement, source: MusicSource) {
 // Web Audio (nada por quadro em JS): UM filtro (biquad passa-banda), um
 // waveshaper e dois ganhos que trocam em fade (seco ⇄ molhado). Desligada, o
 // caminho molhado sai do grafo (desempenho). Quem decide onde está: radioAntiga.ts
+// (18/11, o dono) NO DESERTO, SINAL RUIM: a mesma rádio velha, mais estreita, com
+// mais chiado e o sinal indo e voltando (dois osciladores lentos no ganho, no grafo)
 const RADIO_ANTIGA = {
   centro: 1010, // Hz: o meio de 300–3400 (média geométrica)
   q: 0.45, // largo: ~3 oitavas
@@ -606,9 +608,14 @@ const RADIO_ANTIGA = {
   saturacao: 2.2, // a curva tanh (suave; 0 = sem)
   chiado: 0.014, // o volume do chiado (só com a rádio tocando)
   fade: 0.35, // constante de tempo da troca (s)
+  // o sinal ruim (deserto)
+  ruimCentro: 1250,
+  ruimQ: 1.1,
+  ruimChiado: 0.055,
+  ruimFalha: 0.32, // quanto o sinal cai (0 = firme)
 }
-let ra: { c: AudioContext; src: AudioNode; seco: GainNode; filtro: BiquadFilterNode; molhado: GainNode; chiadoG: GainNode; chiado: AudioBufferSourceNode | null; ligado: boolean; solto: ReturnType<typeof setTimeout> | null } | null = null
-let radioAntigaQuer = false
+let ra: { c: AudioContext; src: AudioNode; seco: GainNode; filtro: BiquadFilterNode; molhado: GainNode; chiadoG: GainNode; falha: GainNode; chiado: AudioBufferSourceNode | null; ligado: boolean; solto: ReturnType<typeof setTimeout> | null } | null = null
+let radioAntigaQuer: boolean | "ruim" = false
 let bufChiado: AudioBuffer | null = null // o ruído do chiado: feito uma vez
 function montarRadioAntiga(c: AudioContext, src: AudioNode, dst: AudioNode) {
   const seco = c.createGain()
@@ -624,16 +631,26 @@ function montarRadioAntiga(c: AudioContext, src: AudioNode, dst: AudioNode) {
   shaper.curve = curva
   const molhado = c.createGain()
   molhado.gain.value = 0
-  filtro.connect(shaper).connect(molhado).connect(dst)
+  // o sinal que vai e volta: um ganho no meio, puxado por dois osciladores lentos
+  const sinal = c.createGain()
+  sinal.gain.value = 1
+  filtro.connect(shaper).connect(sinal).connect(molhado).connect(dst)
+  const falha = c.createGain()
+  falha.gain.value = 0
+  for (const hz of [0.13, 0.41]) { const o = c.createOscillator(); o.frequency.value = hz; o.connect(falha); o.start() }
+  falha.connect(sinal.gain)
   const chiadoG = c.createGain()
   chiadoG.gain.value = 0
   chiadoG.connect(filtro)
-  ra = { c, src, seco, filtro, molhado, chiadoG, chiado: null, ligado: false, solto: null }
+  ra = { c, src, seco, filtro, molhado, chiadoG, falha, chiado: null, ligado: false, solto: null }
   aplicarRadioAntiga()
 }
 function aplicarRadioAntiga() {
   if (!ra) return
-  const r = ra, t = r.c.currentTime, on = radioAntigaQuer
+  const r = ra, t = r.c.currentTime, on = !!radioAntigaQuer, ruim = radioAntigaQuer === "ruim"
+  r.filtro.frequency.setTargetAtTime(ruim ? RADIO_ANTIGA.ruimCentro : RADIO_ANTIGA.centro, t, RADIO_ANTIGA.fade)
+  r.filtro.Q.setTargetAtTime(ruim ? RADIO_ANTIGA.ruimQ : RADIO_ANTIGA.q, t, RADIO_ANTIGA.fade)
+  r.falha.gain.setTargetAtTime(ruim ? RADIO_ANTIGA.ruimFalha : 0, t, RADIO_ANTIGA.fade)
   if (on && !r.ligado) {
     r.ligado = true
     if (r.solto) { clearTimeout(r.solto); r.solto = null }
@@ -653,16 +670,17 @@ function aplicarRadioAntiga() {
     s.connect(r.chiadoG); s.start()
     r.chiado = s
   }
-  r.chiadoG.gain.setTargetAtTime(chia ? RADIO_ANTIGA.chiado : 0, t, 0.2)
+  r.chiadoG.gain.setTargetAtTime(chia ? (ruim ? RADIO_ANTIGA.ruimChiado : RADIO_ANTIGA.chiado) : 0, t, 0.2)
   if (!chia && r.chiado) { const s = r.chiado; r.chiado = null; setTimeout(() => { try { s.stop(); s.disconnect() } catch {} }, 900) }
   if (!on && r.ligado) {
     if (r.solto) clearTimeout(r.solto)
     r.solto = setTimeout(() => { r.solto = null; if (!radioAntigaQuer && r.ligado) { r.ligado = false; try { r.src.disconnect(r.filtro) } catch {} } }, RADIO_ANTIGA.fade * 5000)
   }
 }
-/** no subúrbio (true) a rádio soa como rádio antigo; na cidade (false), limpa.
+/** no subúrbio e nos túneis (true) a rádio soa como rádio antigo; no deserto
+ *  ("ruim") como rádio antigo com sinal ruim; na cidade (false), limpa.
  *  Barato: só mexe no grafo quando muda (pode chamar a cada quadro) */
-export function radioAntiga(sim: boolean) {
+export function radioAntiga(sim: boolean | "ruim") {
   if (sim === radioAntigaQuer) return
   radioAntigaQuer = sim
   aplicarRadioAntiga()
@@ -1103,8 +1121,16 @@ class PistaSom {
   private completaViva = false
   /** (08/11) a completa da missão está soando: a troca de pista e as cenas não mexem nela */
   daMissao = false
-  // aceitou com a rádio mandando no som: a completa espera a rádio sair
+  // aceitou com a rádio mandando no som: a música da missão espera a rádio sair
   private pendente: { f: FaixaContinua; missao: string } | null = null
+  // (18/11, o dono) a faixa da missão aceita: aceitar começa o INSTRUMENTAL dela;
+  // a completa (com voz) só toca andando na pista dela
+  private faixaMissao: FaixaContinua | null = null
+  private missaoId: string | null = null
+  // o instrumental da missão está soando fora da pista dela (o deserto não cala ele)
+  private instDaMissao = false
+  // a pista onde ele está agora (null = fora das pistas)
+  private naPista: string | null = null
   private emMissao = 0
   private aplicarAgendado = false
   private segurando = false
@@ -1245,9 +1271,14 @@ class PistaSom {
     if (ocioso.src !== src) { ocioso.el.preload = "auto"; ocioso.el.src = src; ocioso.src = src }
   }
 
-  /** entrou numa pista: a faixa dela do início (a mesma faixa: segue tocando) */
+  /** entrou numa pista: a faixa dela do início (a mesma faixa: segue tocando).
+   *  A pista da missão aceita: a completa, com voz (18/11, o dono) */
   tocarFaixa(f: FaixaContinua, fade = CROSSFADE) {
-    if (this.daMissao || (this.faixa && this.faixa.id === f.id && this.tocando)) return
+    this.naPista = f.id
+    if (this.daMissao) return
+    if (this.faixaMissao && this.faixaMissao.id === f.id) return this.comecarCompleta(this.faixaMissao)
+    if (this.faixa && this.faixa.id === f.id && this.tocando) return
+    this.instDaMissao = false
     this.faixa = f
     definirFaixaRua(f.id)
     definirTom(f.tom)
@@ -1255,10 +1286,13 @@ class PistaSom {
     const papel: Papel = this.completaViva && this.emMissao === 0 ? "completa" : "inst"
     this.tocar(papel, 0, fade, papel === "inst" ? !this.completaViva : albumComprado())
   }
-  /** (08/11) aceitou a missão: a completa da faixa dela, do início, onde quer que
-   *  ele esteja. A mesma faixa já soando nessa versão segue de onde está */
+  /** (18/11, o dono) aceitou a missão: começa o INSTRUMENTAL da faixa dela, onde
+   *  quer que ele esteja. Já na pista dela: a completa, com voz. Depois, andar na
+   *  pista da missão é o que faz a música tocar de verdade (tocarFaixa) */
   tocarDaMissao(f: FaixaContinua, missao: string) {
     this.pendente = null
+    this.faixaMissao = f
+    this.missaoId = missao
     if (fonteSom.get() === "radio") { this.pendente = { f, missao }; return }
     this.iniciarDaMissao(f)
   }
@@ -1266,14 +1300,27 @@ class PistaSom {
     // a mesma precedência de entrar numa pista: o disco e a rádio parada saem
     player.pausar()
     disco.parar()
+    if (this.naPista === f.id) return this.comecarCompleta(f)
+    if (this.daMissao) return // uma completa de missão anterior ainda soando: termina e cai no instrumental
     const cur = this.ativo >= 0 ? this.decks[this.ativo] : null
-    const segue = !!cur && this.faixa?.id === f.id && cur.src === f.completa && !cur.el.paused
+    this.faixa = f
+    definirFaixaRua(f.id)
+    definirTom(f.tom)
+    this.completaViva = false
+    this.instDaMissao = true
+    if (cur && cur.src === f.inst && !cur.el.paused) { this.modo = "inst"; cur.el.loop = true; return }
+    this.tocar("inst", 0, CROSSFADE, true)
+  }
+  /** na pista da missão: a completa, do início. Nada a interrompe (nem a troca de pista) */
+  private comecarCompleta(f: FaixaContinua) {
+    const cur = this.ativo >= 0 ? this.decks[this.ativo] : null
     this.faixa = f
     definirFaixaRua(f.id)
     definirTom(f.tom)
     this.completaViva = true
     this.daMissao = true
-    if (segue) { this.modo = "completa"; cur.el.loop = false; return }
+    this.instDaMissao = false
+    if (cur && cur.src === f.completa && !cur.el.paused) { this.modo = "completa"; cur.el.loop = false; return }
     this.tocar("completa", 0, CROSSFADE, false)
   }
   /** desligou o som (o disco no lugar da rádio segue mandando): a completa que esperava começa agora */
@@ -1286,6 +1333,8 @@ class PistaSom {
   /** a missão que esperava a rádio saiu (feita ou largada): não começa mais */
   esquecerPendente(missaoAgora: string | null) {
     if (this.pendente && this.pendente.missao !== missaoAgora) this.pendente = null
+    // a missão saiu (feita ou largada): a pista dela volta a ser uma pista como as outras
+    if (this.missaoId && this.missaoId !== missaoAgora) { this.faixaMissao = null; this.missaoId = null }
   }
   /** missão/peça/cena começou (true) ou terminou (false). Conta quem pediu e
    *  decide um tique depois: cena → cena não faz vai-e-volta */
@@ -1360,8 +1409,11 @@ class PistaSom {
     this.segurando = sim
     this.aplicarMestre(false)
   }
-  /** saiu da cidade (o deserto): some em fade e para */
+  /** saiu da cidade (o deserto): some em fade e para. O instrumental da missão
+   *  aceita fica (18/11, o dono): ele acompanha até a pista dela */
   sair(fadeSeg = 2) {
+    this.naPista = null
+    if (this.instDaMissao && this.faixaMissao) return
     this.daMissao = false
     this.pendente = null
     if (!this.faixa || this.ativo < 0) return
@@ -1376,6 +1428,8 @@ class PistaSom {
   parar() {
     this.faixa = null
     this.daMissao = false
+    this.instDaMissao = false
+    this.naPista = null
     this.pendente = null
     definirFaixaRua(null)
     for (const d of this.decks) { if (d.parada) { clearTimeout(d.parada); d.parada = null } d.el.pause() }

@@ -3,9 +3,12 @@
 // Cada pista é uma faixa do vol. 1:
 //
 // 1. andando numa rua → o INSTRUMENTAL da faixa daquela pista, em loop
-// 2. aceitou uma missão com faixa (EPISODIOS) → a COMPLETA da faixa da missão,
-//    do início, mesmo fora da pista dela. Nada a interrompe: nem a troca de
-//    pista, nem as peças e cenas, nem turbo ou celular
+// 2. aceitou uma missão com faixa (EPISODIOS) → o INSTRUMENTAL da faixa da
+//    missão, em loop, onde quer que ele esteja (o deserto não cala ele).
+//    Andando na PISTA da missão → a COMPLETA, com voz, do início. Dali nada a
+//    interrompe: nem a troca de pista, nem as peças e cenas, nem turbo ou celular
+//    (18/11, o dono: "aceita a missão, o instrumental começa; quando ativa a
+//    missão daquela pista, andar por ela faz a música tocar de fato, com voz")
 // 3. a completa da missão terminou → o instrumental dela, em loop, até trocar
 //    de pista (aí vale o 1)
 // 4. missão sem faixa (LIVRES, o final) → segue o 1

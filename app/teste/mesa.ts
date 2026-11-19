@@ -25,6 +25,16 @@ export interface Cartao {
 
 export const MESA: Cartao[] = [
   {
+    parte: "carreira.meio",
+    nome: "A música da missão: aceitar toca o instrumental, a pista dela toca com voz. E a rádio do deserto com sinal ruim",
+    data: "2026-11-18",
+    tarefa: "música da missão",
+    olhar: "Abra o mapa pelo holo e aceite uma missão: começa o instrumental da música dela, onde você estiver. Ande por outras pistas: cada uma toca o instrumental dela. Entre na pista da missão: aí a música toca de verdade, com voz, do início, e nada corta até ela acabar. Pelo botão de baixo você vai pro deserto: ligue a rádio e ouça o sinal ruim, com mais chiado e o som indo e voltando.",
+    perguntas: ["Aceitar e ouvir o instrumental: é isso?", "Quando a música com voz acaba, volta o instrumental da pista. Tudo bem?", "O sinal ruim do deserto está forte demais ou de menos?", "Saindo da pista da missão no meio da música com voz, ela continua até o fim. Quer assim, ou volta pro instrumental da pista nova?"],
+    mais: [{ parte: "elevador.deserto", nome: "no deserto (ligue a rádio)" }],
+  },
+
+  {
     parte: "final",
     nome: "O final novo: capturados, a sala de controle e o jogo acabando no show da CHUVA",
     data: "2026-11-16",

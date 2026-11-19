@@ -1152,7 +1152,7 @@ export default function LinhaPage() {
     pegarMissao(id)
   }
   const pegarMissao = (id: MissaoId) => {
-    // (08/11, bíblia §3) aceitou: começa a música completa da missão (sem faixa: segue o instrumental da pista)
+    // (18/11, o dono) aceitou: começa o instrumental da música da missão; a completa toca andando na pista dela (sem faixa: segue o instrumental da pista)
     const faixa = faixaDaMissao(id)
     if (faixa) pistaSom.tocarDaMissao(faixa, id)
     setSave((s) => comHistoria(s, (h) => ({ ...h, missao: id })))
