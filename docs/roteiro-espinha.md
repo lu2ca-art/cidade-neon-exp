@@ -147,15 +147,16 @@ narrativa, ela é pega pelo Núcleo: game over, começa de novo.
 - **Se a ronda está no quadrante da sua missão**, aparece um sim ou não:
   - **pelos túneis:** você não é visto;
   - **no modo crazy, por cima:** se a ronda vier atrás, você foge até eles vazarem.
-- **A fuga:** ganhar 1 quadrante de horário de distância da ronda no mapa, ou seja, fazer
-  eles mudarem de quadrante. Aí você pode voltar pra missão.
+- **A fuga (19/11):** você tem que mudar de quadrante. Só depois disso dá pra dispersar e
+  voltar pra onde estava.
+- **O Xerife** é o policial humano que se finge de robô, infiltrado no Núcleo.
 
 **[proposta] Como encaixa**
 - **O mapa em quadrantes.** A ronda ocupa um quadrante por faixa de horário do dia simulado.
 - **A escolha conta no peso dos finais:** túneis somam pros túneis, o modo crazy soma pro
   subúrbio.
-- **Na fuga**, o quadrante da ronda pisca no mapa. A pessoa sai dele e aguenta até o relógio da
-  ronda virar; quando os drones mudam de quadrante, a missão volta.
+- **Na fuga**, o quadrante onde você está pisca no mapa. Cruzou a borda, os drones perdem o
+  rastro e somem: aí a missão volta e você pode retornar.
 
 **[proposta] Como isso funciona no jogo**
 - **"Avançar na narrativa"** = completar uma peça de missão.
