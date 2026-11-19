@@ -88,6 +88,36 @@ Serve pra adicionar emoção e sorte.
 - **A D-Bee sabe sempre** se você mentiu.
 - O final muda conforme o saldo: a cidade sabe ou não sabe quem foi.
 
+### Os finais (18/11)
+
+**[cânone]**
+- A pessoa escolhe o final pelas respostas de sim ou não, com um cálculo de peso simples: se
+  tiver mais de um lado que do outro, o final muda.
+- Cada decisão mostra de que lado você está: túneis, subúrbio ou até a cidade.
+- No final, **a água volta pra cratera e a natureza se renova**, com a cidade em chamas ou não.
+
+**[proposta] Três lados, três respostas**
+
+| a resposta | o lado | o que ela diz sobre você |
+|---|---|---|
+| **verdade** | túneis | sabe o que é, assume e muda |
+| **mentira** | subúrbio | joga a sorte, queima e recomeça |
+| **calar** (deixar o tempo passar) | cidade | se esconde e mantém tudo como está |
+
+- **O peso:** cada resposta soma 1 pro lado dela. No final, ganha o lado com mais pontos.
+  Empate fica com os túneis.
+- **Na tela, só dois botões** (sim/não). O terceiro caminho é não responder. Ninguém avisa que
+  calar também conta.
+- **O dado da mentira continua.** O peso decide o final; o dado decide a missão.
+
+**[proposta] Os três finais** (a água sempre volta pra cratera)
+
+| ganha | a cidade | a imagem final |
+|---|---|---|
+| túneis | de pé, transformada | as raízes sobem pelos prédios, o neon apaga e vira floresta acesa |
+| subúrbio | em chamas | a natureza nasce das cinzas |
+| cidade | de pé, igual | a floresta cresce em volta, do lado de fora do muro. A cidade não viu nada |
+
 ---
 
 ## O prólogo: o filme [proposta, sem diálogo]
