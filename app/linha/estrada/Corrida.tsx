@@ -50,6 +50,8 @@ import { MundoDepois } from "./MundoDepois"
 import { CAM_ROTEIRO, FINAL_VIVO, lerFinal, nascerNoPalcoDeserto, ouvirFinal } from "../disco/final"
 import { VELO, intensidade } from "./velo"
 import { geoJoia, matJoia } from "./joia"
+import { ILHA } from "../disco/historia"
+import { Ilha } from "./DesenhoIlha"
 import { CASA, RAIO_CASA, SAIDA_CASA, CHEGADA, PARADA_CASA, ENTRA_CHEGADA, CAM_CHEGADA, FALAS_DUNAS, FALAS_DUNAS_SUB, SUBURBIO, CHAO_LUGARES, RAIO_CHAO, foraDoSuburbio, semVoo, type HistoriaDisco, type LugarChao } from "../disco/historia"
 import { lerPoseTutorial } from "../disco/tutorialConf"
 import { trilhaEnsina } from "../disco/trilhaPedras"
@@ -4011,7 +4013,7 @@ function CenaBase({
   // (leveza A) o chão (9 km de dunas) também fica no módulo: remontar não refaz
   const relevoNovo = useMemo(() => guardado("relevo", M, "", () => ("disco" in M ? geoChaoDisco() : "ligacoes" in M ? geoRelevoRede(M as MundoRede) : null)), [M])
   // (T39) a areia com cara de areia (areia.ts): as ondulações, o grão, as manchas e o brilho
-  const areiaMats = useMemo(() => ("disco" in M ? { chao: materialAreia({ vertexColors: true, mascara: true }), longe: materialAreia({ color: "#8c6640" }) } : null), [M])
+  const areiaMats = useMemo(() => ("disco" in M ? { chao: materialAreia({ vertexColors: true, mascara: true }) } : null), [M])
   useEffect(() => () => soltar(areiaMats), [areiaMats]) // (leveza A) dispose ao trocar/desmontar
   // (T39) onde cabe um robô caído (fora das pistas e dos lugares)
   const livreCaidos = useMemo(() => ("disco" in M ? (x: number, z: number) => M.livre(x, z, 4) : null), [M])
@@ -4966,8 +4968,8 @@ function CenaBase({
         vec3 sodio = vec3(1.0, 0.46, 0.18);
         c += tinta * exp(-hp * 9.0) * 0.55 + sodio * exp(-hp * 16.0) * 0.16 * noite;
         // estrelas (só lá em cima)
-        vec2 g = floor(d.xz / (hp + 0.15) * 260.0);
-        float est = step(0.9965, hash(g)) * smoothstep(0.2, 0.5, h);
+        vec2 g = floor(d.xz / (abs(h) + 0.15) * 260.0);
+        float est = step(0.9965, hash(g)) * smoothstep(0.2, 0.5, abs(h)); // (19/11) a ilha flutua: estrelas embaixo também
         c += vec3(0.75, 0.8, 1.0) * est * noite * (0.5 + 0.5 * sin(tempo * 3.0 + hash(g) * 40.0));
         // lua + halo
         float m = max(dot(d, lua), 0.0);
@@ -5798,10 +5800,12 @@ function CenaBase({
         }
         j.wx = j.wx! + Math.sin(j.rumo) * j.v * dt
         j.wz = j.wz! + Math.cos(j.rumo) * j.v * dt
-        // (B15) o deserto é "infinito", mas o chão desenhado acaba a 4,5 km:
-        // a 3,9 km o vento empurra de volta, devagar (nunca chega na borda)
-        const rr = Math.hypot(j.wx, j.wz)
-        if (rr > 3900) { const k = (rr - 3900) / rr; j.wx -= j.wx * k; j.wz -= j.wz * k; j.v *= 1 - 0.8 * dt }
+        // (19/11) a ilha acaba (historia.ts, ILHA): perto da beira o vento empurra de volta,
+        // devagar (a Kombi nunca cai do disco). Na chegada da casa a Kombi vem do céu: livre
+        if (!j.chegadaCasa) {
+          const ex = j.wx - ILHA.x, ez = j.wz - ILHA.z, rr = Math.hypot(ex, ez), lim = ILHA.r - ILHA.beira * 1.6
+          if (rr > lim) { const k = (rr - lim) / rr; j.wx -= ex * k; j.wz -= ez * k; j.v *= 1 - 0.8 * dt }
+        }
         // (09/11, bíblia §13) a Kombi não desce pros túneis: o gabarito da rampa segura ela
         if (!j.ar && !combRef.current.patins && !combRef.current.moto) {
           const passou = passouGabarito(j.wx, j.wz)
@@ -7456,8 +7460,9 @@ function CenaBase({
       {/* o mapa novo: o relevo do v5 debaixo das ruas */}
       {/* (disco, B15) o chão tem uma luz própria fraquinha: de noite, embaixo das pistas, ele lia como um buraco preto */}
       {relevoNovo && ("disco" in M && areiaMats ? <mesh geometry={relevoNovo} material={areiaMats.chao} /> : <mesh geometry={relevoNovo}><meshStandardMaterial vertexColors roughness={0.95} emissive={"disco" in M ? "#3a2614" : "#000000"} emissiveIntensity={0.55} /></mesh>)}
-      {/* (disco, B15) depois dos 9 km de dunas, a areia continua lisa até o horizonte (sem borda vazada) */}
-      {"disco" in M && areiaMats && <mesh rotation-x={-Math.PI / 2} position={[0, -15, 0]} material={areiaMats.longe}><planeGeometry args={[60000, 60000]} /></mesh>}
+      {/* (19/11, o dono: "aquele mapa flutuante é o do jogo") o disco é uma ilha no céu: a areia acaba na
+          beira e embaixo pendura o cone com os túneis por fora (sai o chão liso até o horizonte) */}
+      {"disco" in M && <Seguro nome="ilha"><Ilha /></Seguro>}
       {lixo && <><primitive object={lixo.carros} /><primitive object={lixo.pneus} /></>}
       <primitive object={orbs.m} />
       {"disco" in M && <GotasDeserto jogo={jogo} aoPegar={() => evs.current?.anel()} />}

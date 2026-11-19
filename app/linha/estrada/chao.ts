@@ -10,7 +10,7 @@
 //     carros despencados meio enterrados e pneus)
 
 import * as THREE from "three"
-import { CASA, CHAO_LUGARES, CRATERA, ES_DISCO, QUEDA, SAIDA_CASA } from "../disco/historia"
+import { CASA, CHAO_LUGARES, CRATERA, ES_DISCO, ILHA, QUEDA, SAIDA_CASA } from "../disco/historia"
 import { cresceuNoRumo } from "./raioCidade"
 
 export const CHAO = -12
@@ -108,11 +108,20 @@ const CX = (CASA.x + SAIDA_CASA.x) / 2, CZ = (CASA.z + SAIDA_CASA.z) / 2
 const PLANO_R = 110, PLANO_T = 260
 let hCasa: number | null = null
 export function alturaExata(x: number, z: number) {
+  return alturaSemBeira(x, z) - beiraDaIlha(x, z)
+}
+function alturaSemBeira(x: number, z: number) {
   const h = dunas(x, z) + morros(x, z)
   const dc = Math.hypot(x - CX, z - CZ)
   if (dc >= PLANO_T) return h
   hCasa ??= dunas(CX, CZ)
   return hCasa + (h - hCasa) * suave(PLANO_R, PLANO_T, dc)
+}
+// (19/11) A BEIRA DA ILHA (historia.ts, ILHA): nos últimos metros o chão arredonda pra baixo,
+// como a borda de um disco; depois é o céu. O cone (ilha.ts) pendura dessa altura
+export function beiraDaIlha(x: number, z: number) {
+  const d = Math.hypot(x - ILHA.x, z - ILHA.z)
+  return 22 * Math.pow(suave(ILHA.r - ILHA.beira * 2, ILHA.r, d), 1.6)
 }
 // o lixão (0–1): manchas dentro da cidade
 // (19/11) o disco abre ×1.22 a partir da cratera (historia.ts, ES_DISCO): o lixão abre junto
@@ -300,6 +309,9 @@ export function geoChao() {
     const X = pos.getX(i), Z = pos.getZ(i)
     const ix = Math.round((X + TAM / 2) / (TAM / SEG)), iz = Math.round((Z + TAM / 2) / (TAM / SEG))
     pos.setY(i, g[iz * n + ix])
+    // (19/11) a ilha: o que passa da beira encosta nela (a borda vira um círculo; o resto é céu)
+    const dx = X - ILHA.x, dz = Z - ILHA.z, d = Math.hypot(dx, dz)
+    if (d > ILHA.r) { const bx = ILHA.x + (dx / d) * ILHA.r, bz = ILHA.z + (dz / d) * ILHA.r; pos.setX(i, bx); pos.setZ(i, bz); pos.setY(i, alturaExata(bx, bz)) }
   }
   geo.computeVertexNormals()
   const nor = geo.attributes.normal

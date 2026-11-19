@@ -8,7 +8,7 @@ import { useEffect, useMemo, type RefObject } from "react"
 import { useFrame } from "@react-three/fiber"
 import * as THREE from "three"
 import { AGUA_DESERTO } from "../economia-rascunho"
-import { CHAO_LUGARES, SAIDA_CASA, foraDoSuburbio } from "../disco/historia"
+import { CHAO_LUGARES, ILHA, SAIDA_CASA, foraDoSuburbio, naIlha } from "../disco/historia"
 import { gota } from "../som"
 import { vib } from "../som-carro"
 import { chaoEm } from "./chao"
@@ -23,7 +23,7 @@ function montarGotas(): Gota[] {
   // sempre os mesmos lugares
   let sem = 222
   const sorte = () => { sem = (sem * 16807) % 2147483647; return sem / 2147483647 }
-  const livre = (x: number, z: number) => alemDaCidade(x, z) > 1250 && foraDoSuburbio(x, z) > 60
+  const livre = (x: number, z: number) => naIlha(x, z, ILHA.beira * 2.5) && alemDaCidade(x, z) > 1250 && foraDoSuburbio(x, z) > 60 // (19/11) dentro da ilha
   const pontos: { x: number; z: number }[] = []
   const { pontos: total, noCaminho, porPonto, espaco } = AGUA_DESERTO
   // uns perto do caminho da casa até o bar (a porta do subúrbio), pra primeira viagem achar alguma

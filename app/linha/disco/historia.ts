@@ -417,6 +417,13 @@ export function foraDoSuburbio(x: number, z: number) {
 }
 // o rumo (giro) de quem olha pra cratera estando em (x, z): as fachadas do anel viram pra ela
 export const giroPraCratera = (x: number, z: number) => Math.atan2(CRATERA.x - x, CRATERA.z - z)
+// (19/11, o dono: "aquele mapa flutuante é o do jogo") A ILHA: o mundo inteiro é um disco
+// flutuando no céu, com o centro na cratera (o rótulo do vinil). O chão acaba a `r` dela,
+// numa beirada que desce um pouco; embaixo pendura o cone (a raiz), com os túneis
+// construídos por fora dele (estrada/ilha.ts). A Kombi não cai: perto da beira o vento
+// empurra de volta. A casa da D-Bee (a 2,8 km) fica dentro, perto da beira.
+export const ILHA = { x: CRATERA.x, z: CRATERA.z, r: 3300, fundo: 2150, beira: 120 }
+export const naIlha = (x: number, z: number, margem = 0) => Math.hypot(x - ILHA.x, z - ILHA.z) < ILHA.r - margem
 // os lugares do chão do subúrbio (longe das pistas e das torres)
 export const CHAO_LUGARES = {
   // (09/11, bíblia §13) o bar fica bem na porta: na beira do subúrbio do lado do
@@ -429,7 +436,8 @@ export const CHAO_LUGARES = {
   palco: { x: 1067, z: -1157, nome: "PALCO", cor: "#e0ff4f" },
   // (09/11, o dono) o último show é no centro do deserto: o trecho mais plano entre a
   // casa da D-Bee e a borda do mapa, longe das pistas e dos morros (disco/final.ts)
-  palcoDeserto: { x: -2950, z: -1150, nome: "PALCO", cor: "#e0ff4f" },
+  // (19/11) a 3 km da cratera, dentro da ilha (antes a 3,4 km, que agora é o céu)
+  palcoDeserto: { x: -2539, z: -1017, nome: "PALCO", cor: "#e0ff4f" },
   // (09/11) o destino do GPS depois do show, quando a pessoa dirige até as torres: o pé
   // da torre 1, a mais perto do deserto. Vale chegar em qualquer torre (estrada/FinalPovo.tsx)
   torresFinal: { x: -1341, z: 315, nome: "TORRE", cor: "#ff6a35" },
