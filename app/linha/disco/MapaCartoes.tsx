@@ -92,8 +92,9 @@ export function MapaCartoes({ M, historia, pose, apagada, aba: abaInicial, onIr,
   return (
     <div className="l-mc" role="dialog" aria-label="o mapa e as missões" onPointerDown={(e) => e.stopPropagation()}>
       <header className="l-mc-topo">
-        <nav className="l-mc-abas" aria-label="as camadas do mapa">
-          {(["cidade", "suburbio", "tuneis", "feira"] as AbaMapa[]).map((a) => (
+        {/* (19/11, o dono) aqui é só a feira: as camadas moram no mapa (a bolinha) */}
+        <nav className="l-mc-abas" aria-label="a feira">
+          {(["feira"] as AbaMapa[]).map((a) => (
             <button key={a} type="button" className={aba === a ? "is-on" : ""} aria-pressed={aba === a} onClick={() => setAba(a)}>
               {a === "cidade" ? "▲ " : a === "suburbio" ? "▼ " : a === "tuneis" ? "◆ " : "★ "}{NOME_ABA[a]}
             </button>
@@ -110,7 +111,7 @@ export function MapaCartoes({ M, historia, pose, apagada, aba: abaInicial, onIr,
       {aba !== "feira" && (
         <p className="l-mc-legenda" aria-hidden="true"><i className="is-aberto" />dá pra fazer agora <i className="is-feito" />feito <i className="is-trancado" />trancado · toca num ícone</p>
       )}
-      {cartao && <CartaoMissao c={cartao} onIr={(id) => { onIr(id); onFechar() }} onEntregar={(id) => { onFechar(); pedirEntrega(id) }} onFechar={() => setAberto(null)} />}
+      {cartao && <CartaoMissao c={cartao} onIr={(id) => onIr(id)} onEntregar={(id) => { onFechar(); pedirEntrega(id) }} onFechar={() => setAberto(null)} />}
     </div>
   )
 }

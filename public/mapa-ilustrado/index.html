@@ -51,7 +51,7 @@ button:focus-visible,input:focus-visible,summary:focus-visible{outline:2px solid
 @keyframes eq{0%,100%{height:4px}50%{height:16px}}
 @media (prefers-reduced-motion:reduce){.eq i{animation:none;height:10px}}
 .rot3d.voce{pointer-events:none;background:#fff;color:#07081a;border-color:#fff}
-.dica{position:absolute;left:12px;bottom:10px;font:500 11px var(--f-mono);letter-spacing:.08em;color:var(--apagado);pointer-events:none}
+.dica{display:none;position:absolute;left:12px;bottom:10px;font:500 11px var(--f-mono);letter-spacing:.08em;color:var(--apagado);pointer-events:none}
 .janela{--c:var(--neon);background:var(--painel);border:1px solid var(--c);border-radius:12px;overflow:hidden;box-shadow:0 0 0 1px rgba(0,0,0,.6),0 0 30px -6px var(--c),0 18px 50px rgba(0,0,0,.55);margin-top:12px}
 .jbar{display:flex;align-items:center;gap:10px;padding:10px 10px 10px 14px;border-bottom:1px solid var(--linha)}
 .jbar h2{font-family:var(--f-display);font-weight:400;font-size:17px;margin:0;color:#fff;text-shadow:0 0 10px var(--c)}
@@ -72,7 +72,7 @@ button:focus-visible,input:focus-visible,summary:focus-visible{outline:2px solid
 .notas li{min-width:0;border-top:1px solid var(--linha);padding-top:8px}
 .notas b{color:var(--texto);font-weight:600}
 @media (prefers-reduced-motion:reduce){.chip,.rot3d{transition:none}}
-.lados{position:absolute;left:12px;top:50%;transform:translateY(-50%);display:flex;flex-direction:column;gap:10px;z-index:5}
+.lados{position:absolute;left:auto;right:14px;top:50%;transform:translateY(-50%);display:flex;flex-direction:column;gap:10px;z-index:5}
 .lado{--c:var(--neon);display:flex;flex-direction:column;align-items:center;gap:3px;width:62px;padding:9px 0 7px;border-radius:14px;border:1px solid var(--linha);background:rgba(8,8,20,.72);color:var(--apagado);font:600 10px var(--f-mono);letter-spacing:.06em;text-transform:uppercase;cursor:pointer;transition:color .2s,border-color .2s,box-shadow .2s;backdrop-filter:blur(6px)}
 .lado svg{width:26px;height:26px}
 .lado:hover{color:var(--texto)}
@@ -426,7 +426,7 @@ function rotulo(texto,grp,pos,tipo,c,id){const el=document.createElement(id||tip
 P.forEach(p=>p.cidade?rotulo(p.nome,gCid,new THREE.Vector3(p.x/U,p.y+1.5,p.z/U),'',p.c,p.id):rotulo(p.nome,gIlha,new THREE.Vector3(p.x/U,yOf(Hm(p.x,p.z))+1.9,p.z/U),'',p.c,p.id));
 const grupoSub=rotulo('Subúrbio e a cratera · 12 lugares',gIlha,new THREE.Vector3(CR.cx/U,.9,CR.cz/U),'grupo','#ff6a35');grupoSub.el.addEventListener('click',()=>selCam('suburbio'));
 rotulo('Você',gIlha,new THREE.Vector3(VOCE.x/U,yOf(Hm(VOCE.x,VOCE.z))+.55,VOCE.z/U),'voce');
-FX.forEach(f=>{const a=Math.PI/2+.5-f.k*.09,u=(((a-f.th)/(2*Math.PI)+.5)%1+1)%1;const[px,pz]=f.pos(u);const L=rotulo(f.l.n,gCid,new THREE.Vector3(px/U,yOf(f.hAt(u))+.35,pz/U),'mini faixa toque',f.l.c);L.el.setAttribute('role','button');L.el.tabIndex=0;L.el.setAttribute('aria-label','Escolher a missão da música '+f.l.n);const vai=()=>escolherFaixa(f.l.n);L.el.addEventListener('click',vai);L.el.addEventListener('keydown',e=>{if(e.key==='Enter'||e.key===' '){e.preventDefault();vai()}})});
+FX.forEach(f=>{const a=Math.PI/2+.5-f.k*.09,u=(((a-f.th)/(2*Math.PI)+.5)%1+1)%1;const[px,pz]=f.pos(u);const L=rotulo(f.l.n,gCid,new THREE.Vector3(px/U,yOf(f.hAt(u))+.35,pz/U),'mini faixa toque',f.l.c);L.faixa=f.l.n;L.el.setAttribute('role','button');L.el.tabIndex=0;L.el.setAttribute('aria-label','Escolher a missão da música '+f.l.n);const vai=()=>escolherFaixa(f.l.n);L.el.addEventListener('click',vai);L.el.addEventListener('keydown',e=>{if(e.key==='Enter'||e.key===' '){e.preventDefault();vai()}})});
 rotulo('Torre central',gCid,new THREE.Vector3(CX/U,yOf(D.T[0].top)+2.9,CZ/U),'mini faixa','#e9e6ff');
 D.sal.forEach(s=>{const p=naCasca(s.x,s.z,.8);p.y+=.6;rotulo(s.n,gTun,p,'mini salao','#9b8cff')});
 
@@ -438,7 +438,8 @@ const FOCO={ilha:{p:[cx+4,78,cz+54],t:[cx,-6,cz+2]},aberta:{p:[cx+36,34,cz+96],t
 const OPAC={ilha:{ilha:1,cid:.55,tun:.8},aberta:{ilha:1,cid:.6,tun:.85},cidade:{ilha:.25,cid:1,tun:.2},suburbio:{ilha:1,cid:.06,tun:.2},tuneis:{ilha:.25,cid:.15,tun:1}};
 {const gy=yOf(Hm(VOCE.x,VOCE.z));ALVO.jogo=ALVO.ilha;OPAC.jogo=OPAC.ilha;FOCO.jogo={p:[VOCE.x/U+2.2,gy+3.2,VOCE.z/U+5],t:[VOCE.x/U,gy+.6,VOCE.z/U-1]}}
 const cur={kb:.4,cy:0,tz:0,ty:0,op:{ilha:1,cid:1,tun:1}};
-let tween=null;let LIG=new Set();const vis=k=>LIG.size===0||LIG.has(k);
+let tween=null;let LIG=new Set(),LIVRES=null; // LIVRES: (19/11, o dono) no jogo, só o nome das faixas já liberadas (null = todas)
+const vis=k=>LIG.size===0||LIG.has(k);
 function voar(){const f=FOCO[camada];tween={p:new THREE.Vector3(...f.p),t:new THREE.Vector3(...f.t)};if(RM){camera.position.copy(tween.p);controls.target.copy(tween.t);tween=null}}
 controls.addEventListener('start',()=>{tween=null});
 
@@ -512,7 +513,7 @@ function frame(now){const dt=Math.min(.05,(now-last)/1000);last=now;T+=dt;
   labels.forEach(L=>{v3.copy(L.pos);L.grp.localToWorld(v3);v3.project(camera);
     const grpOp=L.grp===gIlha?cur.op.ilha:L.grp===gCid?cur.op.cid:cur.op.tun;
     let show=v3.z<1&&(grpOp>.5||(!L.tipo&&L.id&&estado(L.id)==='aceso'));
-    if(L.tipo&&L.tipo.includes('faixa'))show=show&&LIG.has('cidade');
+    if(L.tipo&&L.tipo.includes('faixa'))show=show&&LIG.has('cidade')&&(!L.faixa||!LIVRES||LIVRES.has(L.faixa));
     if(L.tipo&&L.tipo.includes('salao'))show=show&&LIG.has('tuneis');
     if(L.tipo==='grupo')show=false; // (19/11) os lugares aparecem direto
     if(L.tipo==='voce')show=show&&(vis('suburbio')||camada==='jogo');
@@ -710,7 +711,7 @@ ps.addEventListener('click',()=>{playing=!playing;ps.setAttribute('aria-pressed'
 
 camera.position.set(...FOCO.ilha.p);controls.target.set(...FOCO.ilha.t);
 resize();textoMissao();
-{const ep=HASH.get('missao');if(ep&&M[ep])selMissao(ep)}
+{const ep=HASH.get('missao');if(ep&&M[ep])selMissao(ep)}{const f=HASH.get('faixas');if(f!==null)LIVRES=new Set(f.split(',').filter(Boolean))}
 if(EMB)addEventListener('keydown',e=>{if(e.key==='Escape'||e.key==='m'||e.key==='M')avisa({tipo:'fechar'})})
 requestAnimationFrame(frame);
 })();

@@ -632,6 +632,8 @@ export function Corrida({ alohanNoMapa = false, onVisitar, save, nivel, destino:
   // (16/11) o mapa ilustrado com os cartões (disco/MapaCartoes.tsx): "mapa" abre na camada de onde
   // ele está, "feira" na lista dos cartões (o ícone do holo). null = fechado (nem montado)
   const [cartoesAba, setCartoesAba] = useState<"mapa" | "feira" | null>(null)
+  // (19/11, o dono) escolheu a missão na feira: o mapa abre com ela marcada
+  const [missaoNoMapa, setMissaoNoMapa] = useState<MissaoId | null>(null)
   // os ANÉIS (17/10, mapa 2.0): cada 100 que você pega viram duas viagens
   // rápidas pelo mapa. Ficam guardados no aparelho
   // a dica do mapa 2.0 (nas 3 primeiras entradas, fora da abertura): o que é novo
@@ -3273,11 +3275,11 @@ export function Corrida({ alohanNoMapa = false, onVisitar, save, nivel, destino:
       )}
       {discoM && historia && cartoesAba === "mapa" && (
         <MapaNovo M={discoM} historia={historia} pose={jogo as unknown as React.RefObject<{ via: number; u: number; wx?: number; wz?: number; livreOk?: boolean; voo?: boolean }>}
-          onIr={irPraMissao} onFechar={() => { setCartoesAba(null); jogo.current.noMapa = false }} />
+          missao={missaoNoMapa} onIr={irPraMissao} onFechar={() => { setCartoesAba(null); setMissaoNoMapa(null); jogo.current.noMapa = false }} />
       )}
       {discoM && historia && cartoesAba === "feira" && (
         <MapaCartoes M={discoM} historia={historia} pose={jogo as unknown as React.RefObject<{ via: number; u: number; wx?: number; wz?: number; livreOk?: boolean; voo?: boolean }>} apagada={viaApagada} aba={cartoesAba}
-          onIr={irPraMissao} onFechar={() => { setCartoesAba(null); jogo.current.noMapa = false }} />
+          onIr={(id) => { irPraMissao(id); setMissaoNoMapa(id); abrirCartoes("mapa") }} onFechar={() => { setCartoesAba(null); jogo.current.noMapa = false }} />
       )}
       {drone && (
         <div className="l-drone" aria-label="a vista do drone">

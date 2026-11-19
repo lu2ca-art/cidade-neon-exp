@@ -7,22 +7,27 @@
 // (#missao=ep). "Aceitar missão" lá dentro avisa aqui: marca o destino da missão
 // (o mesmo "ir" dos cartões) e fecha. (19/11) A bolinha do minimapa abre e fecha; o Esc também fecha.
 //
+// (19/11, o dono) o holo fica ligado por cima do mapa: o mapa mora logo acima da cena 3D
+// e embaixo do HUD (z 5+); a bolinha (o minimapa) continua à vista e fecha o mapa.
+//
 // Desempenho: fechado, nem existe (o iframe só nasce ao abrir).
 
-import { useEffect, useMemo, useRef, useState } from "react"
+import { useEffect, useMemo, useRef } from "react"
 import type { MundoDisco } from "../estrada/mundoDisco"
 import type { HistoriaDisco } from "./historia"
 import { pontoVia } from "../estrada/alvoMissao"
+import { PISTAS } from "../estrada/pistas"
 import { cartaoDe, cartoesDe } from "./cartoes"
-import { EPISODIOS } from "./episodios"
+import { EPISODIOS, episodioDaMissao } from "./episodios"
 import type { MissaoId } from "./portas"
 
 type PoseMin = { via: number; u: number; wx?: number; wz?: number; livreOk?: boolean; voo?: boolean }
 
-export function MapaNovo({ M, historia, pose, onIr, onFechar }: {
+export function MapaNovo({ M, historia, pose, missao, onIr, onFechar }: {
   M: MundoDisco
   historia: HistoriaDisco
   pose: React.RefObject<PoseMin>
+  missao?: MissaoId | null
   onIr: (id: MissaoId) => void
   onFechar: () => void
 }) {
@@ -34,8 +39,12 @@ export function MapaNovo({ M, historia, pose, onIr, onFechar }: {
       const w = (p.livreOk || p.voo) && p.wx !== undefined && p.wz !== undefined ? { x: p.wx, z: p.wz } : pontoVia(M, p.via, p.u)
       if (w) q.set("voce", `${Math.round(w.x)},${Math.round(w.z)}`)
     }
-    const agora = cartoesDe(historia).find((c) => c.estado === "aberto" && c.proxima)
-    if (agora) q.set("missao", agora.ep.id)
+    const cs = cartoesDe(historia), agora = cs.find((c) => c.estado === "aberto" && c.proxima)
+    const escolhida = missao ? episodioDaMissao(missao) : null
+    if (escolhida) q.set("missao", escolhida.id)
+    else if (agora) q.set("missao", agora.ep.id)
+    // (19/11, o dono) na cidade, só o nome das faixas já liberadas (as missões feitas)
+    q.set("faixas", cs.filter((c) => c.estado === "feito").map((c) => PISTAS.find((p) => p.id === c.ep.musica)?.faixa).filter(Boolean).join(","))
     return `/mapa-ilustrado/index.html#${q.toString()}`
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [])
@@ -59,23 +68,10 @@ export function MapaNovo({ M, historia, pose, onIr, onFechar }: {
     return () => { window.removeEventListener("message", msg); window.removeEventListener("keydown", esc, true) }
   }, [])
 
-  // (19/11, o dono) sai do mapa pela bolinha (o minimapa), no mesmo lugar dela: sem botão de entrar ou sair
-  const [bola] = useState(() => {
-    const r = typeof document !== "undefined" ? document.querySelector(".l-mapa-mini")?.getBoundingClientRect() : null
-    return r && r.width > 0 ? { left: r.left, top: r.top, size: r.width } : null
-  })
-
   return (
     <div role="dialog" aria-label="o mapa da Cidade Neon" onPointerDown={(e) => e.stopPropagation()}
-      style={{ position: "fixed", inset: 0, zIndex: 60, background: "#05040a" }}>
+      style={{ position: "fixed", inset: 0, zIndex: 4, background: "#05040a" }}>
       <iframe src={src} title="o mapa da Cidade Neon" style={{ width: "100%", height: "100%", border: 0, display: "block" }} />
-      {bola && (
-        <button type="button" aria-label="voltar pro jogo" onClick={() => cb.current.onFechar()}
-          style={{ position: "fixed", left: bola.left, top: bola.top, width: bola.size, height: bola.size, borderRadius: "50%", zIndex: 61, cursor: "pointer",
-            border: "2px solid #4dffd2", background: "radial-gradient(circle, #10142acc 55%, #05040acc)", boxShadow: "0 0 18px -2px #4dffd2", color: "#e9fff8", display: "grid", placeItems: "center" }}>
-          <svg viewBox="0 0 24 24" width={Math.round(bola.size * 0.32)} height={Math.round(bola.size * 0.32)} fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M3 6l6-3 6 3 6-3v15l-6 3-6-3-6 3z M9 3v15 M15 6v15" /></svg>
-        </button>
-      )}
     </div>
   )
 }
