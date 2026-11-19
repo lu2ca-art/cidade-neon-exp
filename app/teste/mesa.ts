@@ -25,6 +25,16 @@ export interface Cartao {
 
 export const MESA: Cartao[] = [
   {
+    parte: "brecho",
+    nome: "O subúrbio em anel: os lugares na beira da cratera, como no mapa novo",
+    data: "2026-11-19",
+    tarefa: "subúrbio em anel",
+    olhar: "O subúrbio virou o anel em volta da cratera (o lixão grande do meio). Os 12 lugares (bar, oficina, palco, quadra, túneis, ginásio, galeria, discos, batida, flores, brechó, feira) estão nos pontos do mapa novo, com a porta virada pra cratera. Este link nasce no brechó; abra o mapa grande e vá de lugar em lugar. O bairro antigo dos prédios ficou onde estava, dentro do anel.",
+    perguntas: ["Os lugares ficaram bem onde estão, ou algum ficou num canto ruim (morro, embaixo de pista)?", "O anel está muito vazio entre um lugar e outro? (o próximo passo seria encher ele de casas, como no mapa)", "A rádio, a zona e o veículo trocam certo ao entrar e sair do anel?"],
+    mais: [{ parte: "bar", nome: "no bar" }, { parte: "oficina", nome: "na oficina" }, { parte: "mapa.novo", nome: "o mapa novo, pra comparar" }],
+  },
+
+  {
     parte: "mapa.novo",
     nome: "O mapa novo dentro do jogo: o disco de vinil em 3D",
     data: "2026-11-18",

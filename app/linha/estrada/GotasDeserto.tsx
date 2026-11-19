@@ -8,7 +8,7 @@ import { useEffect, useMemo, type RefObject } from "react"
 import { useFrame } from "@react-three/fiber"
 import * as THREE from "three"
 import { AGUA_DESERTO } from "../economia-rascunho"
-import { SAIDA_CASA, SUBURBIO } from "../disco/historia"
+import { CHAO_LUGARES, SAIDA_CASA, foraDoSuburbio } from "../disco/historia"
 import { gota } from "../som"
 import { vib } from "../som-carro"
 import { chaoEm } from "./chao"
@@ -23,11 +23,11 @@ function montarGotas(): Gota[] {
   // sempre os mesmos lugares
   let sem = 222
   const sorte = () => { sem = (sem * 16807) % 2147483647; return sem / 2147483647 }
-  const livre = (x: number, z: number) => alemDaCidade(x, z) > 1250 && Math.hypot(x - SUBURBIO.x, z - SUBURBIO.z) > SUBURBIO.r + 60
+  const livre = (x: number, z: number) => alemDaCidade(x, z) > 1250 && foraDoSuburbio(x, z) > 60
   const pontos: { x: number; z: number }[] = []
   const { pontos: total, noCaminho, porPonto, espaco } = AGUA_DESERTO
-  // uns perto do caminho da casa até o subúrbio, pra primeira viagem achar alguma
-  const dx = SUBURBIO.x - SAIDA_CASA.x, dz = SUBURBIO.z - SAIDA_CASA.z, L = Math.hypot(dx, dz)
+  // uns perto do caminho da casa até o bar (a porta do subúrbio), pra primeira viagem achar alguma
+  const dx = CHAO_LUGARES.bar.x - SAIDA_CASA.x, dz = CHAO_LUGARES.bar.z - SAIDA_CASA.z, L = Math.hypot(dx, dz)
   for (let i = 0; i < noCaminho; i++) {
     const t = 0.1 + 0.3 * (i / Math.max(1, noCaminho - 1)), lado = (sorte() - 0.5) * 200
     const x = SAIDA_CASA.x + dx * t - (dz / L) * lado, z = SAIDA_CASA.z + dz * t + (dx / L) * lado

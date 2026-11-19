@@ -20,7 +20,7 @@ import { SHOWS_XENOM, xenomPorId } from "./disco/xenom"
 import { prepararMetro } from "./disco/metro"
 import { VEICULOS } from "./disco/perseguicao"
 import { MOMENTOS, ehMomentoFinal, pedirNascerNoPalco } from "./disco/final"
-import { CHAO_LUGARES, SUBURBIO, type HistoriaDisco } from "./disco/historia"
+import { CHAO_LUGARES, giroPraCratera, type HistoriaDisco } from "./disco/historia"
 import { PISTAS } from "./estrada/pistas"
 import { GRAFITES } from "./grafite/grafites"
 
@@ -253,7 +253,7 @@ export function aplicarParteDeTeste(): boolean {
   // (09/11, o povo) nasce de frente pro palco do subúrbio, atrás da plateia
   if (parte.startsWith("povo.")) { const p = CHAO_LUGARES.palco, a = Math.atan2(-p.x, -p.z); gravarOndeParou({ t: "chao", x: p.x + Math.sin(a) * 26, z: p.z + Math.cos(a) * 26, rumo: a + Math.PI }) }
   // (09/11) nasce de frente pra arara do brechó, na calçada: a porta olha pro meio do subúrbio (o pouso de LugaresChao)
-  if (parte === "brecho") { const l = CHAO_LUGARES.brecho, a = Math.atan2(SUBURBIO.x - l.x, SUBURBIO.z - l.z); gravarOndeParou({ t: "chao", x: l.x + Math.sin(a) * 18, z: l.z + Math.cos(a) * 18, rumo: a + Math.PI }) }
+  if (parte === "brecho") { const l = CHAO_LUGARES.brecho, a = giroPraCratera(l.x, l.z); gravarOndeParou({ t: "chao", x: l.x + Math.sin(a) * 18, z: l.z + Math.cos(a) * 18, rumo: a + Math.PI }) }
   if (disco === null) localStorage.removeItem(CHAVE_SAVE)
   // (T02) na carreira, as faixas feitas (o que acende as pistas) batem com as missões feitas
   else localStorage.setItem(CHAVE_SAVE, JSON.stringify({ ...BASE_TESTE, ...(disco.fase === "carreira" ? { objetos: parte === "carreira.meio" || parte === "mapa.novo" || parte === "loja" || parte === "loja.roupas" || parte === "brecho" || parte === "loja.violao" || parte === "metro.comprado" || parte === "metro.sem-instrumento" || parte.startsWith("torre") || parte.startsWith("palcos") || parte === "show.escada" || parte.startsWith("xenom") ? ["nectar", "sexta"] : [] } : {}), ...(parte === "loja" || parte === "loja.roupas" || parte === "brecho" || parte === "loja.violao" || parte === "elevador.deserto" || parte === "entrega.hack" ? GRANA : {}), ...(parte.startsWith("missao.tony") ? { agua: 60, economia: 1 } : {}), ...(parte === "violao" || parte === "metro" || parte === "metro.passeio" || parte === "metro.violao" ? { violao: true, objetos: ["nectar", "sexta"] } : {}), ...(parte === "show.tuneis" ? { popularidade: 80 } : {}), ...(parte.startsWith("povo.") ? { hora: 22, popularidade: parte === "povo.cheio" ? 90 : parte === "povo.meio" ? 30 : 0 } : {}), ...(parte.startsWith("perseguicao") ? { popularidade: 60 } : {}), ...(parte === "final" || parte.startsWith("final.") || parte.startsWith("mundo.depois") ? { objetos: PISTAS.map((x) => x.id) } : {}), ...(parte.startsWith("oficina") || parte.startsWith("quebra") ? { agua: parte === "oficina.loja" ? 80 : 60, economia: 1 } : {}), ...(parte === "loja.violao" || parte === "metro.comprado" || parte === "metro.sem-instrumento" ? { violao: false, compras: parte === "metro.comprado" ? ["instrumento:guitarra"] : [] } : {}), disco }))

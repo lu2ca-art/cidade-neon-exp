@@ -392,13 +392,38 @@ export const ROBOS_PERSONAGENS = ["a moça do bar", "o robô do ping pong"] as c
 // suba). As duas não abrem faixa do álbum. Depois, as 9 missões das faixas,
 // umas na cidade e outras no subúrbio (ORDEM_LUGAR); depois, o mapa aberto ──
 export const SUBURBIO = { x: -740, z: -680, r: 260 }
+// (18/11, o dono: o mapa novo, mapa-ilustrado.md "A cratera e o subúrbio em anel")
+// O SUBÚRBIO É UM ANEL NA BEIRA DA CRATERA. A cratera é a maior mancha do lixão
+// (zonaLixo), centro em CRATERA; `rim` é a beira dela, em 72 rumos (de 5° em 5°,
+// rumo = atan2(z - cz, x - cx)), a mesma do mapa ilustrado. O anel vai da beira até
+// `larg` m pra fora. SUBURBIO (acima) agora é só o bairro antigo (o modelo dos 101
+// prédios, a gente na rua, a corrida de rua), que fica dentro do anel.
+export const CRATERA = {
+  x: 315, z: -94, larg: 850,
+  rim: [720,765,780,240,240,255,525,555,600,690,780,870,945,975,975,990,1035,1065,1050,1005,945,915,930,1095,1110,855,765,705,660,600,510,465,435,420,405,420,435,450,480,525,600,795,810,825,870,930,960,990,990,1005,990,945,915,885,855,855,885,915,900,885,885,855,825,810,795,780,765,780,780,750,720,705],
+}
+// a beira da cratera no rumo `a` (m do centro)
+export function beiraCratera(a: number) {
+  const f = ((((a % (2 * Math.PI)) + 2 * Math.PI) % (2 * Math.PI)) / (2 * Math.PI)) * 72
+  const i = Math.floor(f) % 72, u = f - Math.floor(f), R = CRATERA.rim
+  return R[i] * (1 - u) + R[(i + 1) % 72] * u
+}
+// quantos metros fora do anel (0 dentro; dentro da cratera também conta como fora)
+export function foraDoSuburbio(x: number, z: number) {
+  const d = Math.hypot(x - CRATERA.x, z - CRATERA.z), b = beiraCratera(Math.atan2(z - CRATERA.z, x - CRATERA.x))
+  return d < b ? b - d : d > b + CRATERA.larg ? d - b - CRATERA.larg : 0
+}
+// o rumo (giro) de quem olha pra cratera estando em (x, z): as fachadas do anel viram pra ela
+export const giroPraCratera = (x: number, z: number) => Math.atan2(CRATERA.x - x, CRATERA.z - z)
 // os lugares do chão do subúrbio (longe das pistas e das torres)
 export const CHAO_LUGARES = {
   // (09/11, bíblia §13) o bar fica bem na porta: na beira do subúrbio do lado do
   // deserto, no caminho de quem vem da casa da D-Bee (GIRO_BAR, abaixo)
-  bar: { x: -925, z: -838, nome: "O COPO", cor: "#ff6a35" },
-  oficina: { x: -560, z: -626, nome: "OFICINA", cor: "#ff9000" },
-  palco: { x: -891, z: -536, nome: "PALCO", cor: "#e0ff4f" },
+  // (18/11) os lugares do anel: os pontos do mapa ilustrado; o bar, o palco, os túneis, o ginásio
+  // e a batida andaram até 70 m pra sair de cima de pista/torre (M.livre) e da rua da corrida
+  bar: { x: -488, z: -694, nome: "O COPO", cor: "#ff6a35" },
+  oficina: { x: 200, z: 1068, nome: "OFICINA", cor: "#ff9000" },
+  palco: { x: 931, z: -965, nome: "PALCO", cor: "#e0ff4f" },
   // (09/11, o dono) o último show é no centro do deserto: o trecho mais plano entre a
   // casa da D-Bee e a borda do mapa, longe das pistas e dos morros (disco/final.ts)
   palcoDeserto: { x: -2950, z: -1150, nome: "PALCO", cor: "#e0ff4f" },
@@ -408,8 +433,8 @@ export const CHAO_LUGARES = {
   // (T02) as missões do subúrbio: a quadra do Alohan e a entrada dos túneis (RASCUNHO de onde ficam)
   // (T57) a quadra é um lugar de verdade (o piso, as cestas, o alambrado) e os
   // túneis, uma boca no chão: o ponto é a porta, no fundo da rampa (estrada/chao.ts, BOCA)
-  quadra: { x: -860, z: -790, nome: "QUADRA", cor: "#ff6a35" },
-  tuneis: { x: -610, z: -830, nome: "TÚNEIS", cor: "#9b8cff" },
+  quadra: { x: -214, z: -1263, nome: "QUADRA", cor: "#ff6a35" },
+  tuneis: { x: -485, z: -173, nome: "TÚNEIS", cor: "#9b8cff" },
   // (T09) os achados da missão da oficina: o painel solar velho no lixão (a mancha
   // de lixo a leste do subúrbio) e a goteira embaixo de uma pista. Só aparecem
   // (e só vão pro mapa) quando é a vez deles. RASCUNHO de onde ficam
@@ -432,14 +457,14 @@ export const CHAO_LUGARES = {
   // lugares que faltavam no chão: cada um abre a experiência que já existe
   // (disco/abertos.ts). Longe uns dos outros (90 m ou mais), fora da rua da
   // corrida (40 m ou mais) e das pistas (conferido com M.livre). docs/suburbio-lugares.md
-  ginasio: { x: -760, z: -930, nome: "GINÁSIO", cor: "#ff9000" },
-  galeria: { x: -611, z: -527, nome: "GALERIA", cor: "#3d7bff" },
-  discos: { x: -760, z: -470, nome: "DISCOS", cor: "#ffc857" },
-  batida: { x: -500, z: -745, nome: "BATIDA", cor: "#ff6b6b" },
-  flores: { x: -990, z: -600, nome: "FLORES", cor: "#5dffa0" },
-  brecho: { x: -790, z: -600, nome: "BRECHÓ", cor: "#ff3fb0" },
+  ginasio: { x: 395, z: -1090, nome: "GINÁSIO", cor: "#ff9000" },
+  galeria: { x: 1357, z: 9, nome: "GALERIA", cor: "#3d7bff" },
+  discos: { x: -260, z: 166, nome: "DISCOS", cor: "#ffc857" },
+  batida: { x: -296, z: 787, nome: "BATIDA", cor: "#ff6b6b" },
+  flores: { x: 1180, z: -486, nome: "FLORES", cor: "#5dffa0" },
+  brecho: { x: 909, z: 332, nome: "BRECHÓ", cor: "#ff3fb0" },
   // (09/11, ep. 5) a feira do Tony Gordo: a rua das barracas, entre o bar e a oficina (disco/FeiraRua.tsx)
-  feira: { x: -650, z: -630, nome: "FEIRA", cor: "#ff3fb0" },
+  feira: { x: 832, z: 1049, nome: "FEIRA", cor: "#ff3fb0" },
 } as const
 export type LugarChao = keyof typeof CHAO_LUGARES
 // (09/11) a porta do bar vira pro deserto (quem chega vem de lá), e não pro centro da cidade
@@ -454,7 +479,9 @@ export const CHAO_ABERTOS = ["ginasio", "galeria", "discos", "batida", "flores",
 export const CHAO_FIXOS = (Object.keys(CHAO_LUGARES) as LugarChao[]).filter((id) => !CHAO_ACHADOS.includes(id))
 export const RAIO_CHAO = 22
 // (09/11) as pontas da rua da feira: as ruínas também abrem espaço aqui (ruinas.ts)
-export const CHAO_PONTAS = [{ x: -667.8, z: -639.2 }, { x: -632.2, z: -620.8 }]
+// (18/11) a rua corre no rumo da cratera (feira.ts, FEIRA_RUMO): as pontas, 20 m pra cada lado
+const RF = Math.atan2(-(CHAO_LUGARES.feira.z - CRATERA.z), CHAO_LUGARES.feira.x - CRATERA.x)
+export const CHAO_PONTAS = [-20, 20].map((l) => ({ x: CHAO_LUGARES.feira.x + l * Math.cos(RF), z: CHAO_LUGARES.feira.z - l * Math.sin(RF) }))
 // a missão n (3 a 11, as das faixas): na cidade (o palco da linha) ou no subúrbio (o palco do chão)
 export const ORDEM_LUGAR: Record<number, "cidade" | "suburbio"> = { 3: "cidade", 4: "cidade", 5: "suburbio", 6: "cidade", 7: "cidade", 8: "suburbio", 9: "suburbio", 10: "cidade", 11: "cidade" }
 // a Kombi ainda não voa (nem tem turbo): antes da oficina do subúrbio

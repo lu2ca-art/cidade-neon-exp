@@ -10,7 +10,7 @@
 //     carros despencados meio enterrados e pneus)
 
 import * as THREE from "three"
-import { CASA, CHAO_LUGARES, QUEDA, SAIDA_CASA, SUBURBIO } from "../disco/historia"
+import { CASA, CHAO_LUGARES, CRATERA, QUEDA, SAIDA_CASA } from "../disco/historia"
 import { cresceuNoRumo } from "./raioCidade"
 
 export const CHAO = -12
@@ -148,8 +148,8 @@ export function chaoEm(x: number, z: number) {
 const QL = CHAO_LUGARES.quadra
 export const QUADRA = {
   x: QL.x, z: QL.z,
-  // o comprimento da quadra aponta pro centro do subúrbio (de lado pra quem chega)
-  rot: Math.atan2(SUBURBIO.x - QL.x, SUBURBIO.z - QL.z) + Math.PI / 2,
+  // o comprimento da quadra fica de lado pra cratera (18/11: o subúrbio é o anel em volta dela)
+  rot: Math.atan2(CRATERA.x - QL.x, CRATERA.z - QL.z) + Math.PI / 2,
   comp: 34, larg: 21, // o piso (a quadra 28 × 15 e a folga em volta)
   topo: 0,
 }
@@ -178,11 +178,12 @@ function naQuadra(x: number, z: number, h: number) {
 // a vala, desenhado mais fino que a grade (o resto da grade ali afunda e fica
 // escondido embaixo dele). O fundo da rampa é a porta: CHAO_LUGARES.tuneis ──
 const BP = CHAO_LUGARES.tuneis
-const BL = Math.hypot(BP.x - SUBURBIO.x, BP.z - SUBURBIO.z)
+// (18/11) a rampa desce vindo da cratera pra porta (o subúrbio é o anel em volta dela)
+const BL = Math.hypot(BP.x - CRATERA.x, BP.z - CRATERA.z)
 // o rumo da rampa (desce indo do subúrbio pra porta) e o de lado
 export const BOCA = {
   x: BP.x, z: BP.z,
-  ax: (BP.x - SUBURBIO.x) / BL, az: (BP.z - SUBURBIO.z) / BL,
+  ax: (BP.x - CRATERA.x) / BL, az: (BP.z - CRATERA.z) / BL,
   comp: 40, // o comprimento da rampa (m)
   fundo: 6.5, // quanto desce (m)
   meia: 6.5, // a meia largura da vala (m)

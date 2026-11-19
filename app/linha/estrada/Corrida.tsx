@@ -50,7 +50,7 @@ import { MundoDepois } from "./MundoDepois"
 import { CAM_ROTEIRO, FINAL_VIVO, lerFinal, nascerNoPalcoDeserto, ouvirFinal } from "../disco/final"
 import { VELO, intensidade } from "./velo"
 import { geoJoia, matJoia } from "./joia"
-import { CASA, RAIO_CASA, SAIDA_CASA, CHEGADA, PARADA_CASA, ENTRA_CHEGADA, CAM_CHEGADA, FALAS_DUNAS, FALAS_DUNAS_SUB, SUBURBIO, CHAO_LUGARES, RAIO_CHAO, semVoo, type HistoriaDisco, type LugarChao } from "../disco/historia"
+import { CASA, RAIO_CASA, SAIDA_CASA, CHEGADA, PARADA_CASA, ENTRA_CHEGADA, CAM_CHEGADA, FALAS_DUNAS, FALAS_DUNAS_SUB, SUBURBIO, CHAO_LUGARES, RAIO_CHAO, foraDoSuburbio, semVoo, type HistoriaDisco, type LugarChao } from "../disco/historia"
 import { lerPoseTutorial } from "../disco/tutorialConf"
 import { trilhaEnsina } from "../disco/trilhaPedras"
 import { LugaresChao } from "../disco/LugaresChao"
@@ -1697,7 +1697,7 @@ export function Corrida({ alohanNoMapa = false, onVisitar, save, nivel, destino:
       if (fase === "subir") { if (!j.voo && !avisou) { avisou = true; onHistoriaRef.current?.("subiu") } return }
       // as dunas: no começo novo, chegar no subúrbio (no chão, embaixo das pistas)
       if (novoComeco) {
-        if (j.wx !== undefined && Math.hypot(j.wx - SUBURBIO.x, j.wz! - SUBURBIO.z) < SUBURBIO.r && !avisou) { avisou = true; onHistoriaRef.current?.("cidade"); return }
+        if (j.wx !== undefined && foraDoSuburbio(j.wx, j.wz!) === 0 && !avisou) { avisou = true; onHistoriaRef.current?.("cidade"); return }
       } else if (!j.voo) { if (!avisou) { avisou = true; onHistoriaRef.current?.("cidade") } return }
       const r = alemDaCidade(j.wx ?? 0, j.wz ?? 0) // (ruas-faixa) a distância à borda de cada rumo
       if (t > 2) diz("inicio")

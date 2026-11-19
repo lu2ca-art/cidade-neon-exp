@@ -22,10 +22,10 @@ export const INSTRUMENTOS_MUNDO: Record<InstrumentoId, PontoXZ> = {
   handpan: { x: -300, z: -905 }, // no lixão, a leste do subúrbio
   // no subúrbio
   "tambor-agua": { x: -603, z: -737 }, // perto da goteira
-  udu: { x: -882, z: -810 }, // atrás da quadra
-  kalimba: { x: -762, z: -452 }, // atrás dos discos
-  "flauta-bambu": { x: -1007, z: -595 }, // atrás das flores
-  djembe: { x: -599, z: -513 }, // atrás da galeria
+  udu: { x: -236, z: -1283 }, // atrás da quadra
+  kalimba: { x: -262, z: 184 }, // atrás dos discos
+  "flauta-bambu": { x: 1163, z: -481 }, // atrás das flores
+  djembe: { x: 1369, z: 23 }, // atrás da galeria
 }
 
 // tudo que dá pra afinar fica aqui

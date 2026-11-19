@@ -11,7 +11,7 @@
 // botão aparece com o cadeado e o aviso (TRANCA_MOTO). Ver docs/moto.md
 // Leve: só contas de distância, sem three.js.
 
-import { SUBURBIO, type HistoriaDisco } from "../disco/historia"
+import { foraDoSuburbio, type HistoriaDisco } from "../disco/historia"
 
 export type Zona = "cidade" | "deserto" | "suburbio" | "tuneis"
 // "carro": o veículo escolhido no lugar da Kombi (o opala, a picape, o buggy)
@@ -49,9 +49,8 @@ export const BORDA_SUBURBIO = 20
 // trincheiras (outra cena)
 export function zonaDoJogo(voo: boolean | undefined, wx: number | undefined, wz: number | undefined, antes: Zona): Zona {
   if (!voo || wx === undefined || wz === undefined) return "cidade"
-  const d = Math.hypot(wx - SUBURBIO.x, wz - SUBURBIO.z)
-  const r = SUBURBIO.r + (antes === "suburbio" ? BORDA_SUBURBIO : 0)
-  return d < r ? "suburbio" : "deserto"
+  // (18/11) o subúrbio é o anel na beira da cratera (historia.ts, CRATERA)
+  return foraDoSuburbio(wx, wz) <= (antes === "suburbio" ? BORDA_SUBURBIO : 0) ? "suburbio" : "deserto"
 }
 
 // (09/11, o dono; bíblia §13 e §15) A ÁGUA PAGA A SUBIDA: no deserto o propulsor segue na
