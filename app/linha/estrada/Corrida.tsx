@@ -1376,6 +1376,18 @@ export function Corrida({ alohanNoMapa = false, onVisitar, save, nivel, destino:
   // (LU2CA 21/10) celular (em pé ou deitado): os widgets do holo numa ilha só
   // (16/11) abre o mapa ilustrado (o drone desce: por baixo dele nada desenha à toa)
   const abrirCartoes = (aba: "mapa" | "feira") => { ligarDrone(false); jogo.current.noMapa = true; setCartoesAba(aba) }
+  // (18/11, Mesa: mapa.novo) ?abrir=mapa: o mapa novo já abre, uma vez, quando a história chega
+  const abriuPeloLink = useRef(false)
+  useEffect(() => {
+    if (abriuPeloLink.current || !discoM || !historia) return
+    const u = new URL(location.href)
+    if (u.searchParams.get("abrir") !== "mapa") return
+    abriuPeloLink.current = true
+    u.searchParams.delete("abrir"); history.replaceState(history.state, "", u)
+    const t = setTimeout(() => abrirCartoes("mapa"), 1200)
+    return () => clearTimeout(t)
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [discoM, historia])
   // (16/11) o "marcar no mapa" do cartão: a marca no lugar da missão (a rota acende; chegando, começa)
   const irPraMissao = (id: MissaoId) => {
     const l = MISSOES13[id].lugar, m = MISSOES13[id]

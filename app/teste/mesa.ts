@@ -25,11 +25,11 @@ export interface Cartao {
 
 export const MESA: Cartao[] = [
   {
-    parte: "carreira.meio",
+    parte: "mapa.novo",
     nome: "O mapa novo dentro do jogo: o disco de vinil em 3D",
     data: "2026-11-18",
     tarefa: "mapa novo no jogo",
-    olhar: "Abra o mapa grande e toque em \"o mapa ilustrado\" (ou no ícone dos cartões no holo). Abre o mapa novo: a cidade como disco de vinil, o subúrbio em anel, os túneis colados no cone. O \"Você\" é onde você está de verdade, e ele já abre na missão de agora. Toque num lugar da missão e em \"Aceitar missão\": o mapa fecha e o destino fica marcado no jogo. O × ou o Esc fecham.",
+    olhar: "O jogo abre e, em um segundo, o mapa novo abre por cima: a cidade como disco de vinil, o subúrbio em anel, os túneis colados no cone. O \"Você\" é onde você está de verdade, e ele já abre na missão de agora. Toque num lugar da missão e em \"Aceitar missão\": o mapa fecha e o destino fica marcado no jogo. O × ou o Esc fecham. Depois, ele abre de novo pelo mapa grande, em \"o mapa ilustrado\".",
     perguntas: ["O mapa abriu rápido e girou liso?", "O Você apareceu no lugar certo? (o mundo do jogo ainda é o de antes: as pistas e o subúrbio ainda não mudaram de lugar)", "Aceitar missão: o destino marcado no jogo bateu com o lugar escolhido?"],
   },
 
