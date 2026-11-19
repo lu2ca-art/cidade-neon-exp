@@ -342,7 +342,7 @@ function PneuCravo({ r, geo }: { r: React.RefObject<THREE.Group | null>; geo: TH
 }
 type MotoProps = { vel: () => number; steer: () => number; ar: () => boolean; pitch: () => number; empurra?: () => boolean }
 function MotoProcedural(p: MotoProps) {
-  const geo = useMemo(geoMoto, [])
+  const geo = useMemo(() => geoMoto(), [])
   useEffect(() => () => { geo.rodaT.dispose(); geo.garfo.dispose(); geo.quadro.dispose() }, [geo])
   return <MotoCorpo {...p} geo={geo} />
 }
@@ -389,7 +389,7 @@ function MotoCorpo({ vel, steer, ar, pitch, empurra = () => false, geo }: MotoPr
       piloto.current.position.y = -enc.current * 0.08
     }
   })
-  const geoP = useMemo(geoPiloto, [])
+  const geoP = useMemo(() => geoPiloto(), [])
   useEffect(() => () => geoP.dispose(), [geoP])
   return (
     <group ref={corpo}>

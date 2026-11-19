@@ -22,7 +22,7 @@ export function BatidaCasa({ id, onFim }: { id: InstrumentoId; onFim: () => void
         <div>
           <small>casa da D-Bee · o sampler</small>
           <b>{x.artigo} {x.nome} entrou na batida</b>
-          <span><i>agora é uma faixa da música "samples da D-Bee"</i></span>
+          <span><i>agora é uma faixa da música “samples da D-Bee”</i></span>
         </div>
         <button type="button" onClick={onFim} data-voltar>voltar</button>
       </header>

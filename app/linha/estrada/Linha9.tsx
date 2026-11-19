@@ -170,7 +170,7 @@ function posicionar(g: THREE.Group, l: Linha9, s: number, p: PontoTrilho, q: Pon
 
 export function Linha9Fora({ linha, escondeTrem }: { linha: Linha9; escondeTrem: boolean }) {
   const trechos = useMemo(() => trechosDe(linha), [linha])
-  const mat = useMemo(MAT_FORA, [])
+  const mat = useMemo(() => MAT_FORA(), [])
   useEffect(() => () => mat.dispose(), [mat])
   const malhas = useRef<(THREE.Mesh | null)[]>([])
   const vagoes = useRef<(THREE.Group | null)[]>([])

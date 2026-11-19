@@ -50,6 +50,8 @@ const M = {
   area: new THREE.MeshBasicMaterial(),
 }
 
+const segundos = () => performance.now() / 1000
+
 export function InstrumentosKombi({ escala, desloca }: { escala: V3; desloca: V3 }) {
   // (14/11) só os 4 que cabem na Kombi (portas.ts naKombi)
   const ids = useSyncExternalStore(ouvirNaKombi, naKombiAgora, naKombiAgora)
@@ -82,7 +84,7 @@ export function InstrumentosKombi({ escala, desloca }: { escala: V3; desloca: V3
   // o balanço de quem foi tocado (só mexe em quem bateu há menos de 0,6 s)
   useFrame(() => {
     if (!ativos.current) return
-    const agora = performance.now() / 1000
+    const agora = segundos()
     let vivos = 0
     bateu.current.forEach((t, id) => {
       const g = grupos.current.get(id)

@@ -49,6 +49,7 @@ function juntar(pecas: Peca3[]) {
 }
 
 let s = 7
+const semear = () => { s = 7 }
 const rnd = () => { s = (s * 16807) % 2147483647; return (s - 1) / 2147483646 }
 const entre = (a: number, b: number) => a + rnd() * (b - a)
 
@@ -171,7 +172,7 @@ export function FeiraRua({ chao, alvo }: { chao: (x: number, z: number) => numbe
   const yC = useMemo(() => chao(F.x, F.z), [chao, F.x, F.z])
   const yCoz = useMemo(() => { const p = naFeira(LOCAL_COZINHA.lx, LOCAL_COZINHA.lz); return chao(p.x, p.z) }, [chao])
   const d = useMemo(() => {
-    s = 7
+    semear()
     const local = (lx: number, lz: number) => {
       const S = Math.sin(FEIRA_RUMO), C = Math.cos(FEIRA_RUMO)
       return chao(F.x + lx * C + lz * S, F.z - lx * S + lz * C) - yC

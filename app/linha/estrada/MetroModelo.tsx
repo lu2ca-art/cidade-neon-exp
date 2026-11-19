@@ -43,6 +43,7 @@ export function piscarMetro(t: number) {
 type Parte = { k: string; geo: THREE.BufferGeometry; mat: THREE.Material; pos: THREE.Vector3; quat: THREE.Quaternion; esc: THREE.Vector3 }
 function usePartes(no: string, grupos: string[]) {
   const { nodes } = useGLTF(URL_METRO) as unknown as { nodes: Record<string, THREE.Object3D> }
+  const chave = grupos.join()
   return useMemo(() => {
     const mats = matsMetro()
     const out: Parte[] = []
@@ -57,7 +58,7 @@ function usePartes(no: string, grupos: string[]) {
     if (!out.some((p) => p.k === `${no}_solido`)) throw new Error(`metro.glb sem ${no}`)
     return out
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [nodes, no, grupos.join()])
+  }, [nodes, no, chave])
 }
 
 function Partes({ partes }: { partes: Parte[] }) {

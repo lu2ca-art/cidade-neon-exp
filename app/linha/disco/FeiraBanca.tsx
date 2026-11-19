@@ -88,7 +88,7 @@ export function FeiraBanca({ y }: { y: number }) {
   const refsInt = useRef<(THREE.InstancedMesh | null)[]>([])
   const refsMeia = useRef<(THREE.InstancedMesh | null)[]>([])
   const etiq = useRef<THREE.InstancedMesh>(null)
-  const tex = useMemo(texEtiquetas, [])
+  const tex = useMemo(() => texEtiquetas(), [])
   const aCel = useMemo(() => new THREE.InstancedBufferAttribute(new Float32Array(N_ETIQ * 2), 2).setUsage(THREE.DynamicDrawUsage), [])
   const geoEtiq = useMemo(() => { const g = new THREE.PlaneGeometry(1, 1); g.setAttribute("aCel", aCel); return g }, [aCel])
   const geoSaco = useMemo(() => new THREE.CylinderGeometry(0.17, 0.21, 0.3, 8), [])
