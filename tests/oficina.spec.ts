@@ -131,8 +131,9 @@ test("?parte=oficina.catar: pegar as peças no lixão completa a reciclagem", as
   await expect(monta).toBeVisible({ timeout: 20_000 })
   await monta.getByRole("button", { name: "seguir →" }).click({ timeout: 20_000 })
   await expect(monta).toBeHidden()
-  // (leveza B) o save vai pro localStorage com folga (até 3 s depois da mudança): espera ele
-  await expect.poll(async () => (await saveDe(page)).disco.passos13 ?? [], { timeout: 15_000 }).toContain("oficina:arte")
+  // (leveza B) o save vai pro localStorage com folga (até 3 s depois da mudança): espera ele.
+  // (19/11) sem placa de vídeo o 3D segura o timer da gravação: a folga do teste é 30 s
+  await expect.poll(async () => (await saveDe(page)).disco.passos13 ?? [], { timeout: 30_000 }).toContain("oficina:arte")
   expect(erros).toEqual([])
 })
 
@@ -152,7 +153,7 @@ test("?parte=oficina.agua: coletar a água no deserto (sem tela de jogo)", async
   }
   // a goteira não existe mais
   await expect(page.getByRole("dialog", { name: "a goteira" })).toHaveCount(0)
-  await expect.poll(async () => (await saveDe(page)).disco.passos13 ?? [], { timeout: 15_000 }).toContain("oficina:jogo")
+  await expect.poll(async () => (await saveDe(page)).disco.passos13 ?? [], { timeout: 30_000 }).toContain("oficina:jogo")
   const s = await saveDe(page)
   expect(s.disco.oficina.tanque).toBe(OFICINA_CFG.tanqueCheio)
   expect(erros).toEqual([])
@@ -165,7 +166,7 @@ test("?parte=oficina.pagar: o mecânico pago em água e a porta das melhorias (c
   const pg = page.getByRole("dialog", { name: "o pagamento do mecânico" })
   await expect(pg).toBeVisible()
   // a água sai do save na hora; o contador desce na tela até 0
-  await expect.poll(async () => (await saveDe(page)).agua, { timeout: 15_000 }).toBe(0)
+  await expect.poll(async () => (await saveDe(page)).agua, { timeout: 30_000 }).toBe(0)
   // (no GitHub, sem placa de vídeo, os primeiros segundos depois de chegar são lentos:
   // o contador leva ~3 s no Mac e passou de 10 s lá; a regra é a mesma, só a folga cresce)
   await expect(pg.locator("[data-agua]")).toHaveAttribute("data-agua", "0", { timeout: 30_000 })
@@ -174,7 +175,7 @@ test("?parte=oficina.pagar: o mecânico pago em água e a porta das melhorias (c
   // (notas 03/11) a porta da oficina abre calada: sem a tela "a porta abriu" por
   // cima do jogo, a recompensa (as melhorias da Kombi) entra direto no save
   // (leveza B: o save grava com folga, até 3 s depois)
-  await expect.poll(async () => (await saveDe(page)).disco.fase, { timeout: 15_000 }).toBe("subir")
+  await expect.poll(async () => (await saveDe(page)).disco.fase, { timeout: 30_000 }).toBe("subir")
   const s = await saveDe(page)
   expect(s.disco.feitas13).toContain("oficina")
   expect(s.disco.portas).toContain("kombi-melhorias")
