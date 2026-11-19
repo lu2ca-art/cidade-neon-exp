@@ -6,6 +6,7 @@
 
 import { useEffect, useRef, useState } from "react"
 import { ac, bipe, tombo } from "./oito"
+import { canal } from "@/lib/mesa"
 
 const W = 152, H = 200, BAR = 28, META = 7
 
@@ -17,14 +18,14 @@ function batida(n: number) {
     const o = c.createOscillator(), g = c.createGain()
     o.frequency.setValueAtTime(150, t); o.frequency.exponentialRampToValueAtTime(45, t + 0.12)
     g.gain.setValueAtTime(0.5, t); g.gain.exponentialRampToValueAtTime(0.001, t + 0.18)
-    o.connect(g).connect(c.destination); o.start(t); o.stop(t + 0.2)
+    o.connect(g).connect(canal("efeitos") ?? c.destination); o.start(t); o.stop(t + 0.2)
   } else {
     // caixa: ruído curto
     const b = c.createBuffer(1, Math.ceil(c.sampleRate * 0.12), c.sampleRate), d = b.getChannelData(0)
     for (let i = 0; i < d.length; i++) d[i] = (Math.random() * 2 - 1) * (1 - i / d.length)
     const s = c.createBufferSource(), f = c.createBiquadFilter(), g = c.createGain()
     s.buffer = b; f.type = "highpass"; f.frequency.value = 1200; g.gain.value = 0.3
-    s.connect(f).connect(g).connect(c.destination); s.start(t)
+    s.connect(f).connect(g).connect(canal("efeitos") ?? c.destination); s.start(t)
   }
 }
 

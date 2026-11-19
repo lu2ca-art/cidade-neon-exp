@@ -9,14 +9,18 @@
 // parede, fora de ordem. Toca na ordem certa; errou, o giz some e volta.
 
 import { useEffect, useMemo, useRef, useState } from "react"
+import { useGLTF } from "@react-three/drei"
 import { texTexto } from "../../estrada/geo"
+import { ModeloSeguro } from "../../estrada/Seguro"
 import { gota } from "../../som"
 import { vib } from "../../som-carro"
 import { sinalizar } from "../bus"
 import { Caixa, Chuva, Npc, Toque, type V3 } from "../comum"
+import { SalaGlb } from "../modelo"
 import { Camera, type Plano, type SalaProps } from "../motor"
 
 const CINZA = "#b8bcc8"
+const URL_BECO = "/models/beco.glb"
 const FRASES = ["se quiser ver", "pare de procurar", "onde todos olham"]
 // a ordem em que estão escritas na parede (embaralhada)
 const NA_PAREDE = [2, 0, 1]
@@ -68,6 +72,35 @@ export function SalaBeco({ estado }: SalaProps) {
       <fog attach="fog" args={["#06060a", 5, 18]} />
       <ambientLight intensity={0.18} color="#b8bcc8" />
       <hemisphereLight args={["#8890a8", "#08080a", 0.25]} />
+      {/* (06/11) o beco modelado no Blender (blender/scripts/beco.py, public/models/beco.glb):
+          o asfalto molhado remendado com a canaleta e o bueiro, as poças com o neon
+          dos letreiros e a lâmpada refletindo, os paredões de reboco descascado com
+          o tijolo aparecendo, os canos, os aparelhos de ar, a escada de incêndio, os
+          fios de gato, os lambe-lambes, a caçamba, os sacos, o carrinho, os pneus, a
+          porta de ferro, a lâmpada no braço, o papelão e o cobertor. ~11 mil
+          triângulos, 110 KB. Os letreiros, o giz, a chuva e a moradora seguem aqui.
+          Enquanto baixa, ou se falhar, as caixas de antes */}
+      <ModeloSeguro nome="beco-glb" reserva={<BecoCaixas />}>
+        <SalaGlb url={URL_BECO} />
+      </ModeloSeguro>
+      {/* os letreiros na boca do beco */}
+      {GRITOS.map((g, k) => <Grito key={k} txt={g.txt} cor={g.cor} pos={[(k - 1) * 0.35, 3.1 + k * 0.85, 4.6]} />)}
+      <pointLight position={[0, 2.4, -3.9]} color="#ffd9a0" intensity={5} distance={7} decay={2} />
+      <Npc cor={CINZA} pos={[-0.2, -0.05, -3.75]} vira={0.2} pose="sentada" pele="#3a3a40" falando={estado.falando === "a moradora"} />
+      {/* as frases a giz na parede da esquerda */}
+      {NA_PAREDE.map((i, k) => (
+        <Giz key={i} texto={FRASES[i]} pos={[-1.83, 2.05 - k * 0.45, -1.5 + (k - 1) * 0.25]} feita={montada.includes(i) || (estado.pos > 5 && !montando)} ativo={montando && !montada.includes(i)} onToque={() => pegar(i)} />
+      ))}
+      <Chuva n={280} larg={4} alto={8} fundo={12} />
+      <Camera plano={plano} rapido={montando} />
+    </>
+  )
+}
+
+// as caixas de antes: enquanto o modelo baixa, ou se ele falhar
+function BecoCaixas() {
+  return (
+    <>
       {/* o chão molhado e os dois paredões */}
       <mesh rotation-x={-Math.PI / 2} position={[0, 0, 0]}>
         <planeGeometry args={[4, 14]} />
@@ -76,23 +109,13 @@ export function SalaBeco({ estado }: SalaProps) {
       <Caixa pos={[-2, 4, 0]} tam={[0.3, 8, 14]} cor="#2a2b32" rough={0.95} />
       <Caixa pos={[2, 4, 0]} tam={[0.3, 8, 14]} cor="#26272e" rough={0.95} />
       <Caixa pos={[0, 4, -4.6]} tam={[4, 8, 0.3]} cor="#1e1f24" rough={1} />
-      {/* os letreiros na boca do beco */}
-      {GRITOS.map((g, k) => <Grito key={k} txt={g.txt} cor={g.cor} pos={[(k - 1) * 0.35, 3.1 + k * 0.85, 4.6]} />)}
       {/* a lâmpada dela, o papelão, o cobertor */}
       <mesh position={[0, 2.6, -4.3]}>
         <sphereGeometry args={[0.06, 8, 6]} />
         <meshBasicMaterial color="#ffd9a0" toneMapped={false} />
       </mesh>
-      <pointLight position={[0, 2.4, -3.9]} color="#ffd9a0" intensity={5} distance={7} decay={2} />
       <Caixa pos={[-0.2, 0.02, -3.7]} tam={[1.4, 0.03, 1.2]} cor="#6a5236" />
-      <Npc cor={CINZA} pos={[-0.2, -0.05, -3.75]} vira={0.2} pose="sentada" pele="#3a3a40" falando={estado.falando === "a moradora"} />
       <Caixa pos={[-0.2, 0.28, -4.05]} tam={[0.9, 0.55, 0.35]} cor="#5a5048" rough={1} />
-      {/* as frases a giz na parede da esquerda */}
-      {NA_PAREDE.map((i, k) => (
-        <Giz key={i} texto={FRASES[i]} pos={[-1.83, 2.05 - k * 0.45, -1.5 + (k - 1) * 0.25]} feita={montada.includes(i) || (estado.pos > 5 && !montando)} ativo={montando && !montada.includes(i)} onToque={() => pegar(i)} />
-      ))}
-      <Chuva n={280} larg={4} alto={8} fundo={12} />
-      <Camera plano={plano} rapido={montando} />
     </>
   )
 }
@@ -121,3 +144,5 @@ function Giz({ texto, pos, feita, ativo, onToque }: { texto: string; pos: V3; fe
     </Toque>
   )
 }
+
+useGLTF.preload(URL_BECO)

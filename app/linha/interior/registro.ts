@@ -6,11 +6,15 @@
 
 import type { ComponentType } from "react"
 import type { LugarId } from "../lugares"
+import type { SalaMissao } from "../disco/portas"
 import type { SalaProps } from "./motor"
 
 type Carga = () => Promise<ComponentType<SalaProps>>
 
-export const CARREGAR: Partial<Record<LugarId, Carga>> = {
+// (T22) a sala de um lugar, ou a casa de uma missão (que mora num lugar mas é outra sala)
+export type SalaId = LugarId | SalaMissao
+
+export const CARREGAR: Partial<Record<SalaId, Carga>> = {
   bar: () => import("./salas/Bar").then((m) => m.SalaBar),
   balada: () => import("./salas/Balada").then((m) => m.SalaBalada),
   plataforma: () => import("./salas/Vagao").then((m) => m.SalaVagao),
@@ -21,25 +25,31 @@ export const CARREGAR: Partial<Record<LugarId, Carga>> = {
   "casa-shows": () => import("./salas/Shows").then((m) => m.SalaShows),
   posto: () => import("./salas/Posto").then((m) => m.SalaPosto),
   "casa-dbee": () => import("./salas/CasaDbee").then((m) => m.SalaCasaDbee),
+  // (T22) a casa da Ella, que é a galeria: a planta, os quadros, a tela em branco
+  "galeria-ella": () => import("./salas/GaleriaElla").then((m) => m.SalaGaleriaElla),
+  // (T47) o elevador de terror: sobe, a porta abre, você atravessa o andar das máquinas dormindo
+  elevador: () => import("./salas/Elevador").then((m) => m.SalaElevador),
 }
 
-export function temSala(id: LugarId) { return !!CARREGAR[id] }
+export function temSala(id: SalaId) { return !!CARREGAR[id] }
 
 // os gestos que cada sala faz em 3D (o resto continua na legenda)
-export const GESTOS_3D: Partial<Record<LugarId, string[]>> = {
+export const GESTOS_3D: Partial<Record<SalaId, string[]>> = {
   bar: ["copos"],
   balada: ["danca"],
   plataforma: ["tocar", "fuga"],
   "casa-drewboy": ["quarto"],
   escondido: ["prova:regar"],
   beco: ["ordem"],
-  "casa-dbee": ["casa", "casa-inicio"],
+  "casa-dbee": ["casa", "casa-inicio", "instrumentos"],
+  "galeria-ella": ["quadros", "pintar"],
+  elevador: ["elevador"],
 }
 
 // baixa antes de precisar: o motor das salas + a sala do lugar. Chamado
 // quando a missão passa a apontar pra um lugar (a Kombi ainda está longe)
 const pedidas = new Set<string>()
-export function precarregarSala(id: LugarId) {
+export function precarregarSala(id: SalaId) {
   const c = CARREGAR[id]
   if (!c || pedidas.has(id)) return
   pedidas.add(id)

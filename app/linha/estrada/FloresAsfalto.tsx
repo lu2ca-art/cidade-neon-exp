@@ -47,7 +47,8 @@ function Broto({ M, f, regandoDesde }: { M: Mundo; f: FlorAsfalto; regandoDesde:
     if (anel.current) { const s = 1 + Math.sin(t * 3) * 0.15; anel.current.scale.set(s, s, 1); (anel.current.material as THREE.MeshBasicMaterial).opacity = (1 - k) * (0.35 + Math.sin(t * 3) * 0.15) }
     if (gotas.current) {
       gotas.current.visible = regandoDesde !== null && k < 1
-      gotas.current.children.forEach((g, n) => { const y = 2.6 - (((t * 3 + n * 0.37) % 1) * 2.4); g.position.set(Math.sin(n * 2.3) * 0.5, y, Math.cos(n * 1.7) * 0.5) })
+      const gs = gotas.current.children
+      for (let n = 0; n < gs.length; n++) { const y = 2.6 - (((t * 3 + n * 0.37) % 1) * 2.4); gs[n].position.set(Math.sin(n * 2.3) * 0.5, y, Math.cos(n * 1.7) * 0.5) }
     }
   })
   return (

@@ -1,0 +1,149 @@
+/* AS PEÇAS DAS MISSÕES DAS PESSOAS (T15–T25, T16): o mesmo vidro escuro da
+   letra (T19) e da recompensa; cada peça na cor de quem pede (--cor). */
+.l-peca { position: absolute; inset: 0; z-index: 74; display: flex; align-items: center; justify-content: center; padding: 16px; background: rgba(3, 3, 10, 0.7); backdrop-filter: blur(6px); animation: l-sobe 0.35s both; color: #fff; }
+.l-peca.is-cheia { padding: 0; background: #07040c; z-index: 80; }
+.l-peca-caixa { width: min(460px, 100%); max-height: calc(100% - 24px); overflow: auto; display: flex; flex-direction: column; gap: 12px; padding: 18px 16px 14px; border-radius: 18px; background: rgba(6, 6, 16, 0.94); border: 1px solid color-mix(in srgb, var(--cor) 55%, transparent); box-shadow: 0 0 40px color-mix(in srgb, var(--cor) 25%, transparent); }
+.l-peca-caixa > small { font: 700 10px var(--mono, ui-monospace); letter-spacing: 0.14em; text-transform: uppercase; color: var(--cor); }
+.l-peca-caixa > b { font: 800 clamp(26px, 7.5vw, 36px)/0.95 var(--cond, system-ui); text-transform: uppercase; letter-spacing: 0.03em; }
+.l-peca-dica { margin: 0; font: 13px/1.4 system-ui, sans-serif; color: rgba(255, 255, 255, 0.72); }
+.l-peca-placar { margin: 0; font: 11px var(--mono, ui-monospace); letter-spacing: 0.06em; color: rgba(255, 255, 255, 0.6); }
+.l-peca-placar b { color: var(--cor); font-size: 14px; }
+.l-peca-aviso { margin: 0; font: 700 12px var(--mono, ui-monospace); color: var(--cor); animation: l-sobe 0.3s both; }
+.l-peca-fim { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; }
+.l-peca-fim > p { flex-basis: 100%; margin: 0; font: 14px/1.4 system-ui, sans-serif; color: rgba(255, 255, 255, 0.88); }
+.l-peca-fim button, .l-peca button.is-seguir, .l-peca button.is-volta { padding: 11px 14px; border-radius: 12px; border: 1px solid color-mix(in srgb, var(--cor) 50%, transparent); background: color-mix(in srgb, var(--cor) 12%, rgba(8, 6, 16, 0.9)); color: #fff; font: 700 14px system-ui, sans-serif; cursor: pointer; }
+.l-peca-fim button.is-seguir { margin-left: auto; background: var(--cor); color: #06060c; border-color: transparent; font: 800 14px var(--cond, system-ui); text-transform: uppercase; letter-spacing: 0.06em; }
+.l-peca-fim button:disabled { opacity: 0.4; cursor: default; }
+.l-peca kbd { display: inline-block; min-width: 18px; margin-right: 8px; padding: 1px 5px; border-radius: 5px; background: rgba(255, 255, 255, 0.1); font: 700 10px var(--mono, ui-monospace); text-align: center; color: var(--cor); }
+
+/* T15 · a dança */
+.l-danca-pista { position: relative; height: min(46vh, 300px); border-radius: 14px; overflow: hidden; background: radial-gradient(circle at 50% 120%, color-mix(in srgb, var(--cor) 40%, #0a0614), #05030b 70%); touch-action: none; cursor: pointer; user-select: none; }
+.l-danca-luz { position: absolute; top: -20%; width: 40%; height: 140%; opacity: 0.18; filter: blur(14px); transform-origin: 50% 0; animation: l-danca-luz calc(var(--beat) * 4) ease-in-out infinite alternate; }
+.l-danca-luz.is-a { left: 0; background: linear-gradient(#ff3fb0, transparent); }
+.l-danca-luz.is-b { left: 30%; background: linear-gradient(#2fe8ff, transparent); animation-delay: calc(var(--beat) * -1); }
+.l-danca-luz.is-c { right: 0; background: linear-gradient(#ffc857, transparent); animation-delay: calc(var(--beat) * -2); }
+@keyframes l-danca-luz { from { transform: rotate(-18deg); } to { transform: rotate(18deg); } }
+.l-danca-pista.is-acende .l-danca-luz { animation-play-state: running; opacity: 0.55; transition: opacity 0.2s; }
+.l-danca-pista.is-acende { animation: l-danca-flash 0.25s ease-out; }
+@keyframes l-danca-flash { from { box-shadow: inset 0 0 60px var(--cor); } to { box-shadow: inset 0 0 0 transparent; } }
+.l-danca-drew { position: absolute; left: 50%; bottom: 8%; width: 46px; height: 110px; margin-left: -23px; animation: l-danca-quica var(--beat) ease-in-out infinite; }
+.l-danca-drew b { position: absolute; left: 11px; top: 0; width: 24px; height: 24px; border-radius: 50%; background: #120d1f; box-shadow: 0 0 10px var(--cor); }
+.l-danca-drew span { position: absolute; left: 6px; top: 26px; width: 34px; height: 80px; border-radius: 16px 16px 6px 6px; background: #120d1f; box-shadow: 0 0 12px var(--cor); }
+@keyframes l-danca-quica { 0%, 100% { transform: translateY(0) rotate(-4deg); } 50% { transform: translateY(-10px) rotate(4deg); } }
+.l-danca-alvo, .l-danca-anel { position: absolute; left: 50%; top: 42%; width: 74px; height: 74px; border-radius: 50%; transform: translate(-50%, -50%); pointer-events: none; }
+.l-danca-alvo { border: 3px solid rgba(255, 255, 255, 0.75); box-shadow: 0 0 18px var(--cor); }
+.l-danca-anel { border: 3px solid var(--cor); will-change: transform, opacity; }
+.l-danca-msg { position: absolute; left: 50%; top: 18%; transform: translateX(-50%); font: 800 18px var(--cond, system-ui); font-style: normal; text-transform: uppercase; color: var(--cor); text-shadow: 0 0 10px var(--cor); animation: l-sobe 0.3s both; pointer-events: none; }
+
+/* T18 · a vinheta */
+.l-vinheta-trilhas { list-style: none; margin: 0; padding: 0; display: grid; gap: 8px; }
+.l-vinheta-trilhas li { display: grid; gap: 6px; padding: 8px; border-radius: 12px; border: 1px solid rgba(255, 255, 255, 0.08); opacity: 0.55; }
+.l-vinheta-trilhas li.is-agora, .l-vinheta-trilhas li.is-feita { opacity: 1; }
+.l-vinheta-trilhas li.is-agora { border-color: var(--cor); }
+.l-vinheta-trilhas small { font: 700 10px var(--mono, ui-monospace); letter-spacing: 0.12em; text-transform: uppercase; color: var(--cor); }
+.l-vinheta-trilhas li > div { display: flex; flex-wrap: wrap; gap: 6px; }
+.l-vinheta-trilhas button { padding: 8px 10px; border-radius: 10px; border: 1px solid rgba(255, 255, 255, 0.14); background: rgba(255, 255, 255, 0.04); color: #fff; font: 13px system-ui, sans-serif; cursor: pointer; }
+.l-vinheta-trilhas button.is-esc { background: color-mix(in srgb, var(--cor) 30%, transparent); border-color: var(--cor); }
+.l-vinheta-fita { display: flex; align-items: center; gap: 10px; padding: 10px 12px; border-radius: 10px; background: #15131c; font: 700 12px var(--mono, ui-monospace); }
+.l-vinheta-fita i { width: 22px; height: 22px; border-radius: 50%; border: 4px dotted rgba(255, 255, 255, 0.5); }
+.l-vinheta-fita.is-rec i { animation: l-gira 1s linear infinite; }
+.l-vinheta-fita.is-rec span { color: #ff3b3b; }
+@keyframes l-gira { to { transform: rotate(360deg); } }
+
+/* T23 · a trilha 8 bits */
+.l-trilha8-grade { display: grid; gap: 6px; padding: 10px; border-radius: 12px; background: #0d0b14; border: 2px solid #2a2440; image-rendering: pixelated; }
+.l-trilha8-linha { display: grid; grid-template-columns: 62px repeat(8, 1fr); gap: 4px; align-items: center; }
+.l-trilha8-linha small { font: 700 9px var(--mono, ui-monospace); letter-spacing: 0.08em; text-transform: uppercase; color: rgba(255, 255, 255, 0.6); }
+.l-trilha8-linha button { aspect-ratio: 1; border: 0; border-radius: 3px; background: #1d1830; cursor: pointer; padding: 0; }
+.l-trilha8-linha button.is-passo { outline: 2px solid rgba(255, 255, 255, 0.35); }
+.l-trilha8-linha button.is-on { background: var(--cor); box-shadow: 0 0 8px var(--cor); }
+.l-maquina-raiz { z-index: 81; }
+.l-maquina-menu { position: absolute; inset: 0; display: flex; flex-direction: column; justify-content: center; gap: 12px; width: min(420px, 100%); margin: 0 auto; padding: 24px 16px; }
+.l-maquina-menu small { font: 700 10px var(--mono, ui-monospace); letter-spacing: 0.14em; text-transform: uppercase; color: var(--cor); }
+.l-maquina-menu b { font: 800 40px/1 var(--cond, system-ui); letter-spacing: 0.04em; color: var(--cor); text-shadow: 0 0 16px var(--cor); }
+.l-maquina-menu p { margin: 0; font: 15px/1.45 system-ui, sans-serif; color: rgba(255, 255, 255, 0.85); }
+
+/* T24 · o clipe */
+.l-clipe-quadro { position: relative; align-self: center; width: min(58vw, 210px); aspect-ratio: 9 / 16; border-radius: 14px; overflow: hidden; background: #08060f; border: 2px solid color-mix(in srgb, var(--cor) calc(40% + var(--p, 0) * 60%), transparent); box-shadow: 0 0 calc(var(--p, 0) * 24px) var(--cor); }
+.l-clipe-cena { position: absolute; inset: 0; animation: l-sobe 0.18s both; }
+.l-clipe-cena i { position: absolute; inset: 0; display: none; }
+.is-cam-a .l-clipe-a { display: block; background: radial-gradient(circle at 50% 38%, #120d1f 15%, transparent 16%), radial-gradient(ellipse at 50% 78%, #120d1f 30%, transparent 31%), radial-gradient(circle at 50% 50%, color-mix(in srgb, var(--cor) 55%, #1a0b16), #07030a 75%); animation: l-clipe-zoom 3s ease-in-out infinite alternate; }
+.is-cam-b .l-clipe-b { display: block; background: repeating-linear-gradient(0deg, transparent 0 18px, rgba(255, 255, 255, 0.4) 18px 20px), linear-gradient(90deg, transparent 30%, #d9dde8 30% 33%, transparent 33% 67%, #d9dde8 67% 70%, transparent 70%), linear-gradient(#05030b, color-mix(in srgb, var(--cor) 30%, #05030b)); background-size: 100% 40px, 100% 100%, 100% 100%; animation: l-clipe-trilho 0.5s linear infinite; }
+.is-cam-c .l-clipe-c { display: block; background: repeating-linear-gradient(90deg, #120d1f 0 22px, transparent 22px 30px, #1b1430 30px 52px, transparent 52px 64px), linear-gradient(#2b0f2a, #ff6a35 120%); background-size: 128px 55%, 100% 100%; background-position: 0 100%, 0 0; background-repeat: repeat-x, no-repeat; animation: l-clipe-cidade 2.2s linear infinite; }
+@keyframes l-clipe-zoom { to { transform: scale(1.12) rotate(2deg); } }
+@keyframes l-clipe-trilho { to { background-position: 0 40px, 0 0, 0 0; } }
+@keyframes l-clipe-cidade { to { background-position: -128px 100%, 0 0; } }
+.l-clipe-rec, .l-clipe-conta { position: absolute; top: 8px; font: 700 9px var(--mono, ui-monospace); letter-spacing: 0.06em; text-shadow: 0 0 4px #000; }
+.l-clipe-rec { left: 8px; color: #ff3b3b; }
+.l-clipe-conta { right: 8px; color: #fff; }
+.l-clipe-cams { display: grid; grid-template-columns: repeat(3, 1fr); gap: 6px; }
+.l-clipe-cams button { padding: 9px 6px; border-radius: 10px; border: 1px solid rgba(255, 255, 255, 0.14); background: rgba(255, 255, 255, 0.04); color: #fff; font: 12px/1.2 system-ui, sans-serif; cursor: pointer; }
+.l-clipe-cams button.is-no-ar { border-color: var(--cor); background: color-mix(in srgb, var(--cor) 28%, transparent); }
+.l-clipe-fita { list-style: none; margin: 0; padding: 0; display: flex; gap: 4px; min-height: 22px; }
+.l-clipe-fita li { padding: 3px 6px; border-radius: 5px; background: rgba(255, 255, 255, 0.08); font: 700 10px var(--mono, ui-monospace); }
+.l-clipe-fita li.is-tempo { background: var(--cor); color: #06060c; }
+
+/* T25 · a cozinha */
+.l-cozinhar-barra { position: relative; height: 22px; border-radius: 11px; overflow: hidden; background: linear-gradient(90deg, transparent calc(var(--ini) * 100%), rgba(255, 255, 255, 0.22) calc(var(--ini) * 100%) calc(var(--fim) * 100%), transparent calc(var(--fim) * 100%)), #1a1420; }
+.l-cozinhar-barra i { position: absolute; inset: 0; transform-origin: left; background: linear-gradient(90deg, #ffc857, #ff6a35 70%, #3a1a10); opacity: 0.85; }
+.l-cozinhar-fogo { padding: 18px; border-radius: 14px; border: 1px solid #ff6a35; background: rgba(255, 106, 53, 0.12); color: #fff; font: 800 16px var(--cond, system-ui); text-transform: uppercase; cursor: pointer; user-select: none; }
+.l-cozinhar-fogo.is-on { background: #ff6a35; color: #06060c; box-shadow: 0 0 24px #ff6a35; }
+.l-cozinhar-prato { font: 800 18px var(--cond, system-ui) !important; text-transform: uppercase; color: var(--cor) !important; }
+
+/* T16 · o disco antigo e a sinuca */
+.l-disco-caixote { display: grid; grid-template-columns: repeat(2, 1fr); gap: 6px; }
+.l-disco-caixote button { display: grid; gap: 2px; text-align: left; padding: 9px 10px; border-radius: 10px; border: 1px solid rgba(255, 255, 255, 0.12); background: linear-gradient(135deg, hsl(var(--h) 45% 22%), #120d18); color: #fff; cursor: pointer; }
+.l-disco-caixote button.is-esc { border-color: var(--cor); box-shadow: 0 0 12px color-mix(in srgb, var(--cor) 50%, transparent); }
+.l-disco-caixote b { font: 700 13px/1.2 Georgia, serif; }
+.l-disco-caixote small { font: 10px var(--mono, ui-monospace); color: rgba(255, 255, 255, 0.6); }
+.l-disco-vitrola { position: relative; align-self: center; width: 220px; height: 150px; border-radius: 12px; background: linear-gradient(#5a3a22, #3a2414); box-shadow: inset 0 0 0 4px #2a190d, 0 8px 20px rgba(0, 0, 0, 0.5); }
+.l-disco-prato { position: absolute; left: 16px; top: 12px; width: 126px; height: 126px; border-radius: 50%; background: #1a1a1a; }
+.l-disco-vinil { position: absolute; inset: 4px; border-radius: 50%; display: none; background: repeating-radial-gradient(circle, #111 0 2px, #1d1d1d 2px 3px); }
+.l-disco-vinil span { position: absolute; left: 50%; top: 50%; width: 44px; height: 44px; margin: -22px 0 0 -22px; border-radius: 50%; background: var(--cor); color: #1a1208; font: 700 6px/1.1 Georgia, serif; display: grid; place-items: center; text-align: center; padding: 6px; overflow: hidden; }
+.l-disco-vitrola.is-com-disco .l-disco-vinil { display: block; }
+.l-disco-vitrola.is-tocando .l-disco-vinil { animation: l-gira 1.8s linear infinite; }
+.l-disco-braco { position: absolute; right: 22px; top: 14px; width: 10px; height: 100px; border: 0; border-radius: 5px; background: linear-gradient(#ddd, #888); transform-origin: 50% 8px; transform: rotate(8deg); transition: transform 0.6s ease; cursor: pointer; padding: 0; }
+.l-disco-braco:disabled { cursor: default; }
+.l-disco-vitrola.is-com-disco .l-disco-braco:not(:disabled) { box-shadow: 0 0 10px var(--cor); }
+.l-disco-vitrola.is-tocando .l-disco-braco { transform: rotate(28deg); }
+.l-sinuca-fim { position: fixed; inset: 0; z-index: 85; display: flex; align-items: center; justify-content: center; padding: 16px; background: rgba(3, 3, 10, 0.6); backdrop-filter: blur(4px); }
+.l-sinuca-fim > div { width: min(380px, 100%); display: grid; gap: 10px; padding: 18px 16px; border-radius: 18px; background: rgba(6, 6, 16, 0.94); border: 1px solid var(--cor); }
+.l-sinuca-fim small { font: 700 10px var(--mono, ui-monospace); letter-spacing: 0.14em; text-transform: uppercase; color: var(--cor); }
+.l-sinuca-fim b { font: 800 30px/1 var(--cond, system-ui); text-transform: uppercase; }
+.l-sinuca-fim p { margin: 0; font: 14px/1.4 system-ui, sans-serif; }
+.l-sinuca-fim em { opacity: 0.55; font-style: normal; font-size: 12px; }
+.l-peca.is-sinuca .sn-raiz { z-index: 80; }
+
+/* T15 · a moda do Drew (bloco 1 · A3): o manequim e as peças recicladas */
+.l-peca-moda { display: flex; flex-direction: column; gap: 10px; }
+.l-moda-manequim { position: relative; align-self: center; width: 90px; height: 170px; }
+.l-moda-manequim i { position: absolute; left: 50%; transform: translateX(-50%); transition: background 0.2s; }
+.l-moda-manequim .is-cabeca { top: 0; width: 40px; height: 18px; border-radius: 20px 20px 4px 4px; z-index: 2; }
+.l-moda-manequim .is-rosto { top: 10px; width: 30px; height: 30px; border-radius: 50%; background: #c98a5a; }
+.l-moda-manequim .is-tronco { top: 42px; width: 58px; height: 52px; border-radius: 14px 14px 6px 6px; }
+.l-moda-manequim .is-acessorio { top: 44px; width: 22px; height: 22px; border-radius: 50%; margin-left: 14px; box-shadow: 0 0 8px rgba(0, 0, 0, 0.5); }
+.l-moda-manequim .is-pernas { top: 94px; width: 48px; height: 56px; border-radius: 4px 4px 2px 2px; }
+.l-moda-manequim .is-pes { top: 150px; width: 58px; height: 12px; border-radius: 6px; }
+.l-moda-manequim.is-desfile { animation: l-moda-passo 0.84s ease-in-out infinite alternate; filter: drop-shadow(0 0 12px var(--cor)); }
+@keyframes l-moda-passo { from { transform: translateX(-10px) rotate(-1.5deg); } to { transform: translateX(10px) rotate(1.5deg); } }
+.l-moda-partes { display: flex; flex-wrap: wrap; gap: 4px; }
+.l-moda-partes button { padding: 6px 9px; border-radius: 999px; border: 1px solid rgba(255, 255, 255, 0.14); background: transparent; color: rgba(255, 255, 255, 0.7); font: 700 11px var(--mono, ui-monospace); cursor: pointer; }
+.l-moda-partes button.is-feita { color: #fff; border-color: color-mix(in srgb, var(--cor) 50%, transparent); }
+.l-moda-partes button.is-agora { background: var(--cor); color: #06060c; border-color: transparent; }
+.l-moda-opcoes { display: flex; flex-direction: column; gap: 6px; }
+.l-moda-opcoes button { display: flex; align-items: center; gap: 8px; padding: 9px 10px; border-radius: 10px; border: 1px solid rgba(255, 255, 255, 0.14); background: rgba(255, 255, 255, 0.04); color: #fff; font: 13px system-ui, sans-serif; text-align: left; cursor: pointer; }
+.l-moda-opcoes button i { width: 14px; height: 14px; border-radius: 4px; flex: none; }
+.l-moda-opcoes button.is-esc { border-color: var(--cor); background: color-mix(in srgb, var(--cor) 28%, transparent); }
+.l-moda-look { font: 800 15px var(--cond, system-ui) !important; text-transform: uppercase; color: var(--cor) !important; }
+
+/* (09/11) a cozinha do Tony no mundo: sem fundo e sem caixa, só os controles em cima do fogão */
+.l-peca.is-mundo { display: block; padding: 0; background: none; backdrop-filter: none; -webkit-backdrop-filter: none; animation: none; color: #fff; }
+.l-peca.is-mundo .l-peca-cozinhar { position: absolute; inset: 0; }
+.l-peca.is-mundo .l-peca-dica { position: absolute; left: 50%; top: max(14px, env(safe-area-inset-top)); transform: translateX(-50%); width: max-content; max-width: 88%; margin: 0; padding: 6px 12px; border-radius: 4px; background: rgba(241, 229, 200, 0.92); color: #1a1208; font-weight: 700; text-align: center; }
+.l-cozinhar-mundo button { position: absolute; width: 22%; height: 130px; transform: translate(-50%, -50%); padding: 0; border: 0; background: none; color: #1a1208; cursor: pointer; }
+.l-cozinhar-mundo span { position: absolute; left: 50%; bottom: 0; transform: translateX(-50%); padding: 3px 6px; border: 2px solid #1a1208; background: #f8d94c; font: 800 11px ui-sans-serif, sans-serif; white-space: nowrap; }
+.l-cozinhar-mundo .is-esc span { background: #d11d1d; color: #fff; }
+.l-peca.is-mundo .l-peca-fim { position: absolute; left: 0; right: 0; bottom: max(22px, env(safe-area-inset-bottom)); display: flex; flex-direction: column; align-items: center; gap: 8px; margin: 0; }
+.l-peca.is-mundo .l-peca-fim p { margin: 0; max-width: 88%; padding: 5px 12px; border-radius: 4px; background: rgba(241, 229, 200, 0.92); color: #1a1208; text-align: center; }
+.l-peca.is-mundo .l-cozinhar-barra { position: absolute; left: 12%; right: 12%; bottom: 100px; }
+.l-peca.is-mundo .l-cozinhar-fogo { position: absolute; left: 50%; bottom: max(26px, env(safe-area-inset-bottom)); transform: translateX(-50%); width: min(280px, 70%); }

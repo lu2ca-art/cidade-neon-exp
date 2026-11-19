@@ -10,16 +10,17 @@
 // pra home antiga ("/", que agora redireciona pra /linha, ou "/drive"), a
 // janela fecha e você volta pra cá.
 
+import { Trancado } from "./Trancado"
 import { useEffect, useMemo, useRef, useState } from "react"
 import { ESTACOES, NIVEIS, dataCurta, estacao as getEstacao, lancada, missao, type EstacaoId, type ProvaId } from "./data"
-import { ECOS, ROTEIROS, VOZES, type ChatId } from "./roteiros"
+import { ECOS, ROTEIROS, VOZES, jogoVelho, type ChatId } from "./roteiros"
 import { sequencia, type Save } from "./estado"
 import { FREQUENCIAS, freqsLiberadas } from "./radio"
 import { Objeto } from "./objetos"
 import { Prova } from "./provas"
 import { JardimFundo } from "./recursos"
 import { MEMORIAS, MISSOES, ativa, conhecidos, etapaDe, itensFaltando } from "./missoes"
-import { player } from "./som"
+import { player, silenciar } from "./som"
 import { track } from "@/lib/analytics"
 import { PreSave, Plataformas } from "./plataformas"
 
@@ -58,7 +59,7 @@ export const APPS: AppDef[] = [
   { id: "sintonia", nome: "SINT0NIA", cor: "#00e5ff", rota: "/sintonizador", pagina: 0, desc: "sintonizador" },
   { id: "freq", nome: "FR3Q_", cor: "#00ff9c", rota: "/spotify/auto-chuva", pagina: 0, desc: "player" },
   { id: "loop", nome: "//LOOP", cor: "#ff2d78", rota: "/tiktok/feed", pagina: 0, desc: "vídeos curtos" },
-  { id: "loja", nome: "LOJA DE DISCOS", cor: "#ffc857", pagina: 1, desc: "discos pra kombi, pagos em neon" },
+  { id: "loja", nome: "LOJA", cor: "#ffc857", pagina: 1, desc: "discos, instrumentos, carros e roupas, pagos em Água$" },
   { id: "museu", nome: "MUSEU", cor: "#e9e3d5", rota: "/museu", pagina: 1, desc: "quem inspira" },
   { id: "galeria", nome: "GALERIA", cor: "#3d7bff", rota: "/galeria", pagina: 1, desc: "quadros" },
   { id: "stream", nome: "STR34M", cor: "#ff4040", rota: "/youtube/cidade-neon", pagina: 1, desc: "clipes" },
@@ -74,6 +75,11 @@ export const DOCK: AppId[] = ["kombi", "n3xo", "linha", "radio"]
 // O fliperama saiu em 14/10 (LU2CA): as máquinas ficam só no estabelecimento
 // do fliperama (/fliperama), e os minigames viraram momentos do mundo
 export const ESCONDIDOS: AppId[] = ["museu", "feelgood", "galeria", "salabranca", "jardim", "fliperama"]
+// (T41 B1) os apps do jogo velho que no jogo novo não aparecem (nem no holo, nem
+// no celular): o N3XO_ (as conversas) e a LINHA 9 (o mapa da Linha 222 com o
+// grupo). Ficam no código; a chave é jogoVelho() (roteiros.ts)
+export const APPS_VELHOS: AppId[] = ["n3xo", "linha"]
+export const appDesligado = (id: AppId) => APPS_VELHOS.includes(id) && !jogoVelho()
 
 export function Glifo({ id, cor, size = 26 }: { id: AppId; cor: string; size?: number }) {
   const p = { width: size, height: size, viewBox: "0 0 24 24", fill: "none", stroke: cor, strokeWidth: 1.5, strokeLinecap: "round" as const, strokeLinejoin: "round" as const }
@@ -139,6 +145,8 @@ export function legadoFeito(): string[] {
 // está valendo. O resto (minigames antigos, rádio) só aparece depois que a
 // pessoa já fez a primeira missão — antes disso é ruído.
 export function chamados(save: Save, nivel: number): Chamado[] {
+  // (T41 B1) no jogo novo ninguém te chama por mensagem: o Nexo só informa (o notch)
+  if (!jogoVelho()) return []
   const out: Chamado[] = []
   const ecos = save.objetos.filter((o) => !save.ecosVistos.includes(o) && ECOS[o]).length
   if (ecos) out.push({ id: "ecos", de: "222", cor: "#2fe8ff", texto: `${ecos} ${ecos === 1 ? "mensagem nova" : "mensagens novas"} no grupo`, acao: { chat: "grupo" } })
@@ -161,7 +169,7 @@ export function chamados(save: Save, nivel: number): Chamado[] {
   for (const l of LEGADO) {
     if (feitos.includes(l.id)) continue
     const app = APPS.find((x) => x.id === l.app)!
-    out.push({ id: `leg-${l.id}`, de: l.nome, cor: app.cor, texto: `${app.desc} · +${l.luz} neon`, acao: { app: l.app } })
+    out.push({ id: `leg-${l.id}`, de: l.nome, cor: app.cor, texto: `${app.desc} · +${l.luz} Água$`, acao: { app: l.app } })
   }
   const prox = FREQUENCIAS.find((f) => f.custo > save.sinal)
   if (prox) out.push({ id: "freq", de: "RÁDIO 222", cor: prox.cor, texto: `faltam ${prox.custo - save.sinal} de sinal pra ${prox.freq}. pega na estrada`, acao: { app: "kombi" } })
@@ -197,7 +205,7 @@ export function Home({
 
   const b = lista.length ? lista[banner % lista.length] : null
   // todos os apps na página inicial (06/10, LU2CA)
-  const grade = APPS.filter((a) => !DOCK.includes(a.id) && !ESCONDIDOS.includes(a.id))
+  const grade = APPS.filter((a) => !DOCK.includes(a.id) && !ESCONDIDOS.includes(a.id) && !appDesligado(a.id))
 
   return (
     <section className="l-os">
@@ -241,7 +249,7 @@ export function Home({
                     </span>
                     <span className="l-widget-nivel">{NIVEIS[nivel].nome}</span>
                     <span className="l-widget-barra">{NIVEIS.map((n, i) => <i key={n.nome} className={i <= nivel ? "is-feito" : ""} />)}</span>
-                    <span className="l-widget-nums"><b>{save.neon ?? 0}</b> neon · <b>{Math.round(save.popularidade ?? 0)}</b> popularidade</span>
+                    <span className="l-widget-nums"><b>{save.agua ?? 0}</b> Água$ · <b>{Math.round(save.popularidade ?? 0)}</b> popularidade</span>
                     {nivel < 4 && <small>próximo: {prox.como}</small>}
                   </button>
                   <div className="l-widget l-widget-radio" style={{ ["--cor" as string]: freq.cor }}>
@@ -269,7 +277,7 @@ export function Home({
 
 
       <div className="l-os-dock">
-        {DOCK.map((id) => <IconeApp key={id} a={APPS.find((x) => x.id === id)!} nivel={nivel} onApp={onApp} semNome />)}
+        {DOCK.filter((id) => !appDesligado(id)).map((id) => <IconeApp key={id} a={APPS.find((x) => x.id === id)!} nivel={nivel} onApp={onApp} semNome />)}
         <button type="button" className="l-os-central" onClick={() => setCentral(true)}>
           missões{lista.length > 0 && <em>{lista.length}</em>}
         </button>
@@ -329,6 +337,12 @@ export function AppTopo({ titulo, cor, onVoltar, extra }: { titulo: string; cor:
 export function AppJanela({ app, onFechar, rota }: { app: AppDef; onFechar: () => void; rota?: string }) {
   const ref = useRef<HTMLIFrameElement>(null)
   const [carregou, setCarregou] = useState(false)
+  // (LU2CA 19/10) entrou num jogo do holo: a música da pista (e o rádio, o
+  // disco) para enquanto ele está aberto; fechou, volta de onde estava
+  useEffect(() => {
+    silenciar(true)
+    return () => silenciar(false)
+  }, [])
   useEffect(() => {
     player.pausar()
     track("place_entered", { place_id: `linha-app-${app.id}`, place_type: "app" })
@@ -337,7 +351,7 @@ export function AppJanela({ app, onFechar, rota }: { app: AppDef; onFechar: () =
     const t = setInterval(() => {
       try {
         const p = ref.current?.contentWindow?.location.pathname
-        if (p && (p === "/" || p === "/linha" || p === "/drive" || p === "/drive-v2")) onFechar()
+        if (p && (p === "/" || p === "/linha" || p === "/cidade" || p === "/drive" || p === "/drive-v2")) onFechar()
       } catch {}
     }, 400)
     return () => clearInterval(t)
@@ -359,7 +373,18 @@ export function AppJanela({ app, onFechar, rota }: { app: AppDef; onFechar: () =
 }
 
 /* ─── N3XO: as conversas ───────────────────────────────── */
-export function N3xo({ save, nivel, onChat, onVoltar }: { save: Save; nivel: number; onChat: (id: ChatId) => void; onVoltar: () => void }) {
+type PropsN3xo = { save: Save; nivel: number; onChat: (id: ChatId) => void; onVoltar: () => void }
+// (T41 B1) no jogo novo o app de conversas não abre: volta pra onde estava
+export function N3xo(props: PropsN3xo) {
+  if (appDesligado("n3xo")) return <Volta onVoltar={props.onVoltar} />
+  return <N3xoVelho {...props} />
+}
+export function Volta({ onVoltar }: { onVoltar?: () => void }) {
+  const f = useRef(onVoltar)
+  useEffect(() => { f.current?.() }, [])
+  return null
+}
+function N3xoVelho({ save, nivel, onChat, onVoltar }: PropsN3xo) {
   const ecos = save.objetos.filter((o) => !save.ecosVistos.includes(o) && ECOS[o]).length
   const linhas: { id: ChatId | null; nome: string; cor: string; objeto?: EstacaoId; texto: string; estado: "novo" | "feito" | "trancado" | "escuro"; }[] = []
   const membros = ["D-Bee", ...save.objetos.filter((o) => o !== "ojala" && o !== "nectar").map((o) => getEstacao(o).personagem)]
@@ -413,7 +438,7 @@ const PROVAS_FLIPER: { id: ProvaId; nome: string; est: EstacaoId }[] = [
   { id: "violao", nome: "violão", est: "nectar" },
 ]
 
-export function Fliperama({ save, onApp, onVoltar, onJogou }: { save: Save; onApp: (id: AppId) => void; onVoltar: () => void; onJogou: (id: string, pulou?: boolean) => void }) {
+export function Fliperama({ save, onApp, onVoltar, onJogou, tranca }: { save: Save; onApp: (id: AppId) => void; onVoltar: () => void; onJogou: (id: string, pulou?: boolean) => void; tranca?: string | null }) {
   const [jogando, setJogando] = useState<ProvaId | null>(null)
   const feitos = legadoFeito()
   const e = jogando ? getEstacao(PROVAS_FLIPER.find((p) => p.id === jogando)!.est) : null
@@ -422,11 +447,12 @@ export function Fliperama({ save, onApp, onVoltar, onJogou }: { save: Save; onAp
       <AppTopo titulo="FLIPERAMA" cor="#ff6a35" onVoltar={onVoltar} />
       <div className="l-fliper-corpo">
         <p className="l-rotulo">da cidade · jogue quantas vezes quiser</p>
+        {tranca && <Trancado texto={tranca} />}
         <div className="l-fliper-grade">
           {PROVAS_FLIPER.map((p) => {
             const est = getEstacao(p.est)
             return (
-              <button key={p.id} type="button" className="l-fliper-card" style={{ ["--cor" as string]: est.cor }} onClick={() => setJogando(p.id)}>
+              <button key={p.id} type="button" className={`l-fliper-card${tranca ? " cn-card-trancado" : ""}`} style={{ ["--cor" as string]: est.cor }} onClick={() => { if (!tranca) setJogando(p.id) }} aria-disabled={!!tranca}>
                 <Objeto id={est.objeto} cor={est.cor} size={30} />
                 <b>{p.nome}</b>
                 <small>{est.faixa.toLowerCase()} · {save.jogados[p.id] ?? 0}x</small>
@@ -440,10 +466,10 @@ export function Fliperama({ save, onApp, onVoltar, onJogou }: { save: Save; onAp
             const a = APPS.find((x) => x.id === id)!
             const l = LEGADO.find((x) => x.app === id)
             return (
-              <button key={id} type="button" className="l-fliper-card" style={{ ["--cor" as string]: a.cor }} onClick={() => onApp(id)}>
+              <button key={id} type="button" className={`l-fliper-card${tranca ? " cn-card-trancado" : ""}`} style={{ ["--cor" as string]: a.cor }} onClick={() => { if (!tranca) onApp(id) }} aria-disabled={!!tranca}>
                 <Glifo id={id} cor={a.cor} size={30} />
                 <b>{a.nome}</b>
-                <small>{l ? (feitos.includes(l.id) ? "✓ completo" : `+${l.luz} neon`) : a.desc}</small>
+                <small>{l ? (feitos.includes(l.id) ? "✓ completo" : `+${l.luz} Água$`) : a.desc}</small>
               </button>
             )
           })}
@@ -497,7 +523,7 @@ export function Objetos({ save, onVoltar, onChat, onUsarGalao }: { save: Save; o
             <div className="l-ficha-alca" />
             <small className="l-rotulo">inventário</small>
             <h2>galão de gasolina</h2>
-            <p className="l-ficha-cidade">{save.galao === "cheio" ? "cheio." : "vazio."} serve pra quando a gasolina acabar. encher no posto custa 10 neon.</p>
+            <p className="l-ficha-cidade">{save.galao === "cheio" ? "cheio." : "vazio."} serve pra quando a gasolina acabar. encher no posto custa 10 de Água$.</p>
             {save.galao === "cheio" && onUsarGalao && (
               <button type="button" className="l-btn" onClick={() => { onUsarGalao(); setVerGalao(false) }}>usar no tanque</button>
             )}
@@ -524,7 +550,7 @@ export function Objetos({ save, onVoltar, onChat, onUsarGalao }: { save: Save; o
                 <p>{MEMORIAS[save.objetos.indexOf(s.id)]}</p>
               </blockquote>
             )}
-            {s.id in ROTEIROS && save.objetos.includes(s.id) && (
+            {s.id in ROTEIROS && save.objetos.includes(s.id) && jogoVelho() && (
               <button type="button" className="l-btn" onClick={() => onChat(s.id)}>
                 reler a conversa
               </button>

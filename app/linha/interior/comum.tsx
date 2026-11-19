@@ -120,7 +120,9 @@ export function Npc({ cor, pos, vira = 0, pose = "em-pe", falando = false, danca
     // quem fala vira pra câmera (devagar); quem não fala volta pro lugar
     let alvoY = vira
     if (falando) {
-      tmp.set(camera.position.x - pos[0], 0, camera.position.z - pos[2])
+      // (T22) a posição de verdade no mundo: quem anda pela sala (um grupo por fora) vira certo
+      g.current.getWorldPosition(tmp)
+      tmp.set(camera.position.x - tmp.x, 0, camera.position.z - tmp.z)
       alvoY = Math.atan2(tmp.x, tmp.z)
     }
     let dy = alvoY - g.current.rotation.y
@@ -180,14 +182,17 @@ useGLTF.preload(GLB.danca)
 // ── a multidão: muita gente num desenho só (instâncias do mesmo corpo) ──
 // `celulares`: quantos ainda filmam (luz branca em cima da cabeça); os que
 // abaixam o celular viram de frente pro meio e passam a balançar
-export interface Pessoa { x: number; z: number; vira: number; cor: string }
+// `y`: a altura do chão dela (fora das salas; nas salas o chão é 0)
+export interface Pessoa { x: number; z: number; vira: number; cor: string; y?: number }
 // a multidão usa uma versão leve do corpo (blender/scripts/gente.py: ~1/4 dos
 // triângulos): de longe ninguém vê a diferença, e 48 pessoas pesam como 12
-const GLB_LEVE = "/models/pessoa-leve.glb"
+export const GLB_LEVE = "/models/pessoa-leve.glb"
 useGLTF.preload(GLB_LEVE)
 // `copiam` (13/10, a popularidade): dos que já dançam, quantos repetem o seu
 // passo, pulando junto com cada toque seu (`pulso`: o instante do último, s)
-export function Multidao({ gente, celulares = 0, pele = "#2a2636", copiam = 0, pulso }: { gente: Pessoa[]; celulares?: number; pele?: string; copiam?: number; pulso?: React.RefObject<number> }) {
+// `fatia` (09/11, o final): com multidão enorme, cada quadro mexe só 1/fatia dela (a outra
+// parte fica como estava: de longe não dá pra ver e a conta por quadro cai junto)
+export function Multidao({ gente, celulares = 0, pele = "#2a2636", copiam = 0, pulso, fatia = 1 }: { gente: Pessoa[]; celulares?: number; pele?: string; copiam?: number; pulso?: React.RefObject<number>; fatia?: number }) {
   const { scene } = useGLTF(GLB_LEVE)
   const geo = useMemo(() => {
     let g: THREE.BufferGeometry | null = null
@@ -204,9 +209,14 @@ export function Multidao({ gente, celulares = 0, pele = "#2a2636", copiam = 0, p
     gente.forEach((p, i) => corpos.current!.setColorAt(i, cor.set(p.cor).lerp(new THREE.Color(pele), 0.55)))
     if (corpos.current.instanceColor) corpos.current.instanceColor.needsUpdate = true
   }, [gente, cor, pele])
+  const vez = useRef(-1)
   useFrame((s) => {
     const t = s.clock.elapsedTime
+    // o primeiro quadro põe todo mundo no lugar; depois vai por fatias
+    const v = vez.current < 0 ? -1 : vez.current
+    vez.current = (vez.current < 0 ? 0 : vez.current + 1) % fatia
     gente.forEach((p, i) => {
+      if (v >= 0 && fatia > 1 && i % fatia !== v) return
       const filma = i < celulares
       const solto = !filma // quem abaixou balança
       // quem copia (os últimos da lista, os de fora da roda, vão entrando primeiro)
@@ -214,13 +224,13 @@ export function Multidao({ gente, celulares = 0, pele = "#2a2636", copiam = 0, p
       const desde = copia ? performance.now() / 1000 - (pulso!.current ?? -9) : 9
       const pulo = copia ? Math.max(0, 1 - desde / 0.42) : 0
       const bate = copia ? Math.sin(Math.min(1, desde / 0.42) * Math.PI) * 0.32 + Math.abs(Math.sin(t * 5.6 + i)) * 0.03 : solto ? Math.abs(Math.sin(t * 5.6 + i)) * 0.08 : Math.sin(t * 1.3 + i) * 0.01
-      tmp.position.set(p.x, bate, p.z)
+      tmp.position.set(p.x, (p.y ?? 0) + bate, p.z)
       tmp.rotation.set(0, p.vira + (copia ? pulo * 0.6 : solto ? Math.sin(t * 2.8 + i) * 0.2 : 0), solto ? Math.sin(t * 2.8 + i) * 0.06 : 0)
       tmp.scale.setScalar(1)
       tmp.updateMatrix()
       corpos.current?.setMatrixAt(i, tmp.matrix)
       // o celular: na frente do rosto (filmando) ou guardado (some)
-      tmp.position.set(p.x + Math.sin(p.vira) * 0.3, filma ? 1.95 + Math.sin(t * 2 + i) * 0.02 : -5, p.z + Math.cos(p.vira) * 0.3)
+      tmp.position.set(p.x + Math.sin(p.vira) * 0.3, (p.y ?? 0) + (filma ? 1.95 + Math.sin(t * 2 + i) * 0.02 : -5), p.z + Math.cos(p.vira) * 0.3)
       tmp.rotation.set(0, p.vira, 0)
       tmp.updateMatrix()
       fones.current?.setMatrixAt(i, tmp.matrix)
@@ -233,10 +243,12 @@ export function Multidao({ gente, celulares = 0, pele = "#2a2636", copiam = 0, p
       <instancedMesh ref={corpos} args={[geo, undefined, n]} frustumCulled={false}>
         <meshStandardMaterial color="#ffffff" roughness={0.8} emissive="#1a1424" emissiveIntensity={0.4} />
       </instancedMesh>
-      <instancedMesh ref={fones} args={[undefined, undefined, n]} frustumCulled={false}>
-        <boxGeometry args={[0.08, 0.15, 0.01]} />
-        <meshBasicMaterial color="#e6f0ff" toneMapped={false} />
-      </instancedMesh>
+      {celulares > 0 && (
+        <instancedMesh ref={fones} args={[undefined, undefined, n]} frustumCulled={false}>
+          <boxGeometry args={[0.08, 0.15, 0.01]} />
+          <meshBasicMaterial color="#e6f0ff" toneMapped={false} />
+        </instancedMesh>
+      )}
     </group>
   )
 }

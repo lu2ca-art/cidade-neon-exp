@@ -1,0 +1,47 @@
+.gf-raiz { position: fixed; inset: 0; background: #0b0911; color: #f2eefa; font-family: var(--font-geist-sans), system-ui, sans-serif; overflow: hidden; user-select: none; -webkit-user-select: none; }
+.gf-raiz canvas { position: absolute; inset: 0; width: 100%; height: 100%; }
+.gf-brilho { filter: blur(9px) saturate(1.3); opacity: 0.55; pointer-events: none; }
+.gf-fx { touch-action: none; cursor: crosshair; }
+.gf-topo { position: absolute; top: 0; left: 0; right: 0; padding: calc(12px + env(safe-area-inset-top)) 16px 0; display: flex; justify-content: space-between; align-items: flex-start; gap: 12px; pointer-events: none; }
+.gf-topo a { pointer-events: auto; color: rgba(242,238,250,.7); font-size: 13px; text-decoration: none; padding: 6px 0; }
+.gf-selo { font: 800 11px var(--font-geist-mono), ui-monospace, monospace; letter-spacing: .14em; text-transform: uppercase; color: #14121c; background: #ffd23f; padding: 5px 9px; border-radius: 6px; }
+.gf-dica { position: absolute; left: 0; right: 0; bottom: calc(136px + env(safe-area-inset-bottom)); text-align: center; pointer-events: none; padding: 0 20px; }
+.gf-dica b { display: block; font: 900 22px "Arial Black", system-ui, sans-serif; letter-spacing: .02em; color: #ffd23f; text-shadow: 0 0 14px rgba(255,210,63,.5); }
+.gf-dica span { font-size: 14px; color: rgba(242,238,250,.8); }
+.gf-dica .gf-de-novo { pointer-events: auto; margin-top: 10px; padding: 10px 18px; border: 0; border-radius: 10px; background: #ff3fb0; color: #14121c; font: 800 14px var(--font-geist-sans), system-ui, sans-serif; cursor: pointer; }
+.gf-colecao { position: absolute; left: 0; right: 0; bottom: 0; padding: 10px 12px calc(12px + env(safe-area-inset-bottom)); display: flex; gap: 10px; justify-content: center; background: linear-gradient(transparent, rgba(5,4,10,.85) 40%); }
+.gf-item { flex: 1; max-width: 120px; border: 1px solid rgba(255,255,255,.14); border-radius: 12px; background: rgba(255,255,255,.04); color: inherit; padding: 6px; display: flex; flex-direction: column; align-items: center; gap: 4px; cursor: pointer; font: inherit; }
+.gf-item[aria-pressed="true"] { border-color: #ffd23f; background: rgba(255,210,63,.1); }
+.gf-item canvas { position: static; width: 64px; height: 64px; }
+.gf-item small { font-size: 11px; line-height: 1.2; color: rgba(242,238,250,.75); text-align: center; }
+.gf-item i { font-style: normal; font-size: 10px; letter-spacing: .1em; color: #22e6ff; }
+.gf-reset { position: absolute; right: 12px; top: calc(46px + env(safe-area-inset-top)); background: none; border: 0; color: rgba(242,238,250,.45); font-size: 11px; cursor: pointer; padding: 4px; }
+
+/* (T64) no mundo: por cima das trincheiras (.tr-raiz.is-jogo é 72) */
+.gf-raiz.is-mundo { z-index: 80; }
+.gf-sair { pointer-events: auto; background: none; border: 0; color: rgba(242,238,250,.8); font: inherit; font-size: 13px; padding: 6px 0; cursor: pointer; }
+.gf-botao { position: fixed; z-index: 80; left: 50%; bottom: calc(110px + env(safe-area-inset-bottom)); transform: translateX(-50%); display: flex; flex-direction: column; align-items: center; gap: 2px; padding: 10px 18px; border-radius: 14px; border: 1px solid #ffd23f; background: rgba(11, 9, 17, 0.86); color: #f2eefa; box-shadow: 0 0 20px -6px #ffd23f; cursor: pointer; font-family: var(--font-geist-sans), system-ui, sans-serif; animation: gf-entra 0.3s ease-out both; }
+.gf-botao small { font: 700 9px var(--font-geist-mono), ui-monospace, monospace; letter-spacing: .14em; text-transform: uppercase; color: #22e6ff; }
+.gf-botao b { font-size: 15px; color: #ffd23f; }
+@keyframes gf-entra { from { opacity: 0; transform: translate(-50%, 8px); } to { opacity: 1; transform: translate(-50%, 0); } }
+
+/* (T64, 06/11) o grafite livre: o botão trancado, o aviso, e a parede de desenhar */
+.gf-botao.is-trancado { border-color: rgba(242,238,250,.35); box-shadow: none; opacity: .8; }
+.gf-botao.is-trancado small { display: flex; align-items: center; gap: 4px; color: rgba(242,238,250,.7); }
+.gf-aviso { position: fixed; z-index: 80; left: 50%; transform: translateX(-50%); bottom: calc(176px + env(safe-area-inset-bottom)); max-width: 300px; }
+/* (08/11) sem fundo: o túnel continua ali, a câmera na frente da parede; o canvas fica exatamente em cima dela */
+.gf-tag { display: flex; flex-direction: column; align-items: center; justify-content: center; background: transparent; }
+.gf-tag .gf-topo { position: absolute; }
+.gf-tag canvas.gf-tag-parede { position: static; width: min(94vw, 144vh); height: auto; aspect-ratio: 2 / 1; background: #0b0812; touch-action: none; cursor: crosshair; animation: gf-parede 0.3s ease-out 0.45s both; }
+@keyframes gf-parede { from { opacity: 0; } to { opacity: 1; } }
+.gf-pintando .tr-hud, .gf-pintando .tr-toque, .gf-pintando .tr-correr, .gf-pintando .tr-elev-linha { visibility: hidden; }
+.gf-tag-dica { font: 700 11px var(--font-geist-mono), ui-monospace, monospace; letter-spacing: .12em; text-transform: uppercase; color: #22e6ff; padding: 8px 0; }
+.gf-tag-barra { position: absolute; left: 0; right: 0; bottom: calc(8px + env(safe-area-inset-bottom)); display: flex; gap: 10px; align-items: center; flex-wrap: wrap; justify-content: center; padding: 0 12px; }
+.gf-tag-cor { width: 34px; height: 34px; border-radius: 50%; border: 2px solid rgba(0,0,0,.6); cursor: pointer; }
+.gf-tag-cor.is-on { outline: 3px solid #f2eefa; outline-offset: 2px; }
+.gf-tag-bt { padding: 10px 14px; border-radius: 10px; border: 1px solid rgba(242,238,250,.3); background: transparent; color: #f2eefa; font: 700 13px var(--font-geist-sans), system-ui, sans-serif; cursor: pointer; }
+.gf-tag-bt.is-pronto { background: #ff3fb0; border-color: #ff3fb0; color: #14121c; }
+.gf-tag-bt:disabled { opacity: .4; cursor: default; }
+
+/* (revisão 06/11) o botão do trem divide o salão com as paredes da tag: sobe pra esquerda, sem tampar o do grafite */
+.gf-botao.is-metro, .gf-aviso.is-metro { left: 24%; }

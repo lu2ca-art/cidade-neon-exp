@@ -7,6 +7,7 @@
 import { useCallback, useEffect, useState } from "react"
 import { useRouter } from "next/navigation"
 import { sairDaPagina } from "../linha/paginas"
+import { Cadeado, Trancado, lerTranca } from "../linha/Trancado"
 import { Cobra } from "./cobra"
 import { Invasores } from "./invasores"
 import { Linha9 } from "./linha9"
@@ -37,13 +38,17 @@ export default function Fliperama() {
   const [neon, setNeon] = useState(0)
   const [rec, setRec] = useState<Record<string, number>>({})
   const [msg, setMsg] = useState("")
+  // (vitrine, 02/11) entrou com o fliperama ainda trancado: vê as máquinas, com o cadeado
+  const [tranca, setTranca] = useState<string | null>(null)
   useEffect(() => {
     // eslint-disable-next-line react-hooks/set-state-in-effect
     setNeon(saldoInicial())
+    setTranca(lerTranca())
     try { setRec(JSON.parse(localStorage.getItem(CHAVE) || "{}")) } catch {}
   }, [])
 
   const jogar = async (m: Maquina) => {
+    if (tranca) { setMsg(tranca); setTimeout(() => setMsg(""), 2500); return }
     ac()
     const r = await mudarNeon(-FICHA)
     if (!r.ok) { setMsg("sem neon pra ficha"); setTimeout(() => setMsg(""), 2500); return }
@@ -74,13 +79,14 @@ export default function Fliperama() {
       <section className="fp-menu">
         <header>
           <button type="button" onClick={() => sairDaPagina(router.push)}>‹ sair</button>
-          <span>{neon} <small>neon$</small></span>
+          <span>{neon} <small>Água$</small></span>
         </header>
         <h1>FLIPERAMA</h1>
-        <p className="fp-sub">uma ficha = {FICHA} neon</p>
+        <p className="fp-sub">uma ficha = {FICHA} de Água$</p>
+        {tranca && <Trancado texto={tranca} />}
         {MAQUINAS.map((m) => (
-          <button key={m.id} type="button" className="fp-maquina" style={{ ["--cor" as string]: m.cor }} onClick={() => void jogar(m.id)}>
-            <b>{m.nome}</b><small>{m.desc}</small><em>recorde: {rec[m.id] ?? 0}</em>
+          <button key={m.id} type="button" className={`fp-maquina${tranca ? " cn-card-trancado" : ""}`} style={{ ["--cor" as string]: m.cor }} onClick={() => void jogar(m.id)} aria-disabled={!!tranca}>
+            <b>{tranca && <Cadeado />}{m.nome}</b><small>{m.desc}</small><em>{tranca ? "trancada" : `recorde: ${rec[m.id] ?? 0}`}</em>
           </button>
         ))}
         {msg && <p className="fp-msg">{msg}</p>}

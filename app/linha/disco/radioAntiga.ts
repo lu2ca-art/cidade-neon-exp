@@ -1,0 +1,62 @@
+// ONDE A RÁDIO SOA ANTIGA (trilha sonora, 05/11; bíblia, seção 9: "ao chegar
+// do deserto no subúrbio Xenom, começa a rádio, com filtro de rádio antigo").
+//
+// - a zona do som: cidade (nas pistas), subúrbio (no chão, perto do anel),
+//   deserto (no chão, longe) e túneis (as trincheiras)
+// - no subúrbio a rádio passa pelo filtro de rádio antigo (som.ts, radioAntiga);
+//   no deserto, rádio antigo com SINAL RUIM (18/11, o dono: mais chiado, o sinal
+//   indo e voltando); nos TÚNEIS a rádio não pega (só a mídia física); na cidade, limpa
+// - a PRIMEIRA chegada do deserto no subúrbio avisa quem ouve (a page.tsx liga
+//   a rádio uma vez só e grava no save; depois respeita se ele desligou)
+//
+// Barato: o Corrida chama definirZonaSom a cada quadro; só faz algo quando muda.
+
+import { radioAntiga } from "../som"
+import { alemDaCidade } from "../estrada/raioCidade"
+
+export type ZonaSom = "cidade" | "suburbio" | "deserto" | "tuneis"
+
+// o mesmo raio que o clima usa (Corrida.tsx): no chão e mais longe que isso do
+// centro do mapa, é deserto (a casa da D-Bee fica a ~2600 m; o subúrbio, a ~1000 m)
+// (revisão 05/11) medido como o clima mede desde as ruas do tamanho da faixa:
+// alemDaCidade (raioCidade.ts), a distância descontado o quanto a cidade cresceu
+// naquele rumo. Com o raio cru, o chão embaixo da cidade nova (1,3 a 2 km) virava
+// "deserto" pro som (Rádio Xenom, sem filtro) e "cidade" pro clima
+export const RAIO_DESERTO = 1300
+
+/** onde a Kombi está, pro som: `livre` = fora das vias (no chão), wx/wz = a posição */
+export function zonaDoSom(livre: boolean, wx: number | undefined, wz: number | undefined): ZonaSom {
+  if (!livre || wx === undefined || wz === undefined) return "cidade"
+  return alemDaCidade(wx, wz) > RAIO_DESERTO ? "deserto" : "suburbio"
+}
+
+// o filtro de rádio antigo vale aqui; no deserto, com sinal ruim; nos túneis a
+// rádio não pega: lá só a mídia física (o MP3, os discos) (18/11, o dono)
+export const ZONAS_RADIO_ANTIGA: ZonaSom[] = ["suburbio"]
+
+let zona: ZonaSom | null = null
+const ouvintes = new Set<() => void>()
+// (rádios, 05/11) quem quer saber de toda troca de zona (a estação muda com ela: disco/radios.ts)
+const ouvintesZona = new Set<(z: ZonaSom, antes: ZonaSom | null) => void>()
+export const zonaSomAgora = () => zona
+
+export function definirZonaSom(z: ZonaSom) {
+  if (z === zona) return
+  const antes = zona
+  zona = z
+  radioAntiga(z === "deserto" ? "ruim" : z === "tuneis" ? "mudo" : ZONAS_RADIO_ANTIGA.includes(z))
+  if (antes === "deserto" && z === "suburbio") ouvintes.forEach((f) => f())
+  ouvintesZona.forEach((f) => f(z, antes))
+}
+
+/** toda troca de zona (barato: só chama quando muda) */
+export function aoMudarZona(f: (z: ZonaSom, antes: ZonaSom | null) => void) {
+  ouvintesZona.add(f)
+  return () => { ouvintesZona.delete(f) }
+}
+
+/** chegou do deserto no subúrbio (toda vez; quem ouve decide se é a primeira) */
+export function aoChegarNoSuburbio(f: () => void) {
+  ouvintes.add(f)
+  return () => { ouvintes.delete(f) }
+}

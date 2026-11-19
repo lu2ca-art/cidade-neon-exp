@@ -3,15 +3,19 @@
 // toca-discos da Kombi e toca o disco inteiro, faixa por faixa. Os arquivos
 // moram no Vercel Blob (comprimidos a 96 kbps), a lista em discos.json.
 // O acervo antigo (domínio público) é de todo mundo, de graça.
+// (09/11) Mais três discos de domínio público, à venda como os outros. Os arquivos
+// moram em public/loja-discos/dp/ e só baixam ao tocar (o crédito de cada um em
+// public/creditos-dominio-publico.txt).
 
 import faixasJson from "./discos.json"
 import vinis from "./vinis.json"
 import type { Motivo } from "./capa"
 
-export const PRECO_DISCO = 100
+// (T03) o preço mora no rascunho da economia
+export { PRECO_DISCO } from "./economia-rascunho"
 
 export interface Faixa { titulo: string; autor: string; src: string; dur: number }
-export interface DiscoLoja { id: string; titulo: string; motivo: Motivo; a: string; b: string; faixas: Faixa[]; gratis?: boolean }
+export interface DiscoLoja { id: string; titulo: string; motivo: Motivo; a: string; b: string; faixas: Faixa[]; gratis?: boolean; dominio?: boolean }
 
 const META: Record<string, { titulo: string; motivo: Motivo; a: string; b: string }> = {
   "hip-hop": { titulo: "Hip Hop", motivo: "letras", a: "#ffc857", b: "#ff3fb0" },
@@ -24,7 +28,11 @@ const META: Record<string, { titulo: string; motivo: Motivo; a: string; b: strin
   bossa: { titulo: "Bossa", motivo: "mar", a: "#ffd166", b: "#3aa0ff" },
   hindi: { titulo: "Hindi", motivo: "mandala", a: "#ff8a3d", b: "#e8318a" },
   "middle-east": { titulo: "Oriente Médio", motivo: "duna", a: "#ffe0a8", b: "#c97b3a" },
+  noturnos: { titulo: "Noturnos", motivo: "lua", a: "#bcd0ff", b: "#2a3a7a" },
+  orquestra: { titulo: "Orquestra", motivo: "mar", a: "#d8e6ff", b: "#3a6ea5" },
+  "78-rotacoes": { titulo: "78 rotações", motivo: "vinil", a: "#e6d3a3", b: "#5a4630" },
 }
+const DOMINIO = ["noturnos", "orquestra", "78-rotacoes"]
 
 const dados = faixasJson as Record<string, { genero: string; faixas: Faixa[] }>
 // títulos como vieram da biblioteca: limpa o que é ruído de catálogo
@@ -35,7 +43,7 @@ const limpar = (f: Faixa): Faixa => ({
 })
 export const DISCOS: DiscoLoja[] = Object.keys(META)
   .filter((id) => dados[id]?.faixas.length)
-  .map((id) => ({ id, ...META[id], faixas: dados[id].faixas.map(limpar) }))
+  .map((id) => ({ id, ...META[id], faixas: dados[id].faixas.map(limpar), dominio: DOMINIO.includes(id) }))
 
 export const ACERVO: DiscoLoja = {
   id: "acervo",

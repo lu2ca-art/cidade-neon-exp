@@ -1,4 +1,5 @@
 "use client"
+/* eslint-disable react-hooks/immutability -- three.js: materiais compartilhados mexidos quando o apagão muda */
 
 // A CASA DE SHOWS (arena, lugar 7, mistério). O lugar do último show antes
 // do apagão: o palco vazio com a cortina pesada, a pista sem ninguém e, no
@@ -6,11 +7,14 @@
 // sentado na beira do palco com o caderno. No fim, o poste pisca três vezes
 // e apaga (o ensaio do apagão do ep. 4).
 
+import { useGLTF } from "@react-three/drei"
 import { useFrame } from "@react-three/fiber"
-import { useMemo, useRef } from "react"
+import { useEffect, useMemo, useRef } from "react"
 import * as THREE from "three"
 import { texTexto } from "../../estrada/geo"
+import { ModeloSeguro } from "../../estrada/Seguro"
 import { Caixa, Neon, Npc, Sala } from "../comum"
+import { GRUPOS_SALA, matsSala } from "../modelo"
 import { Camera, type Plano, type SalaProps } from "../motor"
 
 const OURO = "#ffc857"
@@ -36,11 +40,10 @@ export function SalaShows({ estado }: SalaProps) {
       <fog attach="fog" args={["#060508", 8, 26]} />
       <ambientLight intensity={0.26} color="#ffd9a0" />
       <hemisphereLight args={["#ffcf8a", "#0a0806", 0.3]} />
-      <Sala larg={16} fundo={18} alto={8} parede="#16120e" chao="#120e0c" teto="#08070a" />
-      {/* o palco e a cortina */}
-      <Caixa pos={[0, 0.5, -6.5]} tam={[12, 1, 5]} cor="#24180e" rough={0.6} />
-      <Caixa pos={[0, 4.5, -8.8]} tam={[12, 7, 0.2]} cor="#4a0e14" rough={1} />
-      {[-5.5, 5.5].map((x) => <Caixa key={x} pos={[x, 4.5, -8.4]} tam={[1.2, 7, 0.4]} cor="#3a0a10" rough={1} />)}
+      {/* (06/11) a casa de shows modelada no Blender (shows.glb); enquanto baixa, ou se falhar, as caixas de antes */}
+      <ModeloSeguro nome="shows-glb" reserva={<ShowsCaixas />}>
+        <ShowsModelada apagou={apagou} />
+      </ModeloSeguro>
       {/* a ribalta: luz baixa na beira do palco (apaga junto com o poste) */}
       <Neon pos={[0, 1.04, -4.02]} comp={11.6} cor={OURO} luz={apagou ? 0 : 3} />
       {/* o foco em cima de onde ele senta */}
@@ -61,11 +64,67 @@ export function SalaShows({ estado }: SalaProps) {
   )
 }
 
+// ── (06/11) A CASA DE SHOWS MODELADA NO BLENDER (blender/scripts/shows.py, public/models/shows.glb):
+// vazia e parada no tempo. O palco de madeira com o saiote, a cortina pregueada e
+// as pernas, a treliça (duas torres e a ponte com os refletores), os telões
+// apagados nas torres, os paredões, os retornos, o tablado da bateria vazio e os
+// cabos; a grade de contenção, a mesa de som no meio da pista, a plateia em
+// degraus no fundo, o bar à direita, as saídas e os copos esquecidos no chão.
+// Nas posições das caixas (palco com o topo em 1 e a beira em z -4, a cortina,
+// as pernas): o Alohan, o caderno, a ribalta, o pedestal, o poste e a câmera
+// não mudam. Um nó (sala) com _solido/_luz/_neon/_vidro; materiais
+// compartilhados, sem luz nova; no apagão o neon e o painel do bar escurecem
+// (só quando muda). ~19,3 mil triângulos, 195 KB.
+const URL_SHOWS = "/models/shows.glb"
+function ShowsModelada({ apagou }: { apagou: boolean }) {
+  const { nodes } = useGLTF(URL_SHOWS) as unknown as { nodes: Record<string, THREE.Object3D> }
+  const mats = matsSala(0.82)
+  const partes = useMemo(() => {
+    const out: { k: string; geo: THREE.BufferGeometry; mat: THREE.Material; pos: THREE.Vector3; quat: THREE.Quaternion; esc: THREE.Vector3 }[] = []
+    for (const g of GRUPOS_SALA) {
+      const o = nodes[`sala_${g}`] as THREE.Mesh | undefined
+      if (!o?.geometry) continue
+      o.updateWorldMatrix(true, false)
+      const pos = new THREE.Vector3(), quat = new THREE.Quaternion(), esc = new THREE.Vector3()
+      o.matrixWorld.decompose(pos, quat, esc)
+      out.push({ k: g, geo: o.geometry, mat: mats[g], pos, quat, esc })
+    }
+    if (!out.some((p) => p.k === "solido")) throw new Error("shows.glb sem a sala")
+    return out
+  }, [nodes, mats])
+  useEffect(() => {
+    mats.neon.color.setScalar(apagou ? 0.12 : 1)
+    mats.luz.color.setScalar(apagou ? 0.35 : 1)
+  }, [mats, apagou])
+  return (
+    <group name="shows-modelada">
+      {partes.map((p) => (
+        <mesh key={p.k} geometry={p.geo} material={p.mat} position={p.pos} quaternion={p.quat} scale={p.esc} />
+      ))}
+    </group>
+  )
+}
+useGLTF.preload(URL_SHOWS)
+
+// as caixas de antes (enquanto o modelo baixa, ou se ele falhar)
+function ShowsCaixas() {
+  return (
+    <>
+      <Sala larg={16} fundo={18} alto={8} parede="#16120e" chao="#120e0c" teto="#08070a" />
+      {/* o palco e a cortina */}
+      <Caixa pos={[0, 0.5, -6.5]} tam={[12, 1, 5]} cor="#24180e" rough={0.6} />
+      <Caixa pos={[0, 4.5, -8.8]} tam={[12, 7, 0.2]} cor="#4a0e14" rough={1} />
+      {[-5.5, 5.5].map((x) => <Caixa key={x} pos={[x, 4.5, -8.4]} tam={[1.2, 7, 0.4]} cor="#3a0a10" rough={1} />)}
+    </>
+  )
+}
+
 // o poste no meio da pista: pisca sempre; no fim, três piscadas e apaga
 function Poste({ apagou }: { apagou: boolean }) {
   const luz = useRef<THREE.PointLight>(null)
   const bulbo = useRef<THREE.MeshBasicMaterial>(null)
   const t0 = useRef<number | null>(null)
+  const cores = useMemo(() => ({ on: new THREE.Color("#fff0c8"), off: new THREE.Color("#201a10") }), [])
   useFrame((s) => {
     const t = s.clock.elapsedTime
     let on = Math.sin(t * 7) > -0.85 && Math.sin(t * 1.3) > -0.95
@@ -75,7 +134,7 @@ function Poste({ apagou }: { apagou: boolean }) {
       on = d < 1.8 ? Math.floor(d / 0.3) % 2 === 0 : false
     }
     if (luz.current) luz.current.intensity = on ? 10 : 0
-    if (bulbo.current) bulbo.current.color.set(on ? "#fff0c8" : "#201a10")
+    if (bulbo.current) bulbo.current.color.copy(on ? cores.on : cores.off)
   })
   return (
     <group position={[0, 0, 1]}>

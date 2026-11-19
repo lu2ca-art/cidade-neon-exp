@@ -16,6 +16,7 @@ import { ESTACOES, estacao, missao, type EstacaoId } from "./data"
 import type { FreqId } from "./radio"
 import type { Save } from "./estado"
 import { LUGARES, type LugarId } from "./lugares"
+import { jogoVelho } from "./roteiros"
 
 // como a pessoa gosta de jogar — sai da pergunta da Kombi no quiz
 export type Perfil = "estrada" | "musica" | "historia"
@@ -84,7 +85,7 @@ export const MISSOES: Partial<Record<EstacaoId, MissaoDef>> = {
   sexta: {
     id: "sexta", estilo: "estrada",
     chamado: "sexta e eu em casa de novo. me busca?",
-    tarefa: "buscar o Drewboy em casa e levar ele na balada",
+    tarefa: "buscar o Drew em casa e levar ele na balada",
     carona: "casa-drewboy",
     lugar: "balada",
     caminho: [
@@ -226,7 +227,11 @@ function pode(s: Save, nivel: number, id: EstacaoId, agora = Date.now()) {
   return !s.objetos.includes(id) && !!m && (!m.requer || s.objetos.includes(m.requer)) && missao(estacao(id), nivel, agora).ok
 }
 
+// (T41 B1) as missões velhas da Linha 222 (o "chamado", a busca, a carona) só
+// existem no jogo velho: no jogo novo ninguém te chama (as 13 missões moram em
+// disco/). Desligadas, não apagadas: a chave é jogoVelho() (roteiros.ts)
 export function ativa(s: Save, nivel: number, agora = Date.now()): EstacaoId | null {
+  if (!jogoVelho()) return null
   const area = (s.freq || "linha") as FreqId
   const ok = (id: EstacaoId) => pode(s, nivel, id, agora)
   const ordem = [...s.fio, ...ESTACOES.map((e) => e.id).filter((id) => !s.fio.includes(id))]
@@ -289,6 +294,7 @@ export interface Aberta {
   frac?: number // ou um ponto do trecho livre do circuito (busca)
 }
 export function abertas(s: Save, nivel: number): Aberta[] {
+  if (!jogoVelho()) return []
   const ordem = [...s.fio, ...ESTACOES.map((e) => e.id).filter((id) => !s.fio.includes(id))]
   return ordem.filter((id) => pode(s, nivel, id)).map((id) => {
     const m = MISSOES[id]!

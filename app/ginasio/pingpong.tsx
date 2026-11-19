@@ -10,6 +10,7 @@
 import { Canvas, useFrame, useThree } from "@react-three/fiber"
 import { useEffect, useMemo, useRef, useState } from "react"
 import * as THREE from "three"
+import { AlohanJunto } from "./alohan"
 import { quica, raquete, rede, torcida } from "./sons"
 
 // medidas de verdade (metros)
@@ -244,6 +245,8 @@ export function PingPong({ onFim }: { onFim: (venceu: boolean, placar: [number, 
         <pointLight position={[0, 3.2, 0]} intensity={18} distance={8} color="#ffe0b0" />
         <Ginasio />
         <Mesa />
+        {/* (§11) o Alohan na ponta da mesa, olhando a partida */}
+        <AlohanJunto pos={[1.05, 0, -2.4]} vira={-0.26} />
         {acabou === null && <Jogo dedo={dedo} onPonto={onPonto} pausa={pausa} />}
       </Canvas>
       <div className="gi-placar"><b>{placar[0]}</b><small>você · ele</small><b>{placar[1]}</b></div>

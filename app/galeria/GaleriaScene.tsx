@@ -113,7 +113,7 @@ function SuaObra({ obra, position }: { obra: Obra; position: [number, number, nu
         <meshBasicMaterial map={tex} toneMapped={false} />
       </mesh>
       <Text font="/fonts/geist.ttf" position={[0, -(H / 2 + 0.25), 0.02]} fontSize={0.14} color="#ffffff" anchorX="center" outlineWidth={0.006} outlineColor="#000000">{obra.nome}</Text>
-      <Text font="/fonts/geist.ttf" position={[0, -(H / 2 + 0.45), 0.02]} fontSize={0.09} color="#ffc857" anchorX="center">{obra.vendida ? `vendida · ${obra.vendida} neon` : `você · ${obra.preco ?? PRECO_INICIAL} neon`}</Text>
+      <Text font="/fonts/geist.ttf" position={[0, -(H / 2 + 0.45), 0.02]} fontSize={0.09} color="#ffc857" anchorX="center">{obra.vendida ? `vendida · ${obra.vendida} Água$` : `você · ${obra.preco ?? PRECO_INICIAL} Água$`}</Text>
       {/* a bolinha vermelha da galeria: vendida */}
       {obra.vendida ? <mesh position={[w / 2 + 0.05, -(H / 2 + 0.36), 0.03]}><circleGeometry args={[0.09, 20]} /><meshBasicMaterial color="#e0201c" /></mesh> : null}
     </group>
@@ -277,7 +277,7 @@ export default function GaleriaScene() {
     if (!oferta) return
     setObras(atualizarObra(oferta.obra.id, { vendida: valor }))
     const r = await mudarNeon(valor); setNeon(r.neon)
-    dizer(`vendida: “${oferta.obra.nome}” por ${valor} neon`)
+    dizer(`vendida: “${oferta.obra.nome}” por ${valor} Água$`)
     setOferta(null); livre.current = true
   }
   // pedir o preço cheio: se passar muito do que a pessoa acha que vale, ela desiste
@@ -305,7 +305,7 @@ export default function GaleriaScene() {
       <div className="absolute right-6 top-6 z-10 flex flex-col items-end gap-2">
         <Link href="/galeria/pintar" className="rounded-md bg-[#ff3fb0] px-4 py-2 text-sm font-bold text-black">pintar a sua</Link>
         <button type="button" onClick={() => setPainel(!painel)} className="rounded-md bg-white/90 px-4 py-2 text-sm font-bold text-black">à venda ({obras.filter((o) => !o.vendida).length})</button>
-        <span className="font-mono text-xs font-bold text-[#ffc857]">{neon} neon$</span>
+        <span className="font-mono text-xs font-bold text-[#ffc857]">{neon} Água$</span>
       </div>
       {painel && (
         <div className="absolute right-6 top-36 z-20 w-64 rounded-xl bg-[#14121c]/95 p-3 text-white shadow-2xl">

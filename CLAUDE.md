@@ -116,6 +116,29 @@ Regras:
 - **Skill `o-que-a-semana-pede`** — se você quiser saber o que a semana
   exige, chama a skill (fora do repo, no ambiente principal).
 
+## EMPRESA — Regras da casa (empresa-ia, instalada 21/10)
+
+O dono é um gênio criativo, NÃO técnico. Ele fala muita coisa de uma vez, fora de ordem. Isso é o normal e o esperado.
+Nunca peça a ele detalhes técnicos (scripts, métricas, ferramentas). Decidir isso é trabalho da equipe.
+Pergunte a ele só decisões de NEGÓCIO e de GOSTO (ex.: "mais sombrio ou mais colorido?").
+
+### Protocolo de entrada
+1. Mensagem comum do dono vai direto pra área certa (sem passar pelo diretor). Plano completo: LU2CA/projetos/cidade-neon/plano-max.md.
+2. O agente `diretor` (Opus) só entra em dois casos: quando o dono despeja ideias (`/triagem`) e no fechamento do dia (ordena a fila do dia seguinte).
+3. Cada área trabalha nas pastas dela, com o modelo do cartão. Um especialista = uma tarefa por vez.
+4. Performance mede sempre com `scripts/desempenho` (headless, DPR 2, passo fixo), nunca com método próprio. QA roda os roteiros fixos do Playwright.
+5. Ao terminar: relatório curto em RELATORIOS/AAAA-MM-DD-area.md (o que fez, prova, pendente) e o cartão muda de seção no BACKLOG.md.
+6. O dashboard vivo da empresa (https://claude.ai/artifact/99GV8epcyppRGptjqtgdyV) lê o BACKLOG: depois de mexer nele, `bun scripts/empresa/status.mjs` (gera RELATORIOS/status.json), sobe o arquivo como asset no dashboard e atualiza o dataset `status` (url, updated) no banco dele.
+
+### Regras de ouro
+- Nada é "feito" sem prova (número, print ou teste rodando).
+- Item que depende de decisão do dono vai para a seção "Aguardando o dono" do BACKLOG.md, e a equipe segue com o resto.
+- Tarefas simples e repetitivas usam modelo menor. Tarefas de julgamento usam o modelo maior.
+- Execução automática nunca faz merge na main, nunca publica, nunca posta, nunca manda e-mail, nunca gasta em ads. Deixa branch, prévia e relatório.
+- Se o dono pedir algo que prejudica o jogo, o agente discorda e explica o porquê antes de executar.
+
+Agentes em `.claude/agents/` (diretor, performance, arte-3d, audio, narrativa, qa); comando `/triagem`; fila em `BACKLOG.md`; provas em `RELATORIOS/`.
+
 <!-- BEGIN:nextjs-agent-rules -->
 
 # This is NOT the Next.js you know

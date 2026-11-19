@@ -44,11 +44,12 @@ function UmCanteiro({ M, c, regado }: { M: Mundo; c: Canteiro; regado: boolean }
     abre.current += ((regado ? 1 : 0) - abre.current) * Math.min(1, dt * 1.5)
     const g = flores.current; if (!g) return
     const k = abre.current, t = s.clock.elapsedTime
-    g.children.forEach((f, i) => {
+    for (let i = 0; i < g.children.length; i++) {
+      const f = g.children[i]
       // murcha = caída pro lado; regada = em pé, balançando com o vento
       f.rotation.z = (1 - k) * 0.9 * (i % 2 ? 1 : -1) + Math.sin(t * 1.3 + i) * 0.06 * k
       f.scale.setScalar(0.65 + k * 0.45)
-    })
+    }
   })
   const d = ESPECIES[c.especie]
   const n = d.n

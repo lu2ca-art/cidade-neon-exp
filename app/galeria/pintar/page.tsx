@@ -186,7 +186,7 @@ export default function Pintar() {
     setExpor(false)
     if (!ok) { setMsg("não coube no aparelho: apaga uma obra antiga"); return }
     setObras(lerObras())
-    if (tracos.current >= MIN_TRACOS) { const r = await mudarNeon(PAGA); setNeon(r.neon); setMsg(`exposta na galeria · +${PAGA} neon`) }
+    if (tracos.current >= MIN_TRACOS) { const r = await mudarNeon(PAGA); setNeon(r.neon); setMsg(`exposta na galeria · +${PAGA} Água$`) }
     else setMsg("exposta na galeria")
     tracos.current = 0; setNome("")
     setTimeout(() => setMsg(""), 3500)
@@ -197,7 +197,7 @@ export default function Pintar() {
       <header className="pt-topo">
         <button type="button" onClick={() => router.push("/galeria")}>‹ galeria</button>
         <b>PINTAR</b>
-        <span>{neon} <small>neon$</small></span>
+        <span>{neon} <small>Água$</small></span>
       </header>
       <div className="pt-tela-caixa">
         <canvas ref={cvs} className="pt-tela" width={LARG} height={ALT} onPointerDown={down} onPointerMove={move} onPointerUp={up} onPointerCancel={up} />

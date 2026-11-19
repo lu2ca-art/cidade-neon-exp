@@ -68,7 +68,7 @@ export const ESTACOES: Estacao[] = [
     ouvir: busca("Dopamina"), prova: "respira",
   },
   {
-    id: "sexta", n: 4, faixa: "Sexta-Feira", personagem: "Drewboy",
+    id: "sexta", n: 4, faixa: "Sexta-Feira", personagem: "Drew",
     objeto: "espelho", objetoNome: "o espelho", cor: "#ff3fb0",
     audio: "/audio/tracks/sextafeira.mp3", lancamento: null,
     luz: "amor próprio", sombra: "fomo",
@@ -94,7 +94,7 @@ export const ESTACOES: Estacao[] = [
   {
     id: "ojala", n: 7, faixa: "Ojalá", personagem: "D-Bee",
     objeto: "camisa", objetoNome: "a camisa da seleção", cor: "#3d7bff",
-    audio: "/audio/tracks/ojala.mp3", lancamento: "2026-10-30T00:00:00-03:00",
+    audio: "/audio/tracks/ojala.mp3", lancamento: "2026-11-06T00:00:00-03:00",
     luz: "esperança", sombra: "destino",
     cidade: "carnaval fora de época, amor com data pra acabar",
     ouvir: busca("Ojalá"), cena: true,

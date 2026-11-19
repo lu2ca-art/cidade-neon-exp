@@ -7,6 +7,7 @@
 
 import type { Save } from "./estado"
 import type { EstacaoId } from "./data"
+import { jogoVelho } from "./roteiros"
 
 export type ItemTutorial = "tanque" | "posto" | "mubarak" | "drewboy"
 
@@ -29,7 +30,7 @@ export const ITENS: Record<ItemTutorial, { texto: string; dica: string }> = {
   tanque: { texto: "Dirija até a Cidade Neon", dica: "a estrada leva até a cidade" },
   posto: { texto: "Encha o tanque no posto", dica: "o posto fica na Cidade Neon" },
   mubarak: { texto: "Resgate o Mubarak no bar", dica: "o bar fica na Cidade Neon" },
-  drewboy: { texto: "Leve o Mubarak até a casa do Drewboy no subúrbio", dica: "o subúrbio fica embaixo da cidade" },
+  drewboy: { texto: "Leve o Mubarak até a casa do Drew no subúrbio", dica: "o subúrbio fica embaixo da cidade" },
 }
 
 export function feito(s: Save, i: ItemTutorial): boolean {
@@ -45,7 +46,10 @@ export function feito(s: Save, i: ItemTutorial): boolean {
 }
 
 // o tutorial vale pra quem começou pela casa da D-Bee e ainda não terminou
+// (T41 B1) no jogo novo o tutorial velho (tanque, posto, Mubarak) não roda: quem
+// ensina é o Nexo, no notch (disco/TutorialHolo.tsx)
 export function emTutorial(s: Save) {
+  if (!jogoVelho()) return false
   return !!s.casa && !(s.tutorial ?? []).includes("fim")
 }
 

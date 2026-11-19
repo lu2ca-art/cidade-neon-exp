@@ -6,6 +6,10 @@ import { ROTEIROS, type ChatId, type Tom } from "./roteiros"
 import { montarFio, type Perfil } from "./missoes"
 import type { Flor } from "./recursos"
 import type { Modo } from "./ligacoes"
+import type { HistoriaDisco } from "./disco/historia"
+import type { PlacarRua } from "./disco/corridaRua"
+import type { MemoriaDbee } from "./disco/sugestoesDbee"
+import { migrarEconomia } from "./economia"
 
 export type Item =
   | { k: "msg"; texto: string; de?: string; eu?: boolean }
@@ -62,12 +66,29 @@ export interface Save {
   tons: Record<Tom, number>
   // as relíquias do ritual do deserto que já nasceram (cenas.ts)
   reliquias: string[]
-  // NEON: a moeda do povo (fictícia). Compra o que é orgânico/artístico
+  // (§15, 08/11) só em save antigo: o neon$ somou na água (economia.ts, migrarEconomia)
   neon?: number
+  // A ÁGUA (LU2CA 19/10; §15: a moeda única, Água$), a mais valiosa num mundo
+  // seco. As gotas da pista (no lugar dos anéis); rega as flores, compra tudo, e
+  // a polícia leva 1/5 quando te prende. Não dá turbo (o turbo vem do drift e do voo)
+  agua?: number
   // o quanto a cidade te conhece (0–100): enche a plateia dos shows (13/10)
   popularidade?: number
   // os discos comprados na loja (discos.ts)
   discos?: string[]
+  // (T03) o resto que se compra na loja com Água$: "instrumento:guitarra",
+  // "carro:luxo", "roupa:bone" (economia.ts; os itens em economia-rascunho.ts)
+  compras?: string[]
+  // (T03) a versão da economia no save: o carregar acerta o save antigo uma vez
+  economia?: number
+  // (T44) os rachas: por corredor (disco/corredores.ts), quantas você ganhou (v) e perdeu (d)
+  rachas?: Record<string, { v: number; d: number }>
+  // (05/11) a corrida de rua do subúrbio (disco/corridaRua.ts): o melhor tempo
+  // por veículo (moto, patins), as vitórias e quantas correu
+  ruaSuburbio?: PlacarRua
+  // (05/11) a D-Bee sugere (disco/sugestoesDbee.ts): o que ela já sugeriu (quantas
+  // vezes, a última), o que ele já fez e as ruas cuja faixa ele ouviu inteira
+  dbee?: MemoriaDbee
   // quantas vezes a pessoa saiu de um lugar com a escolha errada (o bar:
   // beber). A missão fica aberta e o mundo estranha até ela fazer a certa
   loops: Record<string, number>
@@ -100,9 +121,15 @@ export interface Save {
   // último sorteado — o próximo nunca repete
   modos: Partial<Record<EstacaoId, Modo>>
   ultimoModo: Modo | null
+  // (mapa-disco, LU2CA 20/10) a história nova: do buraco de minhoca à carreira
+  // (disco/historia.ts). Sem o campo: save novo começa no deserto; quem já
+  // jogava segue livre
+  disco?: HistoriaDisco
 }
 
-const CHAVE = "cn-linha-222"
+// (notas 04/11) a chave muda com o modo da aba: o save de verdade ou o de teste (chaveSave.ts)
+import { chaveSave } from "./chaveSave"
+const CHAVE_GD = "cn-gd-neon"
 // sobe quando o começo do jogo muda a ponto de save antigo não fazer sentido.
 // 2 (05/10): o novo começo (a casa da D-Bee, a reta, o tutorial) — o LU2CA
 // zerou o save de todo mundo
@@ -147,7 +174,7 @@ export const VAZIO: Save = {
 export function carregar(): Save {
   if (typeof window === "undefined") return VAZIO
   try {
-    const raw = localStorage.getItem(CHAVE)
+    const raw = localStorage.getItem(chaveSave())
     if (!raw) return VAZIO
     const bruto = JSON.parse(raw)
     if (bruto.versao !== VERSAO) return VAZIO
@@ -159,9 +186,23 @@ export function carregar(): Save {
     // (só em save antigo, de antes do campo existir: depois do ep. 2 o
     // violão pode ter ficado no trem mesmo com a estação 6 feita)
     if (bruto.violao === undefined && s.objetos.includes("nectar")) s.violao = true
-    return s
+    // (T03) a economia: o save antigo vira o modelo novo (os saldos, a grana
+    // que o Guitar Driver guardou fora do jogo, os discos), uma vez só
+    return migrarEconomia(s, tirarGuardadoFora())
   } catch {
     return VAZIO
+  }
+}
+
+// a conta própria do Guitar Driver de quando ainda não tinha save (neon-tiles/neon.ts):
+// entra na água do jogo e some, pra não contar duas vezes
+function tirarGuardadoFora(): number {
+  try {
+    const n = Number(localStorage.getItem(CHAVE_GD) || 0)
+    if (n) localStorage.removeItem(CHAVE_GD)
+    return Number.isFinite(n) && n > 0 ? n : 0
+  } catch {
+    return 0
   }
 }
 
@@ -188,15 +229,23 @@ function acertarPausas(p: Save["pausas"]): Save["pausas"] {
   return out
 }
 
+// (leveza B) depois do "começar do zero", nada grava o save de volta (a página
+// grava com folga e ao sair: o reload não pode devolver o progresso apagado)
+let travado = false
+
 export function gravar(s: Save) {
+  if (travado) return
   try {
-    localStorage.setItem(CHAVE, JSON.stringify(s))
+    localStorage.setItem(chaveSave(), JSON.stringify(s))
   } catch {}
 }
 
 export function apagar() {
+  travado = true
   try {
-    localStorage.removeItem(CHAVE)
+    localStorage.removeItem(chaveSave())
+    localStorage.removeItem(`${chaveSave()}-terror`) // (revisão 6) o "já viu" do elevador de terror (disco/terror.ts)
+    localStorage.removeItem(`${chaveSave()}-onde`) // (notas 04/11) onde a Kombi parou (estrada/ondeParou.ts)
   } catch {}
 }
 

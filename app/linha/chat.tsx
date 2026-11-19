@@ -4,7 +4,7 @@ import { LUGARES } from "./lugares"
 import { useRouter } from "next/navigation"
 import { useCallback, useEffect, useMemo, useRef, useState } from "react"
 import { ESTACOES, estacao as getEstacao, lancada, dataCurta, nivelDe, type EstacaoId } from "./data"
-import { ECOS, ROTEIROS, VOZES, type ChatId, type Ctx, type Fala, type Passo } from "./roteiros"
+import { ECOS, ROTEIROS, VOZES, jogoVelho, type ChatId, type Ctx, type Fala, type Passo } from "./roteiros"
 import type { Item, Save } from "./estado"
 import { MEMORIAS, MISSOES, ativa, itensFaltando, montarFio, type Perfil } from "./missoes"
 import { FREQUENCIAS, proximaFreq } from "./radio"
@@ -94,9 +94,22 @@ function calcularEstacao(pesos: Partial<Record<EstacaoId, number>>): EstacaoId {
 
 const SISTEMA = "__sistema"
 
-const PERSONAGEM_ESTACAO: Record<string, EstacaoId> = Object.fromEntries(ESTACOES.map((e) => [e.personagem, e.id]))
+const PERSONAGEM_ESTACAO: Record<string, EstacaoId> = { ...Object.fromEntries(ESTACOES.map((e) => [e.personagem, e.id])), Drew: "sexta" } // (T41 B4) o Drewboy agora é o Drew
 
-export function Chat({ id, save, atualizar, onFim, onVoltar, onXp, modo = "tela", onPrecisaTela, onAdiar, onLoop, oculto, jeito = "texto", naEstacao = false }: Props) {
+// (T41 B1) no jogo novo, a conversa não abre: a tela cheia volta pra onde
+// estava, o painel da Kombi some quieto. O roteiro fica guardado (vira texto-base
+// dos encontros); a chave é jogoVelho() em roteiros.ts
+export function Chat(props: Props) {
+  if (!jogoVelho()) return <ChatDesligado modo={props.modo} onVoltar={props.onVoltar} onAdiar={props.onAdiar} />
+  return <ChatVelho {...props} />
+}
+function ChatDesligado({ modo = "tela", onVoltar, onAdiar }: Pick<Props, "modo" | "onVoltar" | "onAdiar">) {
+  const sair = useRef(modo === "tela" ? onVoltar : onAdiar)
+  useEffect(() => { sair.current?.() }, [])
+  return null
+}
+
+function ChatVelho({ id, save, atualizar, onFim, onVoltar, onXp, modo = "tela", onPrecisaTela, onAdiar, onLoop, oculto, jeito = "texto", naEstacao = false }: Props) {
   const router = useRouter()
   const roteiro = ROTEIROS[id]
   const jaFeito = save.completos.includes(id)
@@ -844,7 +857,7 @@ function Revelacao({ estacao, vivo, nome }: { estacao: EstacaoId; vivo: boolean;
 }
 
 // tom da voz do navegador por pessoa (só vale enquanto não tem áudio gravado)
-const TOM: Record<string, number> = { "D-Bee": 1.25, Ella: 1.2, Mubarak: 0.8, Notti: 1.1, Drewboy: 0.9, Alohan: 0.85, LU2CA: 0.95 }
+const TOM: Record<string, number> = { "D-Bee": 1.25, Ella: 1.2, Mubarak: 0.8, Notti: 1.1, Drew: 0.9, Drewboy: 0.9, Alohan: 0.85, LU2CA: 0.95 }
 
 // nota de voz: canal separado — a música abaixa e volta, não para
 function VozBolha({ it, de, auto, compacta }: { it: Extract<Item, { k: "voz" }>; de: string; auto: boolean; compacta?: boolean }) {

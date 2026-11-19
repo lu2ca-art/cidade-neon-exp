@@ -1,16 +1,19 @@
-// A grana do GUITAR DRIVER é o NEON do jogo (uma moeda só).
+// A grana do GUITAR DRIVER é a Água$ do jogo (bíblia §15: uma moeda só).
 //
 // Dentro do celular (/linha abre o app numa janela), quem guarda o saldo é o
 // jogo: o app pede pra somar/gastar por mensagem e o jogo responde com o
 // saldo novo. Aberto sozinho (lu2ca.art/neon-tiles), mexe direto no save do
 // jogo no aparelho.
 
-const CHAVE = "cn-linha-222"
+// (notas 04/11) o save de verdade ou o de teste, conforme a aba (linha/chaveSave.ts)
+import { chaveSave } from "../linha/chaveSave"
+
+// (§15) o saldo é a água; save que o jogo ainda não migrou tem o neon$ à parte
+const saldoDe = (s: { agua?: number; neon?: number } | null) => Math.max(0, Math.round(s?.agua ?? 0)) + Math.max(0, Math.round(s?.neon ?? 0))
 
 function lerLocal(): number {
   try {
-    const s = JSON.parse(localStorage.getItem(CHAVE) || "{}")
-    return Math.max(0, Math.round(s.neon ?? 0))
+    return saldoDe(JSON.parse(localStorage.getItem(chaveSave()) || "{}"))
   } catch {
     return 0
   }
@@ -18,9 +21,9 @@ function lerLocal(): number {
 
 function gravarLocal(delta: number): { ok: boolean; neon: number } {
   try {
-    const raw = localStorage.getItem(CHAVE)
+    const raw = localStorage.getItem(chaveSave())
     const s = raw ? JSON.parse(raw) : null
-    const atual = Math.max(0, Math.round(s?.neon ?? 0))
+    const atual = saldoDe(s)
     if (delta < 0 && atual + delta < 0) return { ok: false, neon: atual }
     // sem save do jogo ainda: guarda numa conta própria até o jogo existir
     if (!s) {
@@ -28,9 +31,11 @@ function gravarLocal(delta: number): { ok: boolean; neon: number } {
       localStorage.setItem("cn-gd-neon", String(n))
       return { ok: true, neon: n }
     }
-    s.neon = atual + delta
-    localStorage.setItem(CHAVE, JSON.stringify(s))
-    return { ok: true, neon: s.neon }
+    // (sai o campo neon: a migração do jogo não soma de novo)
+    s.agua = atual + delta
+    delete s.neon
+    localStorage.setItem(chaveSave(), JSON.stringify(s))
+    return { ok: true, neon: s.agua }
   } catch {
     return { ok: false, neon: 0 }
   }
@@ -65,17 +70,17 @@ export function mudarNeon(delta: number): Promise<{ ok: boolean; neon: number }>
 /* ─── a popularidade (o quanto a cidade te conhece, 0–100) ─── */
 // mora no save do jogo; o Guitar Driver lê dali e pede pra mudar como o NEON
 export function lerLinha(): { casa?: boolean; tutorial?: string[]; objetos?: string[]; reliquias?: string[]; popularidade?: number } {
-  try { return JSON.parse(localStorage.getItem(CHAVE) || "{}") } catch { return {} }
+  try { return JSON.parse(localStorage.getItem(chaveSave()) || "{}") } catch { return {} }
 }
 
 export function mudarPopularidade(delta: number): Promise<number> {
   if (!dentroDoJogo()) {
     try {
-      const raw = localStorage.getItem(CHAVE)
+      const raw = localStorage.getItem(chaveSave())
       if (!raw) return Promise.resolve(0)
       const s = JSON.parse(raw)
       s.popularidade = Math.max(0, Math.min(100, (s.popularidade ?? 0) + delta))
-      localStorage.setItem(CHAVE, JSON.stringify(s))
+      localStorage.setItem(chaveSave(), JSON.stringify(s))
       return Promise.resolve(s.popularidade)
     } catch { return Promise.resolve(0) }
   }

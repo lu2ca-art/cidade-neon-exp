@@ -9,10 +9,14 @@
 import { useFrame } from "@react-three/fiber"
 import { useMemo, useRef, useState } from "react"
 import * as THREE from "three"
+import { useGLTF } from "@react-three/drei"
+import { ModeloSeguro } from "../../estrada/Seguro"
 import { Caixa, Chuva, Cidade, Npc } from "../comum"
+import { SalaGlb } from "../modelo"
 import { Camera, type Plano, type SalaProps } from "../motor"
 
 const VERDE = "#5dffa0"
+const URL_TOPO = "/models/topo.glb"
 
 const PLANOS: Record<string, Plano> = {
   chegada: { pos: [0, 1.7, 5], olha: [0, 1.2, -1], fov: 60 },
@@ -40,20 +44,17 @@ export function SalaTopo({ estado }: SalaProps) {
       {/* a luz que sobe da cidade e a luz da escada do terraço */}
       <pointLight position={[0, -4, -8]} color="#ff3fb0" intensity={40} distance={30} decay={2} />
       <pointLight position={[2.5, 2.6, 2]} color="#ffe0a8" intensity={6} distance={9} decay={2} />
-      {/* o chão do terraço e a mureta */}
-      <mesh rotation-x={-Math.PI / 2}>
-        <planeGeometry args={[10, 10]} />
-        <meshStandardMaterial color="#1e2026" roughness={0.2} metalness={0.4} />
-      </mesh>
-      <Caixa pos={[0, 0.5, -2.5]} tam={[10, 1, 0.3]} cor="#2a2c34" />
-      <Caixa pos={[-5, 0.5, 2.5]} tam={[0.3, 1, 10]} cor="#2a2c34" />
-      <Caixa pos={[5, 0.5, 2.5]} tam={[0.3, 1, 10]} cor="#2a2c34" />
-      {/* a caixa d'água e a antena */}
-      <Caixa pos={[3.2, 1.2, 2.5]} tam={[2, 2.4, 2]} cor="#3a3e48" />
-      <mesh position={[-3.5, 3, 3]}>
-        <cylinderGeometry args={[0.05, 0.08, 6, 6]} />
-        <meshStandardMaterial color="#5a5e68" metalness={0.7} />
-      </mesh>
+      {/* (06/11) o terraço modelado no Blender (blender/scripts/topo.py, public/models/topo.glb):
+          piso cerâmico molhado com poças, a mureta com a faixa DOPAMINA, a casa de
+          máquinas com a porta da escada acesa e a caixa d'água, a antena de treliça
+          (acaba em 6 m, o Pisca fica em cima), as luzes de festa, a máquina do
+          fliperama em destaque ([-1.5, 0, -1.2], tela de 8 bits, marquise DOPAMINA),
+          a máquina morta e o pinball, o sofá virado pra cidade, as TVs de tubo e os
+          consoles nos engradados, o sequenciador da trilha de 8 bits e a fachada
+          descendo. ~16,5 mil triângulos, 160 KB. Enquanto baixa, ou se falhar, as caixas */}
+      <ModeloSeguro nome="topo-glb" reserva={<TopoCaixas />}>
+        <SalaGlb url={URL_TOPO} />
+      </ModeloSeguro>
       <Pisca pos={[-3.5, 6.05, 3]} />
       {/* a Notti na mureta */}
       <Npc cor={VERDE} pos={[0, 0.55, -2.45]} vira={0} pose="sentada" falando={estado.falando === "Notti"} />
@@ -74,7 +75,8 @@ export function SalaTopo({ estado }: SalaProps) {
 
 function Pisca({ pos }: { pos: [number, number, number] }) {
   const m = useRef<THREE.MeshBasicMaterial>(null)
-  useFrame((s) => { if (m.current) m.current.color.set(Math.sin(s.clock.elapsedTime * 3) > 0.6 ? "#ff2a2a" : "#300808") })
+  const cores = useMemo(() => ({ on: new THREE.Color("#ff2a2a"), off: new THREE.Color("#300808") }), [])
+  useFrame((s) => { if (m.current) m.current.color.copy(Math.sin(s.clock.elapsedTime * 3) > 0.6 ? cores.on : cores.off) })
   return (
     <mesh position={pos}>
       <sphereGeometry args={[0.1, 8, 6]} />
@@ -82,3 +84,26 @@ function Pisca({ pos }: { pos: [number, number, number] }) {
     </mesh>
   )
 }
+
+// as caixas de antes (enquanto o modelo baixa, ou se ele falhar)
+function TopoCaixas() {
+  return (
+    <>
+      {/* o chão do terraço e a mureta */}
+      <mesh rotation-x={-Math.PI / 2}>
+        <planeGeometry args={[10, 10]} />
+        <meshStandardMaterial color="#1e2026" roughness={0.2} metalness={0.4} />
+      </mesh>
+      <Caixa pos={[0, 0.5, -2.5]} tam={[10, 1, 0.3]} cor="#2a2c34" />
+      <Caixa pos={[-5, 0.5, 2.5]} tam={[0.3, 1, 10]} cor="#2a2c34" />
+      <Caixa pos={[5, 0.5, 2.5]} tam={[0.3, 1, 10]} cor="#2a2c34" />
+      {/* a caixa d'água e a antena */}
+      <Caixa pos={[3.2, 1.2, 2.5]} tam={[2, 2.4, 2]} cor="#3a3e48" />
+      <mesh position={[-3.5, 3, 3]}>
+        <cylinderGeometry args={[0.05, 0.08, 6, 6]} />
+        <meshStandardMaterial color="#5a5e68" metalness={0.7} />
+      </mesh>
+    </>
+  )
+}
+useGLTF.preload(URL_TOPO)

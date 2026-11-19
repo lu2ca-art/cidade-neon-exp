@@ -6,6 +6,7 @@
 
 import type { Mundo } from "./mundo"
 import { calcularRotaRede, type MundoRede } from "./mundoRede"
+import { calcularRotaDisco, type MundoDisco } from "./mundoDisco"
 import { PASSO } from "./pista"
 
 export interface Ponto { via: number; u: number }
@@ -19,6 +20,8 @@ function frente(L: number, de: number, ate: number) {
 
 export function calcularRota(M: Mundo, de: Ponto, ate: Ponto): Rota | null {
   // o mapa novo: a rede de ruas
+  // o disco: as pistas de mão única
+  if ("disco" in M) return calcularRotaDisco(M as MundoDisco, de, ate)
   if ("ligacoes" in M) return calcularRotaRede(M as MundoRede, de, ate)
   let melhor: Rota | null = null
   const busca = (p: Ponto, feito: Trecho[], metros: number, visitados: Set<number>) => {

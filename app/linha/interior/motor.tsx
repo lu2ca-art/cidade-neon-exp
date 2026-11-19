@@ -11,9 +11,12 @@ import * as THREE from "three"
 import type { EstacaoId } from "../data"
 import type { EstadoCena } from "./bus"
 import type { V3 } from "./comum"
+import type { InstrumentoId } from "../disco/instrumentos"
 
 // `inicio`: a sala no começo do jogo (a casa da D-Bee com ela dentro)
-export interface SalaProps { estado: EstadoCena; objetos: EstacaoId[]; inicio?: boolean; copos?: number[]; popularidade?: number }
+// (T49, lote D) `instrumentos`: os instrumentos ancestrais ganhos (a casa da D-Bee);
+// `novos`: os que chegaram desde a última visita
+export interface SalaProps { estado: EstadoCena; objetos: EstacaoId[]; inicio?: boolean; copos?: number[]; popularidade?: number; disco?: boolean; instrumentos?: InstrumentoId[]; novos?: InstrumentoId[] }
 
 // toque livre na tela (fora dos objetos): a sala que quiser escuta
 // (a balada e o vagão: tocar no ritmo em qualquer lugar)
@@ -31,33 +34,38 @@ export function useToqueLivre(f: (() => void) | null) {
 export function chamarToqueLivre() { toqueLivre?.() }
 
 // olhar em volta: arrastar gira a câmera um pouco (volta sozinha)
-export const olhar = { yaw: 0, pitch: 0, arrastando: false }
+// `travado`: a sala pede o arrasto pra ela (T22: pintar na tela não gira a câmera)
+export const olhar = { yaw: 0, pitch: 0, arrastando: false, travado: false }
 
 // ── a câmera da sala: vai até o plano pedido, devagar, e respira ──
 export interface Plano { pos: V3; olha: V3; fov?: number }
+const EIXO_Y = new THREE.Vector3(0, 1, 0) // (leveza C: nada de new no quadro)
 
-export function Camera({ plano, rapido = false }: { plano: Plano; rapido?: boolean }) {
+// `vel`: quão rápido ela chega (1,6 é o normal; T22b: o filme da Ella usa bem
+// devagar, a câmera vai chegando na planta durante as falas)
+export function Camera({ plano, rapido = false, vel }: { plano: Plano; rapido?: boolean; vel?: number }) {
   const camera = useThree((s) => s.camera) as THREE.PerspectiveCamera
   const alvoPos = useMemo(() => new THREE.Vector3(), [])
   const alvoOlha = useMemo(() => new THREE.Vector3(), [])
-  const olhaAgora = useRef<THREE.Vector3 | null>(null)
+  const olhaAgora = useMemo(() => new THREE.Vector3(), [])
+  const comecou = useRef(false)
   const dir = useMemo(() => new THREE.Vector3(), [])
   useEffect(() => {
     alvoPos.set(...plano.pos)
     alvoOlha.set(...plano.olha)
   }, [plano, alvoPos, alvoOlha])
   useFrame((s, dt) => {
-    const k = Math.min(1, dt * (rapido ? 4 : 1.6))
+    const k = Math.min(1, dt * (vel ?? (rapido ? 4 : 1.6)))
     camera.position.lerp(alvoPos, k)
-    if (!olhaAgora.current) olhaAgora.current = alvoOlha.clone()
-    olhaAgora.current.lerp(alvoOlha, k)
+    if (!comecou.current) { comecou.current = true; olhaAgora.copy(alvoOlha) }
+    olhaAgora.lerp(alvoOlha, k)
     // respiração da câmera na mão
     const t = s.clock.elapsedTime
     camera.position.y += Math.sin(t * 0.9) * 0.002
     // olhar em volta: solta e volta pro plano
     if (!olhar.arrastando) { olhar.yaw *= 1 - Math.min(1, dt * 1.5); olhar.pitch *= 1 - Math.min(1, dt * 1.5) }
-    dir.copy(olhaAgora.current).sub(camera.position)
-    dir.applyAxisAngle(new THREE.Vector3(0, 1, 0), olhar.yaw)
+    dir.copy(olhaAgora).sub(camera.position)
+    dir.applyAxisAngle(EIXO_Y, olhar.yaw)
     dir.y += olhar.pitch * dir.length()
     camera.lookAt(camera.position.x + dir.x, camera.position.y + dir.y, camera.position.z + dir.z)
     // o fov do plano é pensado deitado; com o celular em pé a imagem fica

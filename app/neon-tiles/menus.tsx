@@ -39,7 +39,7 @@ function Topo({ titulo, neon, onVoltar }: { titulo: string; neon: number; onVolt
     <header className="gd-topo">
       <button type="button" onClick={onVoltar}>‹ voltar</button>
       <b>{titulo}</b>
-      <span className="gd-saldo">{neon.toLocaleString("pt-BR")} <small>neon$</small></span>
+      <span className="gd-saldo">{neon.toLocaleString("pt-BR")} <small>Água$</small></span>
     </header>
   )
 }
@@ -65,7 +65,7 @@ export function Titulo({ neon, popularidade, modelo, acabamento, editor, onIr, o
       <div className="gd-luzes" aria-hidden><i /><i /><i /></div>
       <header className="gd-titulo-topo">
         <button type="button" onClick={onSair}>‹ sair</button>
-        <span className="gd-saldo">{neon.toLocaleString("pt-BR")} <small>neon$</small></span>
+        <span className="gd-saldo">{neon.toLocaleString("pt-BR")} <small>Água$</small></span>
       </header>
       <h1 className="gd-logo"><span>GUITAR</span><span>DRIVER</span></h1>
       <Popularidade valor={popularidade} />
@@ -306,7 +306,7 @@ export function Loja({ save, salvar, neon, gastar, onVoltar }: {
   const mostra = provar ?? acabAtual
   const comprar = async (id: string, preco: number) => {
     if (save.possui.includes(id)) return true
-    if (neon < preco) { setMsg(`faltam ${preco - neon} neon$ · toque nos palcos pra juntar`); return false }
+    if (neon < preco) { setMsg(`faltam ${preco - neon} Água$ · toque nos palcos pra juntar`); return false }
     const ok = await gastar(preco)
     if (!ok) { setMsg("não deu pra pagar agora. tenta de novo."); return false }
     salvar((s) => ({ ...s, possui: [...s.possui, id] }))
@@ -331,7 +331,7 @@ export function Loja({ save, salvar, neon, gastar, onVoltar }: {
             <em>{sel.bonus ?? "sem bônus"}</em>
             <button type="button" className="gd-btn" disabled={usando}
               onClick={async () => { if (await comprar(sel.id, sel.preco)) salvar((s) => ({ ...s, modelo: { ...s.modelo, [tipo]: sel.id } })) }}>
-              {usando ? "tocando com ela" : tem ? "usar" : `comprar · ${sel.preco} neon$`}
+              {usando ? "tocando com ela" : tem ? "usar" : `comprar · ${sel.preco} Água$`}
             </button>
           </div>
         </div>
@@ -353,11 +353,11 @@ export function Loja({ save, salvar, neon, gastar, onVoltar }: {
               <button key={a.id} type="button" className={acabAtual === a.id ? "is-on" : provar === a.id ? "is-provando" : ""}
                 onClick={async () => {
                   if (!tem) { setProvar(a.id); return }
-                  if (!possui && provar !== a.id) { setProvar(a.id); setMsg(`provando ${a.nome}: toque de novo pra comprar (${a.preco} neon$)`); return }
+                  if (!possui && provar !== a.id) { setProvar(a.id); setMsg(`provando ${a.nome}: toque de novo pra comprar (${a.preco} Água$)`); return }
                   if (await comprar(id, a.preco)) { salvar((s) => ({ ...s, acabamentos: { ...s.acabamentos, [sel.id]: a.id } })); setProvar(null) }
                 }}>
                 {a.nome}
-                <small>{acabAtual === a.id ? "usando" : possui ? "usar" : `${a.preco} neon$`}</small>
+                <small>{acabAtual === a.id ? "usando" : possui ? "usar" : `${a.preco} Água$`}</small>
               </button>
             )
           })}
@@ -509,7 +509,7 @@ export function ResultadoTela({ r, palco, faixa, instrumento, neon, onDeNovo, on
       {r.cache > 0 && (
         <div className="gd-cache">
           <small>{r.batalha?.venceu ? "o prêmio do duelo" : `cachê · ${r.publico === 1 ? "1 pessoa viu" : `${r.publico} pessoas viram`}`}</small>
-          <b>+ {cache.toLocaleString("pt-BR")} neon$</b>
+          <b>+ {cache.toLocaleString("pt-BR")} Água$</b>
         </div>
       )}
       {r.popDelta !== 0 && (
@@ -530,7 +530,7 @@ export function ResultadoTela({ r, palco, faixa, instrumento, neon, onDeNovo, on
           <span>{r.novoPalco.lugar} · cabem {r.novoPalco.capacidade}</span>
         </div>
       )}
-      <p className="gd-rotulo">saldo: {neon.toLocaleString("pt-BR")} neon$</p>
+      <p className="gd-rotulo">saldo: {neon.toLocaleString("pt-BR")} Água$</p>
       <div className="gd-acoes">
         {onProximo && <button type="button" className="gd-btn" onClick={onProximo}>ir pro próximo palco</button>}
         <button type="button" className={onProximo ? "gd-btn is-ghost" : "gd-btn"} onClick={onDeNovo}>tocar de novo</button>

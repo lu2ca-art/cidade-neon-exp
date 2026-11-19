@@ -1,0 +1,59 @@
+/* (T07) a entrega do holo (EntregaHolo.tsx), a tela do holo lá fora e o tutorial (TutorialHolo.tsx) */
+
+/* ── a entrega: o holo aceso flutuando (sem mão desenhada, notas 03/11); ele toca e o holo vem pra ele ── */
+.l-entrega { position: absolute; inset: 0; z-index: 3; display: flex; flex-direction: column; align-items: center; justify-content: flex-end; gap: 14px; padding-bottom: calc(120px + env(safe-area-inset-bottom)); touch-action: none; }
+.l-entrega-holo { position: relative; width: 190px; height: 190px; padding: 0; border: 0; background: none; cursor: pointer; animation: l-entrega-chega 0.9s cubic-bezier(0.2, 0.9, 0.3, 1) both; }
+.l-entrega-luz { position: absolute; left: 50%; bottom: 35px; width: 120px; height: 120px; transform: translateX(-50%); animation: l-entrega-flutua 2.6s ease-in-out infinite; }
+.l-entrega-luz b { position: absolute; left: 50%; top: 50%; width: 30px; height: 30px; margin: -15px 0 0 -15px; border-radius: 50%; background: radial-gradient(circle, #fff 0 22%, #2fe8ff 45%, rgba(47, 232, 255, 0) 72%); box-shadow: 0 0 26px #2fe8ff; animation: l-entrega-pulsa 1.4s ease-in-out infinite; }
+.l-entrega-luz i { position: absolute; inset: 14px; border-radius: 50%; border: 2px solid #3d7bff; border-top-color: transparent; box-shadow: 0 0 12px #3d7bff; animation: l-entrega-gira 2.4s linear infinite; }
+.l-entrega-luz i + i { inset: 0; border: 1px dashed rgba(47, 232, 255, 0.75); animation-duration: 5s; animation-direction: reverse; }
+.l-entrega-dica { padding: 6px 12px; border-radius: 10px; background: rgba(6, 6, 16, 0.72); font: 700 11px var(--mono); letter-spacing: 0.12em; text-transform: uppercase; color: #2fe8ff; pointer-events: none; }
+.l-entrega.is-pegou .l-entrega-luz { animation: l-entrega-vem 0.9s cubic-bezier(0.5, 0, 0.7, 0.4) forwards; }
+.l-entrega-clarao { position: absolute; inset: 0; background: radial-gradient(circle at 50% 70%, rgba(47, 232, 255, 0.85), rgba(47, 232, 255, 0) 65%); animation: l-entrega-clarao 1s ease-out 0.55s both; pointer-events: none; }
+@keyframes l-entrega-chega { from { opacity: 0; transform: translateY(60px) scale(0.85); } to { opacity: 1; transform: none; } }
+@keyframes l-entrega-flutua { 50% { transform: translate(-50%, -9px); } }
+@keyframes l-entrega-pulsa { 50% { transform: scale(1.18); } }
+@keyframes l-entrega-gira { to { transform: rotate(360deg); } }
+@keyframes l-entrega-vem { to { transform: translate(-50%, 260px) scale(2.6); opacity: 0; } }
+@keyframes l-entrega-clarao { from { opacity: 0; } 30% { opacity: 1; } to { opacity: 0; } }
+
+/* ── a tela do holo, lá fora (usa a caixa da l-recompensa) ── */
+.l-rec-holo-caixa { width: min(400px, 100%); align-items: stretch; text-align: left; }
+.l-rec-holo-caixa > b { font-size: clamp(44px, 14vw, 64px); color: #fff; text-shadow: 0 0 22px var(--cor); text-align: center; }
+.l-rec-holo-caixa > small { text-align: center; }
+.l-rec-holo-icone { position: relative; align-self: center; width: 116px; height: 116px; }
+.l-rec-holo-icone svg { width: 100%; height: 100%; overflow: visible; }
+.l-rec-holo-icone circle { fill: rgba(47, 232, 255, 0.06); stroke: var(--cor); stroke-width: 2; filter: drop-shadow(0 0 8px var(--cor)); }
+.l-rec-holo-icone text { fill: var(--cor); font: 800 13px var(--mono); letter-spacing: 0.1em; }
+.l-rec-holo-gira { transform-origin: 80px 80px; animation: l-entrega-gira 9s linear infinite; }
+.l-rec-holo-bola { position: absolute; left: 50%; top: 50%; width: 34px; height: 34px; margin: -17px 0 0 -17px; border-radius: 50%; background: radial-gradient(circle, #fff 0 20%, #2fe8ff 50%, #0b3a66 100%); box-shadow: 0 0 24px #2fe8ff; animation: l-entrega-pulsa 1.8s ease-in-out infinite; }
+.l-rec-holo-sub { margin: -4px 0 0; text-align: center; font: 14px/1.35 var(--sans, system-ui); color: rgba(255, 255, 255, 0.82); }
+.l-rec-holo-como { list-style: none; margin: 0; padding: 0; display: grid; gap: 8px; }
+.l-rec-holo-como li { display: flex; gap: 10px; align-items: flex-start; padding: 8px 10px; border-radius: 12px; background: rgba(47, 232, 255, 0.06); border-left: 3px solid var(--cor); font: 13px/1.35 var(--sans, system-ui); color: rgba(255, 255, 255, 0.85); }
+.l-rec-holo-como li i { flex: none; width: 22px; font-style: normal; text-align: center; color: var(--cor); font-size: 16px; line-height: 1.1; }
+.l-rec-holo-como li b { display: block; font: 800 15px var(--cond); text-transform: uppercase; letter-spacing: 0.04em; color: #fff; }
+.l-rec-holo-caixa > .l-rec-holo-bt { display: flex; align-items: center; justify-content: center; gap: 10px; }
+.l-rec-holo-bt i { display: inline-grid; place-items: center; width: 22px; height: 22px; border-radius: 50%; background: #06060c; color: var(--cor); font: 800 14px var(--mono); font-style: normal; }
+
+/* ── o tutorial: (T56) o texto fala dentro do notch (linha.css, .l-holo-letreiro.is-tut); aqui só o anel em volta do alvo ── */
+.l-tut-alvo { position: fixed; z-index: 71; border-radius: 999px; border: 2px solid #2fe8ff; box-shadow: 0 0 16px #2fe8ff, inset 0 0 12px rgba(47, 232, 255, 0.45); pointer-events: none; animation: l-tut-pulsa 1.2s ease-in-out infinite; }
+/* o primeiro contato com o holo: (notas 03/11, o dono: "um overlay escurecendo a
+   tela que não é pra ter") a tela NÃO escurece mais; só o anel mais forte em volta do ícone */
+.l-tut-alvo.is-escuro { box-shadow: 0 0 22px #2fe8ff, inset 0 0 14px rgba(47, 232, 255, 0.5); animation: l-tut-pulsa-anel 1.2s ease-in-out infinite; }
+.l-tut-alvo-q { position: absolute; left: -12px; top: -12px; display: grid; place-items: center; width: 26px; height: 26px; border-radius: 50%; background: #2fe8ff; color: #06060c; font: 800 15px var(--mono); font-style: normal; box-shadow: 0 0 12px #2fe8ff; }
+/* (notas 03/11) o balão curto preso no alvo ("toca aqui"), sem fundo escuro na tela */
+.l-tut-balao { position: absolute; left: 50%; top: calc(100% + 10px); transform: translateX(-50%); white-space: nowrap; padding: 5px 10px; border-radius: 10px; background: #2fe8ff; color: #06060c; font: 800 11px var(--mono); letter-spacing: 0.08em; text-transform: uppercase; box-shadow: 0 0 12px rgba(47, 232, 255, 0.7); animation: l-tut-balao 1.2s ease-in-out infinite; }
+.l-tut-balao::before { content: ""; position: absolute; left: 50%; top: -5px; margin-left: -5px; border: 5px solid transparent; border-top: 0; border-bottom-color: #2fe8ff; }
+.l-tut-balao.is-cima { top: auto; bottom: calc(100% + 10px); }
+.l-tut-balao.is-cima::before { top: auto; bottom: -5px; border-bottom: 0; border-top: 5px solid #2fe8ff; }
+/* o mapa do holo pisca de leve no passo do mapa; o ícone da missão de agora (no anel) pulsa */
+:root:has(.l-tut-alvo.is-mapa) .l-mapa-mini { animation: l-tut-pisca 1.6s ease-in-out infinite; }
+:root:has(.l-tut-alvo) .l-holo-anel-ic circle { animation: l-tut-ic 1.2s ease-in-out infinite; }
+@keyframes l-tut-balao { 50% { transform: translateX(-50%) translateY(-3px); } }
+@keyframes l-tut-pisca { 50% { opacity: 0.72; } }
+@keyframes l-tut-ic { 50% { stroke-width: 3.6; opacity: 0.75; } }
+@keyframes l-tut-pulsa { 50% { transform: scale(1.08); opacity: 0.7; } }
+@keyframes l-tut-pulsa-anel { 50% { border-color: #fff; } }
+@media (prefers-reduced-motion: reduce) {
+  .l-tut-alvo, .l-tut-alvo.is-escuro, .l-tut-balao, .l-entrega-luz, .l-entrega-luz b, .l-entrega-luz i, .l-rec-holo-gira, .l-rec-holo-bola { animation: none; }
+}

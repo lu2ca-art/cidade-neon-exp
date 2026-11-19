@@ -15,6 +15,10 @@ import { gota, mudo } from "./som"
 import { Prova } from "./provas"
 import { vib } from "./som-carro"
 import { ouvirSala, publicar, zerar } from "./interior/bus"
+import { CenaFilme } from "./CenaFilme"
+import { FILMES } from "./filmes"
+import { Tambor } from "./disco/Tambor"
+import { EntregaHolo } from "./disco/EntregaHolo"
 
 export interface ResultadoCena {
   objeto?: EstacaoId
@@ -25,6 +29,8 @@ export interface ResultadoCena {
   loop?: boolean
   // o copo que bebeu (fica vazio no balcão)
   copo?: number
+  // (disco) a cena chegou no fim (não saiu no meio)
+  completa?: boolean
 }
 
 type Fila = { de?: string; texto: string; tipo: "fala" | "acao" | "nucleo" }[]
@@ -32,7 +38,7 @@ type Fila = { de?: string; texto: string; tipo: "fala" | "acao" | "nucleo" }[]
 
 // `gestos3d`: os gestos que a sala em 3D faz (interior/): a legenda só dá
 // a dica e espera a sala avisar que acabou
-export function CenaLugar({ cena: cenaBruta, memoria, objetos, reliquias = [], tom: tomAgora = "dormindo", semSom = false, gestos3d = [], loops = 0, onTom, onLinha, onFim, onNeon }: { cena: Cena; memoria: number; objetos: EstacaoId[]; reliquias?: Reliquia[]; tom?: Tom; semSom?: boolean; gestos3d?: string[]; loops?: number; onTom: (t: Tom) => void; onLinha?: (texto: string) => void; onFim: (r: ResultadoCena) => void; onNeon?: (n: number) => void }) {
+export function CenaLugar({ cena: cenaBruta, memoria, objetos, reliquias = [], tom: tomAgora = "dormindo", semSom = false, gestos3d = [], loops = 0, gestoShow, onTom, onLinha, onFim, onNeon }: { cena: Cena; gestoShow?: (pronto: () => void) => React.ReactNode; memoria: number; objetos: EstacaoId[]; reliquias?: Reliquia[]; tom?: Tom; semSom?: boolean; gestos3d?: string[]; loops?: number; onTom: (t: Tom) => void; onLinha?: (texto: string) => void; onFim: (r: ResultadoCena) => void; onNeon?: (n: number) => void }) {
   // o tom vale o do começo da cena (responder no meio não reembaralha os passos)
   const [tom] = useState(tomAgora)
   // os passos com `se` só entram se a pessoa já passou por aquela estação;
@@ -108,7 +114,7 @@ export function CenaLugar({ cena: cenaBruta, memoria, objetos, reliquias = [], t
   // explorar só existe com a sala em 3D: sem ela (aparelho que não aguentou),
   // a cena segue sozinha
   useEffect(() => {
-    if ((gestoAgora !== "quarto" && gestoAgora !== "casa" && gestoAgora !== "casa-inicio") || gesto3d) return
+    if (!gestoAgora || !["quarto", "casa", "casa-inicio", "quadros", "pintar"].includes(gestoAgora) || gesto3d) return
     const t = setTimeout(() => setPos((p) => p + 1), 0)
     return () => clearTimeout(t)
   }, [gestoAgora, gesto3d])
@@ -125,6 +131,16 @@ export function CenaLugar({ cena: cenaBruta, memoria, objetos, reliquias = [], t
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [chave])
 
+
+  // (T02, J2: 11) acabou a cena: volta direto pro jogo, sem "voltar pra Kombi"
+  const noFim = !atual && passo?.t === "fim"
+  const fimRef = useRef(() => {})
+  useEffect(() => { fimRef.current = () => { if (passo?.t === "fim") onFim({ objeto: ganhos.objeto, reliquias: ganhos.reliquias, caca: !!passo.caca, perdeViolao: ganhos.perdeViolao, completa: true }) } })
+  useEffect(() => {
+    if (!noFim) return
+    const t = setTimeout(() => fimRef.current(), 450)
+    return () => clearTimeout(t)
+  }, [noFim])
 
   const avancar = () => {
     if (!atual) return
@@ -170,15 +186,21 @@ export function CenaLugar({ cena: cenaBruta, memoria, objetos, reliquias = [], t
         </div>
       )}
 
-      {gesto3d && <Dica3d id={gestoAgora!} podeNegar={loops > 0 || esperou} onNegar={() => setPos((p) => p + 1)} onSair={() => onFim({ reliquias: [], caca: false })} />}
+      {/* (T22b) o filminho: o vídeo, ou (hoje) as falas em legenda sobre a cena parada */}
+      {!atual && passo?.t === "gesto" && passo.id === "filme" && <CenaFilme key={pos} filme={FILMES[passo.filme]} onFim={() => setPos((p) => p + 1)} />}
+      {gesto3d && <Dica3d id={gestoAgora!} podeNegar={loops > 0 || esperou} onNegar={() => setPos((p) => p + 1)} onPronto={() => setPos((p) => p + 1)} />}
       {!gesto3d && !saida && !atual && passo?.t === "gesto" && passo.id === "copos" && <Copos onNegar={() => setPos((p) => p + 1)} onBeber={() => setSaida(true)} podeNegar={loops > 0 || esperou} />}
       {saida && !atual && (
         <div className="l-cena-fim" onClick={(e) => e.stopPropagation()}>
-          <button type="button" onClick={() => onFim({ reliquias: [], caca: false, loop: true, copo: copoRef.current })}>sair do bar →</button>
+          <button type="button" onClick={() => onFim({ reliquias: [], caca: false, loop: true, copo: copoRef.current })}>a noite volta →</button>
         </div>
       )}
       {!gesto3d && !atual && passo?.t === "gesto" && passo.id === "danca" && <Danca onFim={() => setPos((p) => p + 1)} />}
       {!gesto3d && !atual && passo?.t === "gesto" && passo.id === "tocar" && <Danca titulo="toca no ritmo" rotulo="artistas olhando pela janela" total={9} cor="#e6f0ff" sobe onFim={() => setPos((p) => p + 1)} />}
+      {/* (disco, a casa da D-Bee) o tambor (2.5): ela toca a frase, ele repete — disco/Tambor.tsx */}
+      {!gesto3d && !atual && passo?.t === "gesto" && passo.id === "tambores" && <Tambor onFim={() => setPos((p) => p + 1)} />}
+      {/* (T07) a D-Bee entrega o holo: da mão dela pra dele — disco/EntregaHolo.tsx */}
+      {!gesto3d && !atual && passo?.t === "gesto" && passo.id === "holo" && <EntregaHolo onFim={() => setPos((p) => p + 1)} />}
       {!gesto3d && !atual && passo?.t === "gesto" && passo.id === "fuga" && <Fuga onFim={() => setPos((p) => p + 1)} />}
       {!gesto3d && !atual && passo?.t === "gesto" && passo.id === "ordem" && <Ordem frases={passo.frases} onFim={() => setPos((p) => p + 1)} />}
       {!gesto3d && !atual && passo?.t === "gesto" && passo.id === "silencio" && <Silencio semSom={semSom} onFim={() => setPos((p) => p + 1)} />}
@@ -189,17 +211,14 @@ export function CenaLugar({ cena: cenaBruta, memoria, objetos, reliquias = [], t
         </div>
       )}
 
+      {/* (ep. 1) o show da Nectar no palco do bar: quem desenha é a page.tsx (disco/ShowNoBar.tsx) */}
+      {!atual && passo?.t === "gesto" && passo.id === "show-nectar" && gestoShow?.(() => setPos((p) => p + 1))}
       {/* dinheiro na conta: só o +X no canto, e a cena segue sozinha */}
-      {neonCanto && <div key={neonCanto.id} className="l-cena-neon">+{neonCanto.n} neon$</div>}
+      {neonCanto && <div key={neonCanto.id} className="l-cena-neon">+{neonCanto.n} Água$</div>}
       {mostrando && !soNeon && (
         <Ganho objeto={mostrando.objeto} reliquia={mostrando.reliquia} titulo={mostrando.titulo} texto={mostrando.texto} memoria={mostrando.objeto ? memoria : null} onOk={fecharGanho} />
       )}
 
-      {!atual && passo?.t === "fim" && (
-        <div className="l-cena-fim" onClick={(e) => e.stopPropagation()}>
-          <button type="button" onClick={() => onFim({ objeto: ganhos.objeto, reliquias: ganhos.reliquias, caca: !!passo.caca, perdeViolao: ganhos.perdeViolao })}>voltar pra kombi →</button>
-        </div>
-      )}
     </div>
   )
 }
@@ -216,10 +235,15 @@ const DICAS_3D: Record<string, string> = {
   casa: "procura pela casa. toca no que chamar sua atenção",
   quarto: "olha o quarto. toca no que chamar sua atenção",
   "casa-inicio": "olha em volta. toca no que chamar sua atenção",
+  planta: "chega perto. toca no que chamar sua atenção",
+  quadros: "anda pela galeria. toca nos quadros",
+  pintar: "pinta na luz da planta. os potes trocam a cor. pronta, toca no prego",
+  instrumentos: "toca nos instrumentos do banco. os apagados dizem de onde vêm",
 }
-function Dica3d({ id, podeNegar, onNegar, onSair }: { id: string; podeNegar: boolean; onNegar: () => void; onSair: () => void }) {
+function Dica3d({ id, podeNegar, onNegar, onPronto }: { id: string; podeNegar: boolean; onNegar: () => void; onPronto?: () => void }) {
   // o bar (06/10, LU2CA): a saída é a palavra ESCOLHA, em amarelo — quem
-  // repara toca nela e diz não. "sair do bar" só sai: a missão não se cumpre
+  // repara toca nela e diz não. (T02, J2: 21) não tem mais "sair do bar": no
+  // bar, você aprende a negar pra sair
   const [sn, setSn] = useState(false)
   if (id === "copos") return (
     <div className="l-dica3d" onClick={(e) => e.stopPropagation()}>
@@ -232,7 +256,14 @@ function Dica3d({ id, podeNegar, onNegar, onSair }: { id: string; podeNegar: boo
           <button type="button" onClick={onNegar}>não</button>
         </span>
       )}
-      <button type="button" className="l-copos-sair" onClick={onSair}>sair do bar</button>
+    </div>
+  )
+  // (T49, 06/11) tocar os instrumentos é fazer música: sem pressa. A cena só
+  // segue sozinha com instrumento novo; na visita livre, sai pelo "pronto"
+  if (id === "instrumentos") return (
+    <div className="l-dica3d" onClick={(e) => e.stopPropagation()}>
+      <small>{DICAS_3D.instrumentos}</small>
+      {onPronto && <button type="button" className="l-copos-sair" onClick={onPronto}>pronto ›</button>}
     </div>
   )
   return (

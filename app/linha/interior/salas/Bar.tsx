@@ -7,15 +7,17 @@
 // bonito (o neon sobe, dourado) e mais vazio (uma mesa some). Negar a oferta
 // tira os copos do balcão, e no lugar deles nasce a muda.
 
-import { useFrame } from "@react-three/fiber"
+import { useGLTF } from "@react-three/drei"
+import { useFrame, useThree } from "@react-three/fiber"
 import { useEffect, useMemo, useRef, useState } from "react"
 import * as THREE from "three"
 import { COPOS } from "../../cenas"
 import { texTexto } from "../../estrada/geo"
+import { ModeloSeguro } from "../../estrada/Seguro"
 import { gota } from "../../som"
 import { vib } from "../../som-carro"
 import { sinalizar } from "../bus"
-import { Caixa, Neon, Npc, Sala, Toque, type V3 } from "../comum"
+import { Caixa, Multidao, Neon, Npc, Sala, Toque, type Pessoa, type V3 } from "../comum"
 import { Camera, type Plano, type SalaProps } from "../motor"
 
 const LARANJA = "#ff6a35"
@@ -28,6 +30,10 @@ const PLANOS: Record<string, Plano> = {
   mubarak: { pos: [0.5, 1.5, -0.2], olha: [-1.4, 1.15, -1.8], fov: 46 },
   ela: { pos: [-0.2, 1.5, -0.6], olha: [0.6, 1.5, -3.6], fov: 44 },
   copos: { pos: [-0.1, 2.05, -0.55], olha: [-0.1, 1.08, -2.45], fov: 50 },
+  coposEstreito: { pos: [-0.1, 2.7, 1.6], olha: [-0.1, 1.08, -2.45], fov: 68 },
+  palco: { pos: [1.2, 1.6, 2.2], olha: [4.4, 1.1, -2.6], fov: 52 },
+  // (ep. 1) o show: o palco, com a D-Bee e o Mubarak na frente
+  show: { pos: [1.5, 1.45, 0.75], olha: [4.3, 1.25, -2.9], fov: 52 },
 }
 
 // as cores dos líquidos: cada promessa brilha de um jeito
@@ -43,23 +49,44 @@ const MESAS: { pos: V3; vira: number; cor: string }[] = [
   { pos: [-4.6, 0.0, -0.4], vira: 0.4, cor: "#7a7a8c" },
 ]
 
-export function SalaBar({ estado, copos = [] }: SalaProps) {
+// (09/11, o povo) a plateia do show no bar, de frente pro palco: quantos couberem na
+// lotação (disco/povo.ts). No 1º show são poucos; quem volta com a história andada vê gente
+const PLATEIA_BAR: [number, number][] = [[3.3, -1.6], [4.7, -1.5], [5.4, -2.2], [2.8, -2.5], [4.8, -0.4], [5.4, -0.9], [2.4, -0.4], [5.5, 0.2], [1.3, -2.2], [3.1, 0.3]]
+const CORES_PLATEIA = ["#ff3fb0", "#2fe8ff", "#ffc857", "#5dffa0", "#b08bff", "#ff6a35"]
+function plateiaDoBar(lotacao: number): Pessoa[] {
+  const n = Math.min(PLATEIA_BAR.length, 2 + Math.round(lotacao * 0.12))
+  return PLATEIA_BAR.slice(0, n).map(([x, z], i) => ({ x, z, vira: Math.atan2(4.4 - x, -3 - z), cor: CORES_PLATEIA[i % CORES_PLATEIA.length] }))
+}
+
+export function SalaBar({ estado, copos = [], disco = false, popularidade = 0 }: SalaProps) {
   // os copos que já foram (de outras noites) ficam vazios no balcão
   const [bebidos, setBebidos] = useState<number[]>(copos)
   const [bebeuAgora, setBebeuAgora] = useState(false)
   const [posGesto, setPosGesto] = useState<number | null>(null)
   if (estado.gesto === "copos" && posGesto === null) setPosGesto(estado.pos)
   const negou = posGesto !== null && estado.pos > posGesto
+  // (celular em pé) a tela estreita cortava os seis copos: a câmera recua
+  const estreita = useThree((t) => t.size.width / Math.max(1, t.size.height) < 0.8)
   const n = bebidos.length
+  // (ep. 1) a D-Bee aparece quando fala; no show (a partir de "sobe no palco") ela, o Mubarak e o LU2CA vão pra frente do palco
+  const [comDbee, setComDbee] = useState(false)
+  const [noShow, setNoShow] = useState(false)
+  if (disco && !comDbee && estado.falando === "D-Bee") setComDbee(true)
+  if (disco && !noShow && (estado.gesto === "show-nectar" || /sobe no palco/.test(estado.texto ?? ""))) setNoShow(true)
+
+  const plateia = useMemo(() => (noShow ? plateiaDoBar(popularidade) : null), [noShow, popularidade])
 
   // a câmera segue a cena: quem fala, o gesto, o que ganhou
   const plano = useMemo(() => {
-    if (estado.gesto === "copos" || estado.ganha) return PLANOS.copos
-    if (estado.falando === "Mubarak") return PLANOS.mubarak
+    if (estado.gesto === "copos" || estado.ganha) return estreita ? PLANOS.coposEstreito : PLANOS.copos
+    if (noShow) return PLANOS.show
+    if (estado.falando === "Mubarak" || estado.falando === "D-Bee") return PLANOS.mubarak
     if (estado.falando === "ela") return PLANOS.ela
+    // (disco, o prólogo) o palco vazio no fundo do bar
+    if (disco && /palco/.test(estado.texto ?? "")) return PLANOS.palco
     if (estado.pos === 0) return PLANOS.entrada
     return PLANOS.balcao
-  }, [estado])
+  }, [estado, disco, estreita, noShow])
 
   // beber é a escolha errada: um copo só e a cena acaba (cena.tsx leva a
   // pessoa pra fora do bar). A noite volta pro começo, mais bonita e mais vazia
@@ -92,13 +119,120 @@ export function SalaBar({ estado, copos = [] }: SalaProps) {
       <hemisphereLight args={["#ffcf9a", "#1a0c10", 0.35]} />
       {/* luz de preenchimento vinda da porta (a rua lá fora) */}
       <directionalLight position={[2, 3, 6]} intensity={0.55} color="#9fb4ff" />
-      <Luzes n={n} />
-      <Sala larg={12} fundo={10} alto={3.8} parede="#22161a" chao="#140d0d" teto="#0c0809" />
+      <Luzes n={n} disco={disco} />
+      {/* (06/11) o bar modelado no Blender (bar.glb); enquanto baixa, ou se falhar, as caixas de antes */}
+      <ModeloSeguro nome="bar-glb" reserva={<BarCaixas disco={disco} />}>
+        <BarModelado disco={disco} n={n} />
+      </ModeloSeguro>
       <Letreiro />
+      {/* a gente */}
+      {!noShow && <Npc cor={LARANJA} pos={[-1.4, 0.27, -1.75]} vira={Math.PI} pose="sentada" falando={estado.falando === "Mubarak"} />}
+      {comDbee && !noShow && <Npc cor="#3d7bff" pos={[-0.2, 0.27, -1.75]} vira={Math.PI} pose="sentada" falando={estado.falando === "D-Bee"} />}
+      {noShow && plateia && <Multidao gente={plateia} />}
+      {noShow && <Npc cor="#3d7bff" pos={[2.1, 0, -1.35]} vira={2.19} />}
+      {noShow && <Npc cor={LARANJA} pos={[3.05, 0, -0.35]} vira={2.67} />}
+      {noShow && <Npc cor="#e0ff4f" pos={[4.4, 0.4, -3]} vira={-0.66} dancando={estado.gesto === "show-nectar"} />}
+      <Npc cor={ELA} pos={[0.6, 0, -3.65]} vira={0} pele="#3a2430" falando={estado.falando === "ela"} />
+      {MESAS.map((m, i) => (
+        <Npc key={i} cor={m.cor} pos={m.pos} vira={m.vira} pose="sentada" some={i < n} />
+      ))}
+      {/* os seis copos no balcão (o gesto) */}
+      {!negou && COPOS.map((c, i) => (
+        <Copo key={c.id} pos={[-0.85 + i * 0.3, 1.15, -2.42]} cor={LIQ[i]} bebido={bebidos.includes(i)} ativo={estado.gesto === "copos"} onToque={() => beber(i)} />
+      ))}
+      {/* negou: no lugar dos copos, a muda */}
+      {negou && <Muda pos={[-0.1, 1.15, -2.42]} />}
+      <Camera plano={plano} />
+    </>
+  )
+}
+
+// a luz do bar: lâmpadas pendentes quentes. A cada copo o bar fica mais
+// bonito: mais dourado, mais forte (e mais vazio). Só as luzes de sempre: as
+// lâmpadas e os tubos são do modelo (ou das caixas)
+const LAMPADAS = [-3, -0.5, 2]
+function Luzes({ n, disco }: { n: number; disco: boolean }) {
+  const ls = useRef<THREE.PointLight[]>([])
+  useFrame((_, dt) => {
+    const alvo = 4 + n * 1.6
+    for (const l of ls.current) if (l) l.intensity += (alvo - l.intensity) * Math.min(1, dt * 1.5)
+  })
+  return (
+    <>
+      {LAMPADAS.map((x, i) => (
+        <pointLight key={x} ref={(el) => { if (el) ls.current[i] = el }} position={[x, 2.7, -2.2]} color="#ffcf8a" intensity={4} distance={5} decay={2} />
+      ))}
+      {/* o friso do balcão, a prateleira de baixo e (no prólogo) a beira do palco */}
+      <pointLight position={[-0.5, 0.1, -2.22]} color={LARANJA} intensity={2} distance={6} decay={2} />
+      <pointLight position={[-0.5, 1.33, -4.58]} color={OURO} intensity={1.6} distance={6} decay={2} />
+      {disco && <pointLight position={[4.4, 0.42, -2.0]} color="#ff3f7a" intensity={0.6} distance={6} decay={2} />}
+    </>
+  )
+}
+
+// ── (06/11) O BAR MODELADO NO BLENDER (blender/scripts/bar.py, public/models/bar.glb):
+// bar de sucata do lixo da cidade. Paredes de chapa em retalhos e o fundo de
+// tábuas, o balcão de madeira reaproveitada com tampo de chapa e o friso
+// laranja, banquetas de tambor, mesas de carretel com a lâmpada pendurada, a
+// prateleira de garrafas (três formas repetidas), a geladeira velha, o jukebox,
+// a mesa de sinuca no fundo à esquerda ([-5.15, 0, -3.4], a partida abre pela
+// SinucaBar), o palquinho de paletes, os fios e varais de lâmpadas, os cartazes
+// e o neon de cerveja. Tudo nas posições das caixas (os bancos, as mesas, o
+// balcão, o palco, as lâmpadas e o letreiro): a gente, os copos e a câmera não
+// mudam. Dois nós (sala, palco: o palco só no prólogo, como antes) com as
+// malhas _solido (cor no vértice com a sombra e um pouco da luz assadas),
+// _luz e _neon (brilho pelo material, sem luz nova) e _vidro (as garrafas).
+// Materiais compartilhados; nada por quadro (o neon esquenta a cada copo, só
+// quando o número muda). ~29 mil triângulos, 280 KB.
+const URL_BAR = "/models/bar.glb"
+let MATS_BAR: { solido: THREE.MeshStandardMaterial; luz: THREE.MeshBasicMaterial; neon: THREE.MeshBasicMaterial; vidro: THREE.MeshBasicMaterial } | null = null
+function matsBar() {
+  if (!MATS_BAR) MATS_BAR = {
+    solido: new THREE.MeshStandardMaterial({ vertexColors: true, roughness: 0.8, metalness: 0.05 }),
+    luz: new THREE.MeshBasicMaterial({ vertexColors: true, toneMapped: false }),
+    neon: new THREE.MeshBasicMaterial({ vertexColors: true, toneMapped: false }),
+    vidro: new THREE.MeshBasicMaterial({ vertexColors: true, transparent: true, opacity: 0.82, depthWrite: false }),
+  }
+  return MATS_BAR
+}
+const GRUPOS_BAR = ["solido", "luz", "neon", "vidro"] as const
+function BarModelado({ disco, n }: { disco: boolean; n: number }) {
+  const { nodes } = useGLTF(URL_BAR) as unknown as { nodes: Record<string, THREE.Object3D> }
+  const mats = matsBar()
+  const partes = useMemo(() => {
+    const out: { k: string; palco: boolean; geo: THREE.BufferGeometry; mat: THREE.Material; pos: THREE.Vector3; quat: THREE.Quaternion; esc: THREE.Vector3 }[] = []
+    for (const raiz of ["sala", "palco"]) for (const g of GRUPOS_BAR) {
+      const o = nodes[`${raiz}_${g}`] as THREE.Mesh | undefined
+      if (!o?.geometry) continue
+      o.updateWorldMatrix(true, false)
+      const pos = new THREE.Vector3(), quat = new THREE.Quaternion(), esc = new THREE.Vector3()
+      o.matrixWorld.decompose(pos, quat, esc)
+      out.push({ k: `${raiz}_${g}`, palco: raiz === "palco", geo: o.geometry, mat: mats[g], pos, quat, esc })
+    }
+    if (!out.some((p) => p.k === "sala_solido")) throw new Error("bar.glb sem a sala")
+    return out
+  }, [nodes, mats])
+  // a cada copo o neon sobe pro dourado (só quando muda)
+  useEffect(() => { mats.neon.color.setRGB(1 + n * 0.1, 1 + n * 0.07, 1 + n * 0.01) }, [mats, n])
+  return (
+    <group name="bar-modelado">
+      {partes.filter((p) => disco || !p.palco).map((p) => (
+        <mesh key={p.k} geometry={p.geo} material={p.mat} position={p.pos} quaternion={p.quat} scale={p.esc} />
+      ))}
+    </group>
+  )
+}
+useGLTF.preload(URL_BAR)
+
+// as caixas de antes (enquanto o modelo baixa, ou se ele falhar)
+function BarCaixas({ disco }: { disco: boolean }) {
+  return (
+    <>
+      <Sala larg={12} fundo={10} alto={3.8} parede="#22161a" chao="#140d0d" teto="#0c0809" />
       {/* o balcão: madeira escura, tampo claro, frisos de neon embaixo */}
       <Caixa pos={[-0.5, 0.55, -2.65]} tam={[7.4, 1.1, 0.8]} cor="#2b1a14" rough={0.6} />
       <Caixa pos={[-0.5, 1.12, -2.6]} tam={[7.6, 0.06, 0.95]} cor="#5a3a26" rough={0.25} metal={0.3} />
-      <Neon pos={[-0.5, 0.1, -2.22]} comp={7.2} cor={LARANJA} luz={2} />
+      <Neon pos={[-0.5, 0.1, -2.22]} comp={7.2} cor={LARANJA} />
       {/* atrás do balcão: prateleiras com garrafas acesas e o espelho */}
       <Garrafas />
       <Caixa pos={[-0.5, 2.25, -4.92]} tam={[7, 1.1, 0.05]} cor="#2a2a34" rough={0.05} metal={0.9} />
@@ -127,34 +261,7 @@ export function SalaBar({ estado, copos = [] }: SalaProps) {
           </mesh>
         </group>
       ))}
-      {/* a gente */}
-      <Npc cor={LARANJA} pos={[-1.4, 0.27, -1.75]} vira={Math.PI} pose="sentada" falando={estado.falando === "Mubarak"} />
-      <Npc cor={ELA} pos={[0.6, 0, -3.65]} vira={0} pele="#3a2430" falando={estado.falando === "ela"} />
-      {MESAS.map((m, i) => (
-        <Npc key={i} cor={m.cor} pos={m.pos} vira={m.vira} pose="sentada" some={i < n} />
-      ))}
-      {/* os seis copos no balcão (o gesto) */}
-      {!negou && COPOS.map((c, i) => (
-        <Copo key={c.id} pos={[-0.85 + i * 0.3, 1.15, -2.42]} cor={LIQ[i]} bebido={bebidos.includes(i)} ativo={estado.gesto === "copos"} onToque={() => beber(i)} />
-      ))}
-      {/* negou: no lugar dos copos, a muda */}
-      {negou && <Muda pos={[-0.1, 1.15, -2.42]} />}
-      <Camera plano={plano} />
-    </>
-  )
-}
-
-// a luz do bar: lâmpadas pendentes quentes. A cada copo o bar fica mais
-// bonito: mais dourado, mais forte (e mais vazio)
-function Luzes({ n }: { n: number }) {
-  const ls = useRef<THREE.PointLight[]>([])
-  useFrame((_, dt) => {
-    const alvo = 4 + n * 1.6
-    for (const l of ls.current) if (l) l.intensity += (alvo - l.intensity) * Math.min(1, dt * 1.5)
-  })
-  return (
-    <>
-      {[-3, -0.5, 2].map((x, i) => (
+      {LAMPADAS.map((x) => (
         <group key={x} position={[x, 2.9, -2.2]}>
           <Caixa pos={[0, 0.45, 0]} tam={[0.01, 0.9, 0.01]} cor="#222" />
           <mesh>
@@ -165,9 +272,10 @@ function Luzes({ n }: { n: number }) {
             <sphereGeometry args={[0.07, 10, 8]} />
             <meshBasicMaterial color="#ffe0a8" toneMapped={false} />
           </mesh>
-          <pointLight ref={(el) => { if (el) ls.current[i] = el }} position={[0, -0.2, 0]} color="#ffcf8a" intensity={4} distance={5} decay={2} />
         </group>
       ))}
+      {/* (disco, o prólogo) o palco no canto do fundo: o pedestal sozinho, a caixa de som empoeirada */}
+      {disco && <Palco />}
     </>
   )
 }
@@ -197,7 +305,7 @@ function Garrafas() {
   return (
     <group position={[0, 0, -4.7]}>
       {[1.4, 2.9].map((y) => <Caixa key={y} pos={[-0.5, y - 0.03, 0]} tam={[7.4, 0.04, 0.35]} cor="#3a2a22" />)}
-      {[1.4, 2.9].map((y) => <Neon key={`n${y}`} pos={[-0.5, y - 0.07, 0.12]} comp={7} cor={OURO} luz={y < 2 ? 1.6 : 0} />)}
+      {[1.4, 2.9].map((y) => <Neon key={`n${y}`} pos={[-0.5, y - 0.07, 0.12]} comp={7} cor={OURO} />)}
       {garrafas.map((g, i) => (
         <mesh key={i} position={[g.x, g.y + g.h / 2, 0]}>
           <cylinderGeometry args={[0.05, 0.06, g.h, 8]} />
@@ -233,9 +341,10 @@ function Copo({ pos, cor, bebido, ativo, onToque }: { pos: V3; cor: string; bebi
 }
 
 // a muda: um vasinho com três folhas crescendo devagar
+const UM = new THREE.Vector3(1, 1, 1) // (leveza C: nada de new no quadro)
 function Muda({ pos }: { pos: V3 }) {
   const g = useRef<THREE.Group>(null)
-  useFrame((_, dt) => { if (g.current) g.current.scale.lerp(new THREE.Vector3(1, 1, 1), Math.min(1, dt * 1.2)) })
+  useFrame((_, dt) => { if (g.current) g.current.scale.lerp(UM, Math.min(1, dt * 1.2)) })
   return (
     <group position={pos}>
       <mesh position={[0, 0.06, 0]}>
@@ -254,6 +363,22 @@ function Muda({ pos }: { pos: V3 }) {
           </mesh>
         ))}
       </group>
+    </group>
+  )
+}
+
+// (disco) o palco pequeno onde ninguém sobe há anos
+function Palco() {
+  return (
+    <group position={[4.4, 0, -3]}>
+      <Caixa pos={[0, 0.2, 0]} tam={[2.6, 0.4, 2]} cor="#2a1e22" rough={0.8} />
+      <Neon pos={[0, 0.42, 1.0]} comp={2.6} cor="#ff3f7a" />
+      {/* o pedestal sem microfone */}
+      <Caixa pos={[0, 1.15, 0.2]} tam={[0.04, 1.5, 0.04]} cor="#55555e" metal={0.7} rough={0.3} />
+      <mesh position={[0, 0.42, 0.2]}><cylinderGeometry args={[0.22, 0.22, 0.03, 14]} /><meshStandardMaterial color="#33333a" metalness={0.6} /></mesh>
+      {/* a caixa de som com poeira */}
+      <Caixa pos={[-0.9, 0.85, -0.6]} tam={[0.6, 0.9, 0.5]} cor="#1a1a1e" />
+      <mesh position={[-0.9, 0.95, -0.34]}><circleGeometry args={[0.18, 16]} /><meshStandardMaterial color="#3a3a3a" roughness={1} /></mesh>
     </group>
   )
 }

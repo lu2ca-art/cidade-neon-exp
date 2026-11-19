@@ -11,6 +11,7 @@
 import { Canvas, useFrame, useThree } from "@react-three/fiber"
 import { useEffect, useMemo, useRef, useState } from "react"
 import * as THREE from "three"
+import { AlohanJunto } from "./alohan"
 import { aro, quica, rede, torcida } from "./sons"
 
 const TEMPO = 60
@@ -154,16 +155,18 @@ function Cena({ lugar, voo, bracos, balanco, bonus, fogo }: { lugar: THREE.Vecto
       <Quadra bonus={bonus} />
       <Rede balanco={balanco} />
       <Jogador pos={lugar} bracos={bracos} />
+      {/* (§11) o Alohan do lado da cesta, olhando o arremesso */}
+      <AlohanJunto pos={[1.25, 0, -5.4]} vira={-0.28} />
       <mesh ref={bola}><sphereGeometry args={[0.12, 20, 16]} /><meshStandardMaterial color="#e8661a" emissive={fogo ? "#ff5a00" : "#000000"} emissiveIntensity={fogo ? 0.8 : 0} roughness={0.7} /></mesh>
       <mesh ref={chama}><sphereGeometry args={[0.2, 12, 10]} /><meshBasicMaterial color="#ffb000" transparent opacity={0.35} depthWrite={false} /></mesh>
     </>
   )
 }
 
-export function Basquete({ onFim }: { onFim: (pontos: number, cestas: number) => void }) {
+export function Basquete({ onFim, tempo = TEMPO }: { onFim: (pontos: number, cestas: number) => void; tempo?: number }) {
   const [pontos, setPontos] = useState(0)
   const [cestas, setCestas] = useState(0)
-  const [resta, setResta] = useState(TEMPO)
+  const [resta, setResta] = useState(tempo)
   const [forca, setForca] = useState<number | null>(null)
   const [bonus, setBonus] = useState(false)
   const [seguidas, setSeguidas] = useState(0)
@@ -180,9 +183,9 @@ export function Basquete({ onFim }: { onFim: (pontos: number, cestas: number) =>
 
   useEffect(() => {
     t0.current = performance.now()
-    const t = setInterval(() => { const r = Math.max(0, TEMPO - (performance.now() - t0.current) / 1000); setResta(Math.ceil(r)); if (r <= 0 && !voo.current.voando) { clearInterval(t); setAcabou(true) } }, 200)
+    const t = setInterval(() => { const r = Math.max(0, tempo - (performance.now() - t0.current) / 1000); setResta(Math.ceil(r)); if (r <= 0 && !voo.current.voando) { clearInterval(t); setAcabou(true) } }, 200)
     return () => clearInterval(t)
-  }, [])
+  }, [tempo])
 
   const arremessar = (f: number, lado: number) => {
     const de = new THREE.Vector3(lugar.x + 0.05, 2.4, lugar.z - 0.3)
@@ -247,11 +250,11 @@ export function Basquete({ onFim }: { onFim: (pontos: number, cestas: number) =>
         {forca !== null && <b className="bq-nivel" style={{ height: `${forca * 100}%` }} />}
       </div>
       {msg && <p className="gi-dica" style={{ top: "calc(110px + env(safe-area-inset-top))" }}>{msg}</p>}
-      {!acabou && cestas === 0 && resta > 54 && !msg && <p className="gi-dica">arrasta pra cima até o verde e solta</p>}
+      {!acabou && cestas === 0 && resta > tempo - 6 && !msg && <p className="gi-dica">arrasta pra cima até o verde e solta</p>}
       {acabou && (
         <div className="gi-fim">
           <b>{pontos}</b>
-          <small>pontos · {cestas} cestas em 60 segundos</small>
+          <small>pontos · {cestas} cestas em {tempo} segundos</small>
           <button type="button" className="gi-btn" onClick={() => onFim(pontos, cestas)}>continuar</button>
         </div>
       )}

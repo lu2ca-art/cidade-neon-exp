@@ -7,12 +7,15 @@
 
 import { useGLTF } from "@react-three/drei"
 import { useFrame } from "@react-three/fiber"
-import { useMemo, useRef } from "react"
+import { useEffect, useMemo, useRef } from "react"
+import { mergeGeometries } from "three/examples/jsm/utils/BufferGeometryUtils.js"
 import * as THREE from "three"
 import { LUGARES, VAGA, type Lugar, type LugarId } from "../lugares"
 import { posicao, type Mundo } from "./mundo"
 import { MEIA, PASSO, pontoI } from "./pista"
 import { texTexto } from "./geo"
+import { LuzPonto } from "./luzes"
+import { ModeloSeguro } from "./Seguro"
 
 const FRENTE = MEIA + 9 // a fachada fica a isso do eixo da pista
 const FUNDO = 10 // profundidade do prédio
@@ -87,7 +90,7 @@ function Pessoa({ cor, pos, vira }: { cor: string; pos: [number, number, number]
 
 useGLTF.preload(URL_PESSOA)
 
-function Fachada({ l, p, alvo, emCena }: { l: Lugar; p: PoseLugar; alvo: boolean; emCena: boolean }) {
+function Fachada({ l, p, alvo, emCena, modelo }: { l: Lugar; p: PoseLugar; alvo: boolean; emCena: boolean; modelo?: Let }) {
   const letreiro = useMemo(() => texTexto([{ txt: l.letreiro, tam: 150, cor: l.cor }], 1024, 220), [l])
   const vaga = useRef<THREE.MeshBasicMaterial>(null)
   const coluna = useRef<THREE.Mesh>(null)
@@ -99,16 +102,24 @@ function Fachada({ l, p, alvo, emCena }: { l: Lugar; p: PoseLugar; alvo: boolean
   const alto = p.chao + 12 - -12 // da água até 12 m acima da pista
   return (
     <group>
-      {/* o prédio: sai da água/chão e passa 12 m da pista */}
-      <group position={[p.centro.x, -12 + alto / 2, p.centro.z]} rotation-y={p.rumo}>
+      {/* o prédio: sai da água/chão e passa 12 m da pista (com o modelo do
+          Blender, o prédio e a frente são ele; aqui fica só o letreiro) */}
+      {!modelo && <group position={[p.centro.x, -12 + alto / 2, p.centro.z]} rotation-y={p.rumo}>
         <mesh>
           <boxGeometry args={[FUNDO, alto, 16]} />
           <meshStandardMaterial color="#1a1422" roughness={0.9} />
         </mesh>
-      </group>
+      </group>}
       {/* a frente, na altura da pista: vitrine, porta, toldo, letreiro */}
       <group position={[p.centro.x, p.chao, p.centro.z]} rotation-y={p.rumo + (l.lado > 0 ? Math.PI / 2 : -Math.PI / 2)}>
+        {modelo && (
+          <mesh position={[modelo[0], modelo[1], modelo[2]]}>
+            <planeGeometry args={[modelo[3], modelo[3] * 220 / 1024]} />
+            <meshBasicMaterial map={letreiro} transparent toneMapped={false} depthWrite={false} />
+          </mesh>
+        )}
         <group position={[0, 0, FUNDO / 2 + 0.02]}>
+          {!modelo && <>
           {/* vitrine: vidro escuro com a luz de dentro vazando, e divisórias */}
           <mesh position={[-2.2, 2, 0]}>
             <planeGeometry args={[8, 3.2]} />
@@ -150,8 +161,9 @@ function Fachada({ l, p, alvo, emCena }: { l: Lugar; p: PoseLugar; alvo: boolean
             <planeGeometry args={[12, 2.6]} />
             <meshBasicMaterial map={letreiro} transparent toneMapped={false} depthWrite={false} />
           </mesh>
+          </>}
           {/* a luz da vitrine no chão da calçada */}
-          <pointLight position={[0, 2.5, 2.5]} color={l.cor} intensity={emCena ? 34 : 20} distance={12} decay={2} />
+          <LuzPonto position={[0, 2.5, 2.5]} color={l.cor} intensity={emCena ? 34 : 20} distance={12} decay={2} />
         </group>
         {/* um poste na calçada, luz branca fria (contra o quente do lugar).
             Na cena ele sai: fica bem na frente da câmera */}
@@ -165,7 +177,7 @@ function Fachada({ l, p, alvo, emCena }: { l: Lugar; p: PoseLugar; alvo: boolean
           <meshBasicMaterial color="#dfe9ff" toneMapped={false} />
         </mesh>
         </>}
-        <pointLight position={[-6.5, 4.6, FUNDO / 2 + 7.2]} color="#cfe0ff" intensity={18} distance={11} decay={2} />
+        <LuzPonto position={[-6.5, 4.6, FUNDO / 2 + 7.2]} color="#cfe0ff" intensity={18} distance={11} decay={2} />
         {/* calçada até a pista */}
         <mesh position={[0, 0.06, FUNDO / 2 + 4.5]}>
           <boxGeometry args={[16, 0.12, 9]} />
@@ -232,7 +244,7 @@ function Beco({ l, p, revelado, emCena }: { l: Lugar; p: PoseLugar; revelado: bo
           <meshStandardMaterial color="#5a4630" roughness={1} />
         </mesh>
         {/* uma lâmpada fraca, amarela, no fundo: a única luz que é dela */}
-        <pointLight position={[0, 3.2, -FUNDO / 2 + 2.5]} color="#ffd9a0" intensity={emCena ? 30 : 6} distance={12} decay={2} />
+        <LuzPonto position={[0, 3.2, -FUNDO / 2 + 2.5]} color="#ffd9a0" intensity={emCena ? 30 : 6} distance={12} decay={2} />
         <mesh position={[0, 3.3, -FUNDO / 2 + 1.2]}>
           <sphereGeometry args={[0.09, 8, 6]} />
           <meshBasicMaterial color="#ffd9a0" toneMapped={false} />
@@ -244,7 +256,7 @@ function Beco({ l, p, revelado, emCena }: { l: Lugar; p: PoseLugar; revelado: bo
               <planeGeometry args={[7, 1.4]} />
               <meshBasicMaterial map={tex} transparent toneMapped={false} depthWrite={false} />
             </mesh>
-            <pointLight position={[0, 0, 1.5]} color={GRITOS[k].cor} intensity={14} distance={10} decay={2} />
+            <LuzPonto position={[0, 0, 1.5]} color={GRITOS[k].cor} intensity={14} distance={10} decay={2} />
           </group>
         ))}
         <mesh position={[0, 0.06, FUNDO / 2 + 4.5]}>
@@ -337,7 +349,7 @@ function Pin({ p, cor }: { p: PoseLugar; cor: string }) {
         <coneGeometry args={[1.25, 3.2, 20]} />
         <meshBasicMaterial color={cor} toneMapped={false} />
       </mesh>
-      <pointLight position={[0, 1, 0]} color={cor} intensity={60} distance={30} decay={2} />
+      <LuzPonto position={[0, 1, 0]} color={cor} intensity={60} distance={30} decay={2} />
     </group>
   )
 }
@@ -351,15 +363,150 @@ function Vaga({ p, cor, materialRef }: { p: PoseLugar; cor: string; materialRef:
   )
 }
 
-export function Lugares({ M, alvo, emCena, revelado = null }: { M: Mundo; alvo: LugarId | null; emCena: LugarId | null; revelado?: LugarId | null }) {
-  const poses = useMemo(() => Object.values(LUGARES).map((l) => ({ l, p: poseLugar(M, l) })), [M])
+// ── (06/11) OS LUGARES DA CIDADE MODELADOS NO BLENDER (blender/scripts/lugares_cidade.py,
+// public/models/lugares-cidade.glb): um modelo por TIPO, reaproveitado — o palco
+// suspenso (treliça, line arrays, telão) nos 4 palcos das faixas, a estação da
+// Linha 9, a torre do terraço, a loja/AP do Drew, o monolito da balada (também a
+// casa de shows) e o galpão da Ella com o telhado em V e o jardim (09/11). Origem no meio da planta (16 × 10,
+// a da caixa de antes), na altura da pista, frente pra pista; malhas _solido (cor
+// no vértice com a AO assada), _luz (brilho de cor fixa), _neon (vira a cor do
+// lugar), _vidro (o tom do vidro misturado com a cor do lugar) e _pe/_pen (de 0 a
+// -1: esticados até a água, como o prédio de antes). Tudo vai pro mundo UMA vez e
+// vira 3 desenhos (sólido, brilho, vidro) com materiais compartilhados; nada por
+// quadro, sem luz nova. Vaga, PIN, gente, poste, calçada e letreiro continuam os
+// da Fachada (os gatilhos e as colisões vêm da pose, que não muda). Os sem tipo
+// (o posto) e o beco seguem como eram. Se o .glb não carregar, tudo volta às caixas.
+export const URL_CIDADE = "/models/lugares-cidade.glb"
+type Tipo = "palco" | "estacao" | "terraco" | "casa-drew" | "balada" | "casa-ella"
+type Let = [number, number, number, number] // o letreiro no modelo: x, altura, frente, largura (m)
+const TIPO: Partial<Record<LugarId, Tipo>> = {
+  "palco-swav": "palco", "palco-rollercoaster": "palco", "palco-copo": "palco", "palco-nectar": "palco",
+  plataforma: "estacao", topo: "terraco", "casa-drewboy": "casa-drew", balada: "balada", "casa-shows": "balada", escondido: "casa-ella",
+}
+// (os do lugares_cidade.py, impressos como LET; a frente é a partir do meio da planta)
+const LET_TIPO: Record<Tipo, Let> = {
+  palco: [0, 10.55, 4.33, 7], estacao: [0, 4.75, 4.71, 7], terraco: [0, 7.9, 3.79, 9],
+  "casa-drew": [-2, 5, 3.93, 5.5], balada: [-2, 5, 5.03, 6], "casa-ella": [0, 3.32, 1.48, 2.4],
+}
+
+let MATS_CIDADE: { solido: THREE.Material; brilho: THREE.Material; vidro: THREE.Material; planta: THREE.Material } | null = null
+export function matsCidade() {
+  if (MATS_CIDADE) return MATS_CIDADE
+  const vidro = new THREE.MeshStandardMaterial({ vertexColors: true, color: "#2a3040", roughness: 0.12, metalness: 0.5, transparent: true, opacity: 0.55, depthWrite: false, side: THREE.DoubleSide })
+  // a luz de dentro vazando: o vidro emite a própria cor do vértice (o tom × a cor do lugar)
+  vidro.onBeforeCompile = (sh) => {
+    sh.fragmentShader = sh.fragmentShader.replace("#include <emissivemap_fragment>", "#include <emissivemap_fragment>\n#ifdef USE_COLOR\n  totalEmissiveRadiance += vColor.rgb * 0.3;\n#endif")
+  }
+  vidro.customProgramCacheKey = () => "lugares-cidade-vidro"
+  MATS_CIDADE = {
+    solido: new THREE.MeshStandardMaterial({ vertexColors: true, roughness: 0.6, metalness: 0.2 }),
+    brilho: new THREE.MeshBasicMaterial({ vertexColors: true, toneMapped: false }),
+    vidro,
+    // (09/11) as folhas do jardim da Ella são finas: dos dois lados
+    planta: new THREE.MeshStandardMaterial({ vertexColors: true, roughness: 0.75, side: THREE.DoubleSide }),
+  }
+  return MATS_CIDADE
+}
+
+// copia a malha do glb (quantizada pelo meshopt) em Float32 e leva pro mundo
+function emFloat(g: THREE.BufferGeometry, m: THREE.Matrix4, cor?: THREE.Color, mistura = 1) {
+  const pos = g.attributes.position, nor = g.attributes.normal, col = g.attributes.color
+  const n = pos.count
+  const P = new Float32Array(n * 3), N = new Float32Array(n * 3), C = new Float32Array(n * 3)
+  for (let i = 0; i < n; i++) {
+    P[i * 3] = pos.getX(i); P[i * 3 + 1] = pos.getY(i); P[i * 3 + 2] = pos.getZ(i)
+    if (nor) { N[i * 3] = nor.getX(i); N[i * 3 + 1] = nor.getY(i); N[i * 3 + 2] = nor.getZ(i) }
+    const r = col ? col.getX(i) : 1, gg = col ? col.getY(i) : 1, b = col ? col.getZ(i) : 1
+    if (cor) {
+      C[i * 3] = r + (cor.r - r) * mistura; C[i * 3 + 1] = gg + (cor.g - gg) * mistura; C[i * 3 + 2] = b + (cor.b - b) * mistura
+    } else { C[i * 3] = r; C[i * 3 + 1] = gg; C[i * 3 + 2] = b }
+  }
+  const o = new THREE.BufferGeometry()
+  o.setAttribute("position", new THREE.BufferAttribute(P, 3))
+  o.setAttribute("normal", new THREE.BufferAttribute(N, 3))
+  o.setAttribute("color", new THREE.BufferAttribute(C, 3))
+  o.setIndex(g.index ? Array.from(g.index.array as ArrayLike<number>) : Array.from({ length: n }, (_, i) => i))
+  o.applyMatrix4(m)
+  if (!nor) o.computeVertexNormals()
+  return o
+}
+
+type Pose = { l: Lugar; p: PoseLugar }
+
+function LugaresGlb({ poses, alvo, emCena, revelado }: { poses: Pose[]; alvo: LugarId | null; emCena: LugarId | null; revelado: LugarId | null }) {
+  const { nodes } = useGLTF(URL_CIDADE) as unknown as { nodes: Record<string, THREE.Object3D> }
+  const d = useMemo(() => {
+    const solido: THREE.BufferGeometry[] = [], brilho: THREE.BufferGeometry[] = [], vidro: THREE.BufferGeometry[] = [], planta: THREE.BufferGeometry[] = []
+    const inv = new THREE.Matrix4(), rel = new THREE.Matrix4(), estica = new THREE.Matrix4()
+    for (const { l, p } of poses) {
+      const tipo = l.segredo ? undefined : TIPO[l.id]
+      if (!tipo) continue
+      const no = nodes[tipo]
+      if (!no) throw new Error(`lugares-cidade.glb sem o nó ${tipo}`)
+      const base = new THREE.Matrix4().makeRotationY(p.rumo + (l.lado > 0 ? Math.PI / 2 : -Math.PI / 2)).setPosition(p.centro.x, p.chao, p.centro.z)
+      estica.makeScale(1, Math.max(0.5, p.chao + 12), 1) // o pé: da pista até a água (-12)
+      const cor = new THREE.Color(l.cor)
+      no.updateWorldMatrix(true, true)
+      inv.copy(no.matrixWorld).invert()
+      no.traverse((o) => {
+        const m = o as THREE.Mesh
+        if (!m.isMesh) return
+        const g = m.name.slice(m.name.lastIndexOf("_") + 1)
+        rel.multiplyMatrices(inv, m.matrixWorld)
+        const mm = base.clone()
+        if (g === "pe" || g === "pen") mm.multiply(estica)
+        mm.multiply(rel)
+        if (g === "solido" || g === "pe") solido.push(emFloat(m.geometry, mm))
+        else if (g === "neon" || g === "pen") brilho.push(emFloat(m.geometry, mm, cor))
+        else if (g === "vidro") vidro.push(emFloat(m.geometry, mm, cor, 0.45))
+        else if (g === "planta") planta.push(emFloat(m.geometry, mm))
+        else brilho.push(emFloat(m.geometry, mm))
+      })
+    }
+    const juntar = (gs: THREE.BufferGeometry[]) => {
+      if (!gs.length) return null
+      const r = mergeGeometries(gs, false)
+      for (const g of gs) g.dispose()
+      if (!r) throw new Error("lugares-cidade.glb: não deu pra juntar")
+      return r
+    }
+    return { solido: juntar(solido), brilho: juntar(brilho), vidro: juntar(vidro), planta: juntar(planta) }
+  }, [nodes, poses])
+  // as mescladas são nossas (copiadas em Float32): soltar ao desmontar; o cache do drei fica
+  useEffect(() => () => { d.solido?.dispose(); d.brilho?.dispose(); d.vidro?.dispose(); d.planta?.dispose() }, [d])
+  const mats = matsCidade()
   return (
     <group>
-      {poses.map(({ l, p }) => l.segredo
-        ? <Beco key={l.id} l={l} p={p} revelado={revelado === l.id} emCena={emCena === l.id} />
-        : l.id === "casa-dbee"
-        ? <CasaDeserto key={l.id} l={l} p={p} alvo={alvo === l.id} />
-        : <Fachada key={l.id} l={l} p={p} alvo={alvo === l.id} emCena={emCena === l.id} />)}
+      {d.solido && <mesh geometry={d.solido} material={mats.solido} name="lugares-cidade" />}
+      {d.brilho && <mesh geometry={d.brilho} material={mats.brilho} />}
+      {d.vidro && <mesh geometry={d.vidro} material={mats.vidro} renderOrder={1} />}
+      {d.planta && <mesh geometry={d.planta} material={mats.planta} />}
+      <LugaresCorpo poses={poses} alvo={alvo} emCena={emCena} revelado={revelado} comModelo />
     </group>
+  )
+}
+
+function LugaresCorpo({ poses, alvo, emCena, revelado, comModelo = false }: { poses: Pose[]; alvo: LugarId | null; emCena: LugarId | null; revelado: LugarId | null; comModelo?: boolean }) {
+  return (
+    <group>
+      {poses.map(({ l, p }) => {
+        const tipo = comModelo ? TIPO[l.id] : undefined
+        return l.segredo
+          ? <Beco key={l.id} l={l} p={p} revelado={revelado === l.id} emCena={emCena === l.id} />
+          : l.id === "casa-dbee"
+          ? <CasaDeserto key={l.id} l={l} p={p} alvo={alvo === l.id} />
+          : <Fachada key={l.id} l={l} p={p} alvo={alvo === l.id} emCena={emCena === l.id} modelo={tipo ? LET_TIPO[tipo] : undefined} />
+      })}
+    </group>
+  )
+}
+
+export function Lugares({ M, alvo, emCena, revelado = null }: { M: Mundo; alvo: LugarId | null; emCena: LugarId | null; revelado?: LugarId | null }) {
+  const poses = useMemo(() => Object.values(LUGARES).filter((l) => (!l.soDisco || "disco" in M) && !("disco" in M && (l.id === "bar" || l.id === "casa-dbee")) && !l.soChao).map((l) => ({ l, p: poseLugar(M, l) })), [M])
+  const reserva = <LugaresCorpo poses={poses} alvo={alvo} emCena={emCena} revelado={revelado} />
+  return (
+    <ModeloSeguro nome="lugares-cidade-glb" reserva={reserva}>
+      <LugaresGlb poses={poses} alvo={alvo} emCena={emCena} revelado={revelado} />
+    </ModeloSeguro>
   )
 }

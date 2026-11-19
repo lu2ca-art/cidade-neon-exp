@@ -380,6 +380,10 @@ export interface KombiProps {
   onItemClick?: (item: "radio" | "pads" | "toca" | "portaLuvas") => void
   /** sem teto interno nem cúpula (a Linha 222 põe o teto panorâmico dela) */
   semTeto?: boolean
+  /** sem painel, volante e câmbio (a Linha 222 desenha os dela) */
+  semPainel?: boolean
+  /** sem paredes internas, bancos e piso (a Linha 222 tem os dela, modelados) */
+  semParedes?: boolean
 }
 
 export function Kombi({
@@ -391,6 +395,8 @@ export function Kombi({
   radioHub,
   onItemClick,
   semTeto = false,
+  semPainel = false,
+  semParedes = false,
 }: KombiProps) {
   const K = KOMBI_LAYOUT
   return (
@@ -432,6 +438,7 @@ export function Kombi({
               <meshStandardMaterial color="#3a2410" roughness={0.8} />
             </mesh>
           )}
+          {!semParedes && (<>
           {/* Parede traseira interna (abaixo do vidro-tras Y<0.85) */}
           <mesh position={[0, 0.5, 1.78]}>
             <boxGeometry args={[1.55, 0.85, 0.02]} />
@@ -457,6 +464,7 @@ export function Kombi({
             <boxGeometry args={[2.8, 0.1, 0.02]} />
             <meshStandardMaterial color="#3a2410" roughness={0.7} />
           </mesh>
+          </>)}
 
           {/* Canopy única — uma bolha de vidro arredondada cobre tudo em cima
               (para-brisa + vidro-tras + janelas laterais + teto de vidro).
@@ -465,9 +473,13 @@ export function Kombi({
           {/* Porta interna direita — removida (parede azul feia que quebrava
               o interior). A carroceria e painéis laterais já fecham o carro. */}
           {/* dashboard */}
-          <PartMesh part={K.painel} />
-          <Volante part={K.volante} steerValue={steerValue} />
-          <Cambio part={K.cambio} />
+          {!semPainel && (
+            <>
+              <PartMesh part={K.painel} />
+              <Volante part={K.volante} steerValue={steerValue} />
+              <Cambio part={K.cambio} />
+            </>
+          )}
           <group onClick={onItemClick ? (e) => { e.stopPropagation(); onItemClick("radio") } : undefined}>
             <RadioSintonizador part={K.radio} {...radioHub} />
           </group>
@@ -562,9 +574,13 @@ export function Kombi({
             })()}
           </group>
           {/* bancos */}
-          <PartMesh part={K.bancoMotorista} />
-          <PartMesh part={K.bancoPassageira} />
-          <PartMesh part={K.pisoInterno} />
+          {!semParedes && (
+            <>
+              <PartMesh part={K.bancoMotorista} />
+              <PartMesh part={K.bancoPassageira} />
+              <PartMesh part={K.pisoInterno} />
+            </>
+          )}
           {/* Cortinas removidas — estavam bloqueando a visão lateral e
               conflitando com as janelas transparentes. */}
           {/* guirlandas LED */}

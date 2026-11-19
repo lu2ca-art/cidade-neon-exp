@@ -5,7 +5,7 @@
 // quase somem com o pé fora. Quem dá a sensação de acelerar é a vibração
 // (tremor), não o volume.
 
-import { audioCtx } from "./som"
+import { audioCtx, saidaEfeitos } from "./som"
 
 export const MARCHAS = [0, 0.2, 0.4, 0.6, 0.8, 1.45]
 
@@ -41,7 +41,7 @@ export function montarMotor() {
   out.gain.value = 0
   // mistura do carro bem abaixo da música (pedido do LU2CA)
   out.gain.setTargetAtTime(0.28, c.currentTime, 0.6)
-  out.connect(c.destination)
+  out.connect(saidaEfeitos() ?? c.destination)
 
   // dois tons graves e limpos (fundamental e quinta), sem harmônico áspero
   const o1 = c.createOscillator()
@@ -116,6 +116,104 @@ export function montarMotor() {
     // turbo / decolagem: o motor sobe o giro de uma vez
     whoosh() {
       rev = 1
+    },
+  }
+}
+
+/* ─── o patins (T62) ────────────────────────────────────── */
+// (LU2CA 21/10: "tirar o barulho de motor de carro do patinador: um
+// barulhinho de rodinhas de gel; no ar, só o vento neon")
+// No chão: o rolar macio da roda de gel (ruído filtrado, mais claro quanto
+// mais rápido) com o "tec" leve das emendas do asfalto (um pulso lento no
+// volume). No ar: as rodas calam e sobe o vento, com um brilho fino e
+// tremido por cima (o neon). Tudo sintetizado, montado uma vez; por quadro só
+// se mudam alvos de volume e de filtro, no máximo 15 vezes por segundo.
+let ruidoBuf: AudioBuffer | null = null
+function ruido(c: AudioContext) {
+  if (ruidoBuf && ruidoBuf.sampleRate === c.sampleRate) return ruidoBuf
+  const b = c.createBuffer(1, c.sampleRate * 2, c.sampleRate)
+  const d = b.getChannelData(0)
+  for (let i = 0; i < d.length; i++) d[i] = Math.random() * 2 - 1
+  return (ruidoBuf = b)
+}
+
+// (T40b, 30/10: o dono, "tá horrível, tem que ser muuuito mais baixo") o
+// volume caiu pra ~17% do T62 (0,28 → 0,048) e o timbre ficou mais macio:
+// as rodas passam num passa-baixa (antes um passa-banda que chiava no agudo),
+// o "tec" das emendas é metade, o vento é um passa-baixa e o brilho do neon
+// está bem mais baixo. Os números moram aqui, num lugar só.
+export const PATINS = {
+  volume: 0.048, // o T62 era 0.28
+  rodaMin: 0.05, rodaMax: 0.16, // o rolar (antes de `volume`)
+  rodaCorte: 320, rodaCorteVel: 520, // Hz: o passa-baixa das rodas abre com a velocidade
+  tec: 0.12, // a profundidade do "tec" das emendas (era 0.25)
+  ventoMin: 0.05, ventoMax: 0.18,
+  ventoCorte: 500, ventoCorteVel: 900, // Hz
+  neonMin: 0.001, neonMax: 0.0015, // o brilho fino no ar (era 0.0025 + 0.004)
+}
+
+export function montarPatins() {
+  const c = audioCtx()
+  if (!c) return null
+  const P = PATINS
+  const out = c.createGain()
+  out.gain.value = 0
+  out.gain.setTargetAtTime(P.volume, c.currentTime, 0.3) // entra de mansinho
+  out.connect(saidaEfeitos() ?? c.destination)
+  const nb = ruido(c)
+
+  // as rodas: ruído num passa-baixa macio + um zumbido grave (o gel)
+  const sR = c.createBufferSource(); sR.buffer = nb; sR.loop = true
+  const bpR = c.createBiquadFilter(); bpR.type = "lowpass"; bpR.frequency.value = P.rodaCorte; bpR.Q.value = 0.4
+  const gR = c.createGain(); gR.gain.value = 0
+  const hum = c.createOscillator(); hum.type = "sine"; hum.frequency.value = 95
+  const gH = c.createGain(); gH.gain.value = 0.25
+  // as emendas: um pulso lento no volume das rodas (anda com a velocidade)
+  const tec = c.createOscillator(); tec.type = "sine"; tec.frequency.value = 2
+  const gTec = c.createGain(); gTec.gain.value = 0
+  const rodas = c.createGain(); rodas.gain.value = 1
+  tec.connect(gTec).connect(rodas.gain)
+  sR.connect(bpR).connect(gR).connect(rodas)
+  hum.connect(gH).connect(gR)
+  rodas.connect(out)
+
+  // o vento neon: ruído num passa-baixa que abre com a velocidade + dois
+  // tons finos levemente desafinados (o tremido do neon), bem lá embaixo
+  const sV = c.createBufferSource(); sV.buffer = nb; sV.loop = true; sV.loopStart = 0.7
+  const bpV = c.createBiquadFilter(); bpV.type = "lowpass"; bpV.frequency.value = P.ventoCorte; bpV.Q.value = 0.3
+  const gV = c.createGain(); gV.gain.value = 0
+  const n1 = c.createOscillator(); n1.type = "sine"; n1.frequency.value = 1760
+  const n2 = c.createOscillator(); n2.type = "sine"; n2.frequency.value = 1766.5
+  const gN = c.createGain(); gN.gain.value = 0
+  sV.connect(bpV).connect(gV).connect(out)
+  n1.connect(gN); n2.connect(gN); gN.connect(out)
+
+  for (const s of [sR, hum, tec, sV, n1, n2]) s.start()
+  let ult = 0
+  return {
+    // v01: 0 parado → 1 no máximo do patins; chao: rodando no chão; ar: no ar
+    atualizar(v01: number, chao: boolean, ar: boolean) {
+      const agora = performance.now()
+      if (agora - ult < 66) return
+      ult = agora
+      const t = c.currentTime, v = Math.max(0, Math.min(1, v01))
+      const roda = chao && v > 0.01 ? P.rodaMin + v * (P.rodaMax - P.rodaMin) : 0
+      gR.gain.setTargetAtTime(roda, t, roda ? 0.12 : 0.08)
+      bpR.frequency.setTargetAtTime(P.rodaCorte + v * P.rodaCorteVel, t, 0.15)
+      hum.frequency.setTargetAtTime(80 + v * 70, t, 0.15)
+      tec.frequency.setTargetAtTime(1.5 + v * 7, t, 0.2)
+      gTec.gain.setTargetAtTime(chao ? P.tec : 0, t, 0.15)
+      const vento = ar ? P.ventoMin + v * (P.ventoMax - P.ventoMin) : 0
+      gV.gain.setTargetAtTime(vento, t, ar ? 0.3 : 0.15)
+      bpV.frequency.setTargetAtTime(P.ventoCorte + v * P.ventoCorteVel, t, 0.3)
+      gN.gain.setTargetAtTime(ar ? P.neonMin + v * P.neonMax : 0, t, ar ? 0.5 : 0.15)
+    },
+    parar() {
+      out.gain.setTargetAtTime(0, c.currentTime, 0.15)
+      setTimeout(() => {
+        for (const s of [sR, hum, tec, sV, n1, n2]) { try { s.stop() } catch {} }
+        out.disconnect()
+      }, 700)
     },
   }
 }

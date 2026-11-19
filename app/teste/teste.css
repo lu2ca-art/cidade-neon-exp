@@ -12,3 +12,44 @@
 .ts-acoes button { padding: 12px 16px; border-radius: 10px; border: 0; background: #ff3fb0; color: #14121c; font: 800 14px var(--font-geist-sans), system-ui, sans-serif; cursor: pointer; }
 .ts-acoes button:disabled { opacity: 0.35; cursor: default; }
 .ts-msg { margin: 12px 0 0; color: #ffc857; font-weight: 700; }
+
+/* /teste: a mesa de testes (cartões, os mais novos em cima) */
+.ms-mesa { display: flex; flex-direction: column; gap: 16px; margin-top: 18px; }
+.ms-vazio { color: rgba(242, 238, 250, 0.6); }
+.ms-cartao { padding: 16px; border-radius: 16px; border: 1px solid rgba(255, 63, 176, 0.45); background: linear-gradient(180deg, rgba(255, 63, 176, 0.09), rgba(80, 230, 255, 0.04)); box-shadow: 0 0 18px rgba(255, 63, 176, 0.18), inset 0 0 0 1px rgba(255, 255, 255, 0.03); }
+.ms-topo { display: flex; justify-content: space-between; font: 700 12px var(--font-geist-mono), ui-monospace, monospace; letter-spacing: 0.08em; color: #50e6ff; }
+.ms-topo span { color: rgba(242, 238, 250, 0.45); }
+.ms-cartao h2 { margin: 6px 0 8px; font: 900 21px/1.2 "Arial Black", system-ui, sans-serif; letter-spacing: 0; text-transform: none; color: #ffc857; text-shadow: 0 0 12px rgba(255, 200, 87, 0.35); }
+.ms-olhar { margin: 0; font-size: 15px; line-height: 1.5; color: #f2eefa; }
+.ms-perguntas { margin-top: 12px; padding: 10px 12px; border-radius: 10px; background: rgba(0, 0, 0, 0.3); border-left: 3px solid #50e6ff; }
+.ms-perguntas b { font: 700 11px var(--font-geist-mono), ui-monospace, monospace; letter-spacing: 0.14em; text-transform: uppercase; color: #50e6ff; }
+.ms-perguntas ul { margin: 6px 0 0; padding-left: 18px; }
+.ms-perguntas li { font-size: 14px; line-height: 1.45; color: rgba(242, 238, 250, 0.85); margin: 4px 0; }
+.ms-abrir { display: block; margin-top: 14px; padding: 16px; border-radius: 12px; background: #ff3fb0; color: #14121c; text-align: center; text-decoration: none; font: 900 18px "Arial Black", system-ui, sans-serif; box-shadow: 0 0 20px rgba(255, 63, 176, 0.55); }
+.ms-abrir:active { transform: scale(0.98); background: #ff6cc4; }
+.ms-abrir:focus-visible, .ms-mais a:focus-visible { outline: 3px solid #50e6ff; outline-offset: 3px; }
+.ms-mais { display: flex; flex-direction: column; gap: 6px; margin-top: 10px; }
+.ms-mais a { padding: 10px 12px; border-radius: 10px; border: 1px solid rgba(80, 230, 255, 0.35); color: #50e6ff; text-decoration: none; font-size: 14px; }
+@media (prefers-reduced-motion: reduce) { .ms-abrir:active { transform: none; } }
+.ts-nota { margin: 0 0 10px; font-size: 13px; line-height: 1.45; color: rgba(242, 238, 250, 0.6); }
+
+/* (05/11) a mesa por dia, o "✓ testei" e o resumo do topo */
+.ms-resumo { display: flex; flex-direction: column; gap: 10px; padding: 14px 16px; border-radius: 14px; border: 1px solid rgba(80, 230, 255, 0.4); background: rgba(80, 230, 255, 0.06); }
+.ms-resumo p { margin: 0; font-size: 16px; line-height: 1.4; color: #f2eefa; }
+.ms-resumo b { color: #ffc857; font-size: 20px; }
+.ms-resumo label { display: flex; align-items: center; gap: 10px; min-height: 44px; font-size: 15px; color: #50e6ff; cursor: pointer; }
+.ms-resumo input { width: 22px; height: 22px; accent-color: #ff3fb0; margin: 0; }
+.ms-dia { display: flex; flex-direction: column; gap: 12px; }
+.ms-dia-titulo { position: sticky; top: 0; z-index: 1; display: flex; justify-content: space-between; align-items: baseline; gap: 8px; margin: 10px 0 0; padding: calc(8px + env(safe-area-inset-top)) 2px 8px; background: #0e0b16; border-bottom: 1px solid rgba(255, 200, 87, 0.3); font: 900 18px "Arial Black", system-ui, sans-serif; color: #ffc857; }
+.ms-dia-titulo small { font: 700 12px var(--font-geist-mono), ui-monospace, monospace; letter-spacing: 0.06em; color: rgba(242, 238, 250, 0.55); }
+.ms-pe { display: flex; justify-content: space-between; align-items: center; gap: 10px; margin-top: 12px; }
+.ms-anotar { padding: 10px 4px; font-size: 13px; color: rgba(242, 238, 250, 0.6); text-decoration: underline; text-underline-offset: 3px; }
+.ms-testei { min-height: 44px; padding: 10px 16px; border-radius: 10px; border: 1px solid #7dff9b; background: rgba(125, 255, 155, 0.1); color: #7dff9b; font: 800 15px var(--font-geist-sans), system-ui, sans-serif; cursor: pointer; }
+.ms-testei:active { background: rgba(125, 255, 155, 0.25); }
+.ms-desfazer { border-color: rgba(242, 238, 250, 0.3); background: transparent; color: rgba(242, 238, 250, 0.7); font-weight: 600; font-size: 13px; }
+.ms-cartao-feito { opacity: 0.5; box-shadow: none; }
+.ms-recolhido { display: flex; align-items: center; gap: 10px; padding: 6px 6px 6px 12px; border-radius: 10px; border: 1px solid rgba(255, 255, 255, 0.08); background: rgba(255, 255, 255, 0.02); opacity: 0.6; }
+.ms-recolhido span { color: #7dff9b; font-weight: 900; }
+.ms-recolhido a { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-size: 14px; color: rgba(242, 238, 250, 0.8); text-decoration: none; }
+.ms-recolhido button { min-height: 40px; padding: 6px 12px; border-radius: 8px; border: 1px solid rgba(242, 238, 250, 0.25); background: transparent; color: rgba(242, 238, 250, 0.75); font: 600 13px var(--font-geist-sans), system-ui, sans-serif; cursor: pointer; }
+.ms-testei:focus-visible, .ms-recolhido button:focus-visible, .ms-anotar:focus-visible, .ms-recolhido a:focus-visible { outline: 3px solid #50e6ff; outline-offset: 3px; }

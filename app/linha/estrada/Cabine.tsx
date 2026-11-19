@@ -8,10 +8,14 @@
 // retrovisor. Frente pra -Z.
 
 import { useFrame } from "@react-three/fiber"
-import { useMemo, useRef } from "react"
+import { Suspense, useCallback, useMemo, useRef, useState } from "react"
 import * as THREE from "three"
 import { Kombi as KombiHippie } from "@/components/DriveCockpit/Kombi"
 import { KOMBI_LAYOUT } from "@/lib/kombi-layout"
+import { EstudioKombi } from "./EstudioKombi"
+import { InteriorKombi, lata } from "./InteriorKombi"
+import { InteriorModelado } from "./InteriorModelado"
+import { InstrumentosKombi } from "./InstrumentosKombi"
 import { estacao as getEstacao, type EstacaoId, type ObjetoId } from "../data"
 
 // o interior da drive-v2 encaixado na Kombi da estrada (cúpula panorâmica):
@@ -33,6 +37,10 @@ type Props = {
   objetos: EstacaoId[]
   carona: EstacaoId | null // alguém de carona agora (o Drewboy na missão dele)
   onTocaDiscos?: () => void // tocou no toca-discos: abre a estante de discos
+  volante: React.MutableRefObject<number> // o volante gira junto
+  vel: React.MutableRefObject<number> // m/s (o velocímetro)
+  tinta: string // a pintura (o painel é de lata pintada)
+  neon: string
 }
 
 // cada objeto pendurado com uma forma simples que lembra ele
@@ -86,15 +94,19 @@ function Pessoa({ cor, pos, vira = 0 }: { cor: string; pos: [number, number, num
   )
 }
 
-// onde cada um senta (espaço do layout da drive-v2): banco do passageiro e
-// o fundo da Kombi
-const LUGARES: [number, number, number][] = [
-  [0.55, 0.42, -0.05], // passageiro da frente
-  [-0.45, 0.42, 0.9], [0.45, 0.42, 0.9],
-  [-0.45, 0.42, 1.45], [0.45, 0.42, 1.45], [0, 0.42, 1.2],
+// onde cada um senta (espaço do layout da drive-v2) e pra onde olha: o
+// banco do passageiro, o sofá da esquerda (virado pro meio), a cadeira do
+// estúdio (virada pra mesa) e o banquinho do sinte (virado pra direita)
+const LUGARES: { pos: [number, number, number]; vira: number }[] = [
+  { pos: [0.55, 0.42, -0.05], vira: 0 }, // passageiro da frente
+  { pos: [0.05, 0.42, 1.2], vira: Math.PI }, // a cadeira do estúdio
+  { pos: [-0.62, 0.36, 0.55], vira: -Math.PI / 2 },
+  { pos: [0.3, 0.36, 0.95], vira: -Math.PI / 2 }, // o sinte
+  { pos: [-0.62, 0.36, 0.95], vira: -Math.PI / 2 },
+  { pos: [-0.62, 0.36, 1.32], vira: -Math.PI / 2 },
 ]
 
-export function Cabine({ balanco, disco, objetos, carona, onTocaDiscos }: Props) {
+export function Cabine({ balanco, disco, objetos, carona, onTocaDiscos, volante, vel, tinta, neon }: Props) {
   const pendulo = useRef<THREE.Group>(null)
   const ang = useRef({ a: 0, w: 0 })
 
@@ -107,7 +119,7 @@ export function Cabine({ balanco, disco, objetos, carona, onTocaDiscos }: Props)
   // você já ajudou (menos o LU2CA, que tá na estação 6)
   const gente = useMemo(() => {
     const ids = [...(carona ? [carona] : []), ...objetos.filter((o) => o !== carona && o !== "nectar")]
-    return ids.slice(0, LUGARES.length).map((o, i) => ({ id: o, cor: getEstacao(o).cor, pos: LUGARES[i] }))
+    return ids.slice(0, LUGARES.length).map((o, i) => ({ id: o, cor: getEstacao(o).cor, ...LUGARES[i] }))
   }, [objetos, carona])
 
   useFrame((_, dtRaw) => {
@@ -118,16 +130,20 @@ export function Cabine({ balanco, disco, objetos, carona, onTocaDiscos }: Props)
     if (pendulo.current) pendulo.current.rotation.z = Math.max(-0.9, Math.min(0.9, p.a))
   })
 
+  // o interior modelado no Blender: até chegar, as peças paradas do código
+  const [modelado, setModelado] = useState(false)
+  const pronto = useCallback(() => setModelado(true), [])
+
   const rv = KOMBI_LAYOUT.retrovisor.position
   return (
+    <>
+    <Suspense fallback={null}><InteriorModelado tinta={lata(tinta)} onPronto={pronto} /></Suspense>
+    <InstrumentosKombi escala={ESCALA} desloca={DESLOCA} />
     <group scale={ESCALA} position={DESLOCA}>
-      {/* banco de trás (quem vem atrás senta nele) */}
-      <mesh position={[0, 0.34, 1.2]}>
-        <boxGeometry args={[1.4, 0.16, 0.75]} />
-        <meshStandardMaterial color="#5a2a3a" roughness={0.8} />
-      </mesh>
-      <KombiHippie isPlaying={disco} hideExterior semTeto onItemClick={(item) => { if (item === "toca") onTocaDiscos?.() }} />
-      {gente.map((g) => <Pessoa key={g.id} cor={g.cor} pos={g.pos} vira={g.pos[2] > 0.5 ? 0 : 0} />)}
+      <KombiHippie isPlaying={disco} hideExterior semTeto semPainel semParedes onItemClick={(item) => { if (item === "toca") onTocaDiscos?.() }} />
+      <EstudioKombi escala={ESCALA} tinta={lata(tinta)} estatico={!modelado} />
+      <InteriorKombi escala={ESCALA} tinta={tinta} neon={neon} volante={volante} vel={vel} balanco={balanco} estatico={!modelado} />
+      {gente.map((g) => <Pessoa key={g.id} cor={g.cor} pos={g.pos} vira={g.vira} />)}
       <group ref={pendulo} position={[rv[0], rv[1] - 0.05, rv[2] + 0.02]}>
         {pendurados.map((o, i) => {
           const n = pendurados.length
@@ -147,5 +163,6 @@ export function Cabine({ balanco, disco, objetos, carona, onTocaDiscos }: Props)
         })}
       </group>
     </group>
+    </>
   )
 }

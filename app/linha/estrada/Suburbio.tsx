@@ -3,14 +3,17 @@
 // O SUBÚRBIO XENOM, embaixo da cidade neon: dentro do anel da estrada
 // elevada, no chão (o resto da cidade é água). O miolo é o modelo "CITY
 // SUBURBS" de isabm (Sketchfab, CC-BY 4.0), otimizado de 157 MB pra ~3,5 MB
-// (scratchpad/modelos/otimizar.mjs: sem normal/tangente, cópias como
-// instância, simplificado, texturas 1k webp, meshopt). Crédito no jogo.
+// (scratchpad/modelos/otimizar.mjs) e, na noite de 05/11, pra 1,3 MB e 36 mil
+// triângulos (blender/scripts/suburbio_*.py: os 101 prédios são 13 modelos,
+// cada um virou uma caixa leve com a fachada assada; docs/blender/noite-0511.md).
+// Crédito no jogo.
 
 import { useGLTF } from "@react-three/drei"
-import { useMemo } from "react"
+import { useEffect, useMemo } from "react"
 import * as THREE from "three"
 
 import { CREDITO_SUBURBIO } from "./creditos"
+import { Estatico, descartarMescladas, mesclarPorMaterial } from "./estatico"
 export { CREDITO_SUBURBIO }
 const URL = "/models/suburbio.glb"
 
@@ -26,8 +29,12 @@ export function Suburbio({ cx, cz, raioChao }: { cx: number; cz: number; raioCha
       if (!m.geometry.getAttribute("normal")) m.geometry.computeVertexNormals()
       m.frustumCulled = true
     })
+    // (perf 003) 154 malhas com 3 materiais: uma por material e célula (6×6: com 3×3 o corte por frustum piorava e os triângulos subiam ~75 mil)
+    mesclarPorMaterial(g, 6)
     return g
   }, [scene])
+  // (revisão 05/11) desmontou (o <Perto>): as geometrias mescladas saem da GPU; as do glb (cache) ficam
+  useEffect(() => () => descartarMescladas(modelo, scene), [modelo, scene])
   return (
     <group>
       {/* o chão do bairro (fora dele, a cidade é água) */}
@@ -35,10 +42,14 @@ export function Suburbio({ cx, cz, raioChao }: { cx: number; cz: number; raioCha
         <circleGeometry args={[raioChao, 64]} />
         <meshStandardMaterial color="#0c0d18" roughness={0.92} metalness={0.05} />
       </mesh>
-      {/* o miolo: centrado (o modelo vem com o centro em x 22, z 6) */}
-      <primitive object={modelo} position={[cx - 22 * 1.4, -11.8, cz - 6 * 1.4]} scale={1.4} />
+      {/* o miolo: centrado (o modelo vem com o centro em x 22, z 6). Congelado: não se mexe (perf 003) */}
+      <Estatico><primitive object={modelo} position={[cx - 22 * 1.4, -11.8, cz - 6 * 1.4]} scale={1.4} /></Estatico>
     </group>
   )
 }
+
+// (perf 006) o vidro "cristal" (transmission) que fazia o three renderizar a cena
+// duas vezes saiu do arquivo na noite de 05/11 (o glb novo só tem CASAS, ATLAS e
+// ATLAS_PROPS, sem transmissão): a troca pro vidro barato (vidroBarato) foi tirada.
 
 useGLTF.preload(URL)

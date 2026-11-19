@@ -9,17 +9,17 @@ import type { FreqId } from "../linha/radio"
 export interface Ir { area: FreqId; u: number; parado?: boolean; procurado?: boolean; embacar?: boolean }
 export interface Atalho { id: string; nome: string; desc: string; save: Record<string, unknown>; ir: Ir }
 
-export const CHAVE_SAVE = "cn-linha-222"
-export const CHAVE_REAL = "cn-linha-222-antes-do-teste"
+// (notas 04/11) os testes gravam no save de teste, separado do de verdade (linha/chaveSave.ts)
+export { CHAVE_SAVE_TESTE as CHAVE_SAVE, CHAVE_SAVE_ANTES as CHAVE_REAL } from "../linha/chaveSave"
 
 // alguém que já passou da abertura e do tutorial, com sinal pra abrir todas as saídas
-const BASE = {
+export const BASE_TESTE = {
   versao: 2, casa: true, tutorial: ["fim", "posto"], tanque: 1, nome: "teste", estacao: "chuva", pesos: {}, linha: "", xp: 0, dias: [],
   sinal: 400, freq: "linha", logs: {}, recordes: {}, legado: [], melhorVolta: 0, jogados: {}, perfil: "estrada", itens: [],
   ligacoes: ["dbee-0", "dbee-1"], modos: {}, ultimoModo: "texto", nucleo: { invasoes: 9, caido: false }, jardim: [], papel: false,
   dicas: ["disco-1", "disco-2", "radio-1"], violao: true, tons: { dormindo: 0, acordando: 1, acordado: 3 }, reliquias: [],
   completos: ["grupo", "abertura", "copo"], ecosVistos: ["copo"], objetos: ["copo"], pausas: {}, fio: ["sexta"],
-  hora: 22, dia: 3, neon: 30, popularidade: 20,
+  hora: 22, dia: 3, agua: 30, popularidade: 20,
 }
 
 export const ATALHOS: Atalho[] = [
@@ -38,7 +38,7 @@ export const ATALHOS: Atalho[] = [
   { id: "balada-cheia", nome: "a balada cheia", desc: "popularidade 90 · a pista inteira pula junto com você", save: { reliquias: ["muda"], itens: ["carona:sexta"], pausas: { sexta: 15 }, popularidade: 90 }, ir: { area: "linha", u: 2045 } },
 ]
 
-export const saveDo = (a: Atalho) => ({ ...BASE, ...a.save })
+export const saveDo = (a: Atalho) => ({ ...BASE_TESTE, ...a.save })
 
 // fora da produção? (a Vercel diz o ambiente; e o domínio de verdade nunca)
 export function atalhosLiberados() {

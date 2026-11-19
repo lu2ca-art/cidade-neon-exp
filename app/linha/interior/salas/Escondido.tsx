@@ -9,17 +9,21 @@
 // O gesto: regar. Dez gotas do cantil boiando em volta da flor; cada toque
 // numa gota, a flor levanta um pouco e a chuva diminui só ali.
 
+import { useGLTF } from "@react-three/drei"
 import { useFrame } from "@react-three/fiber"
 import { useEffect, useMemo, useRef, useState } from "react"
 import * as THREE from "three"
+import { ModeloSeguro } from "../../estrada/Seguro"
 import { gota } from "../../som"
 import { sinalizar } from "../bus"
 import { Caixa, Chuva, Npc, Sala, Toque, type V3 } from "../comum"
+import { SalaGlb } from "../modelo"
 import { Camera, type Plano, type SalaProps } from "../motor"
 
 const CIANO = "#2fe8ff"
 const VERDE = "#5dffa0"
 const GOTAS = 10
+const URL_ESCONDIDO = "/models/escondido.glb"
 
 const PLANOS: Record<string, Plano> = {
   chegada: { pos: [1.9, 1.7, 2.5], olha: [-0.2, 1.0, -0.6], fov: 58 },
@@ -71,37 +75,26 @@ export function SalaEscondido({ estado }: SalaProps) {
       <fog attach="fog" args={["#0a0706", 6, 16]} />
       <ambientLight intensity={0.28} color="#ffd9b0" />
       <hemisphereLight args={["#ffcf9a", "#120a06", 0.35]} />
-      <Sala larg={6} fundo={6} alto={2.8} parede="#3a2618" chao="#4a3020" teto="#1c120c" />
-      {/* a bandeira: verde, amarelo, vermelho */}
-      {["#1f9a3a", "#f2c230", "#d4302a"].map((c, i) => (
-        <Caixa key={c} pos={[1.2, 1.95 - i * 0.42, -2.97]} tam={[2.2, 0.42, 0.02]} cor={c} rough={1} brilho={0.08} />
-      ))}
-      <mesh position={[1.2, 1.53, -2.95]}><circleGeometry args={[0.28, 24]} /><meshStandardMaterial color="#1a120c" /></mesh>
-      {/* a tenda de cultivo: prateada por dentro, a luz roxa em cima */}
+      {/* (06/11) a casa modelada no Blender (blender/scripts/escondido.py, public/models/escondido.glb):
+          o taco, o reboco quente, a bandeira ondulando, a tenda (preta por fora,
+          prateada amarrotada por dentro, a porta enrolada), o LED roxo, o filtro com
+          o duto, o ventilador, o vaso de feltro, o tapete, as almofadas, o colchão,
+          os engradados com os discos, as luzinhas, o incenso, a cortina, e pela
+          janela a laje na chuva: a caixa d'água, o asfalto rachado com a flor
+          murcha e o viaduto da Linha 9. ~8 mil triângulos, 85 KB. A planta, a chuva
+          na janela, a Ella e as gotas seguem aqui. Enquanto baixa, ou se falhar,
+          as caixas de antes */}
+      <ModeloSeguro nome="escondido-glb" reserva={<EscondidoCaixas />}>
+        <SalaGlb url={URL_ESCONDIDO} />
+      </ModeloSeguro>
       <group position={[0, 0, -0.6]}>
-        {[[-0.85, 0], [0.85, 0]].map(([x]) => <Caixa key={x} pos={[x, 1.1, 0]} tam={[0.02, 2.2, 1.7]} cor="#c8c8d0" rough={0.15} metal={0.9} />)}
-        <Caixa pos={[0, 1.1, -0.85]} tam={[1.7, 2.2, 0.02]} cor="#c8c8d0" rough={0.15} metal={0.9} />
-        <Caixa pos={[0, 2.2, 0]} tam={[1.72, 0.02, 1.72]} cor="#1a1a20" />
-        <Caixa pos={[0, 2.08, 0]} tam={[1.1, 0.06, 0.7]} cor="#d070ff" brilho={1.6} />
         <pointLight position={[0, 1.8, 0]} color="#c070ff" intensity={6} distance={4} decay={2} />
         <pointLight position={[0, 0.9, 0.6]} color="#ff70d0" intensity={1.5} distance={2.5} decay={2} />
-        {/* o vaso */}
-        <mesh position={[0, 0.2, 0]}><cylinderGeometry args={[0.28, 0.22, 0.4, 16]} /><meshStandardMaterial color="#2a1a10" roughness={0.9} /></mesh>
         <group position={[0, 0.4, 0]}><Planta k={k} /></group>
       </group>
-      {/* a janela com a chuva lá fora */}
+      {/* a chuva lá fora, na janela */}
       <group position={[-2.97, 1.5, 0.6]}>
-        <Caixa pos={[0, 0, 0]} tam={[0.04, 1.1, 1.3]} cor="#0c1626" brilho={0.1} />
         <Chuva n={Math.round(160 - k * 110)} larg={0.1} alto={1.1} fundo={1.2} centro={[0.05, -0.55, 0]} />
-      </group>
-      {/* almofadas, o incenso */}
-      {[[-1.6, 0.12, 1.2, "#d4302a"], [-1.0, 0.12, 1.5, "#f2c230"], [-1.9, 0.12, 0.5, "#1f9a3a"]].map(([x, y, z, c]) => (
-        <mesh key={c as string} position={[x as number, y as number, z as number]} scale={[1, 0.45, 1]}><sphereGeometry args={[0.32, 14, 10]} /><meshStandardMaterial color={c as string} roughness={1} /></mesh>
-      ))}
-      <group position={[1.8, 0, 1.4]}>
-        <Caixa pos={[0, 0.25, 0]} tam={[0.4, 0.5, 0.4]} cor="#2a1a10" />
-        <mesh position={[0, 0.7, 0]} rotation-z={0.15}><cylinderGeometry args={[0.006, 0.006, 0.35, 4]} /><meshStandardMaterial color="#5a3a20" /></mesh>
-        <mesh position={[0.03, 0.88, 0]}><sphereGeometry args={[0.012, 6, 4]} /><meshBasicMaterial color="#ff7a3a" toneMapped={false} /></mesh>
       </group>
       {/* a Ella, sentada do lado da tenda */}
       <Npc cor={CIANO} pos={[-1.25, 0, 0.1]} vira={0.9} pose="sentada" falando={estado.falando === "Ella"} />
@@ -117,6 +110,42 @@ export function SalaEscondido({ estado }: SalaProps) {
         </Toque>
       ))}
       <Camera plano={plano} />
+    </>
+  )
+}
+
+// as caixas de antes: enquanto o modelo baixa, ou se ele falhar
+function EscondidoCaixas() {
+  return (
+    <>
+      <Sala larg={6} fundo={6} alto={2.8} parede="#3a2618" chao="#4a3020" teto="#1c120c" />
+      {/* a bandeira: verde, amarelo, vermelho */}
+      {["#1f9a3a", "#f2c230", "#d4302a"].map((c, i) => (
+        <Caixa key={c} pos={[1.2, 1.95 - i * 0.42, -2.97]} tam={[2.2, 0.42, 0.02]} cor={c} rough={1} brilho={0.08} />
+      ))}
+      <mesh position={[1.2, 1.53, -2.95]}><circleGeometry args={[0.28, 24]} /><meshStandardMaterial color="#1a120c" /></mesh>
+      {/* a tenda de cultivo: prateada por dentro, a luz roxa em cima */}
+      <group position={[0, 0, -0.6]}>
+        {[[-0.85, 0], [0.85, 0]].map(([x]) => <Caixa key={x} pos={[x, 1.1, 0]} tam={[0.02, 2.2, 1.7]} cor="#c8c8d0" rough={0.15} metal={0.9} />)}
+        <Caixa pos={[0, 1.1, -0.85]} tam={[1.7, 2.2, 0.02]} cor="#c8c8d0" rough={0.15} metal={0.9} />
+        <Caixa pos={[0, 2.2, 0]} tam={[1.72, 0.02, 1.72]} cor="#1a1a20" />
+        <Caixa pos={[0, 2.08, 0]} tam={[1.1, 0.06, 0.7]} cor="#d070ff" brilho={1.6} />
+        {/* o vaso */}
+        <mesh position={[0, 0.2, 0]}><cylinderGeometry args={[0.28, 0.22, 0.4, 16]} /><meshStandardMaterial color="#2a1a10" roughness={0.9} /></mesh>
+      </group>
+      {/* a janela com a chuva lá fora */}
+      <group position={[-2.97, 1.5, 0.6]}>
+        <Caixa pos={[0, 0, 0]} tam={[0.04, 1.1, 1.3]} cor="#0c1626" brilho={0.1} />
+      </group>
+      {/* almofadas, o incenso */}
+      {[[-1.6, 0.12, 1.2, "#d4302a"], [-1.0, 0.12, 1.5, "#f2c230"], [-1.9, 0.12, 0.5, "#1f9a3a"]].map(([x, y, z, c]) => (
+        <mesh key={c as string} position={[x as number, y as number, z as number]} scale={[1, 0.45, 1]}><sphereGeometry args={[0.32, 14, 10]} /><meshStandardMaterial color={c as string} roughness={1} /></mesh>
+      ))}
+      <group position={[1.8, 0, 1.4]}>
+        <Caixa pos={[0, 0.25, 0]} tam={[0.4, 0.5, 0.4]} cor="#2a1a10" />
+        <mesh position={[0, 0.7, 0]} rotation-z={0.15}><cylinderGeometry args={[0.006, 0.006, 0.35, 4]} /><meshStandardMaterial color="#5a3a20" /></mesh>
+        <mesh position={[0.03, 0.88, 0]}><sphereGeometry args={[0.012, 6, 4]} /><meshBasicMaterial color="#ff7a3a" toneMapped={false} /></mesh>
+      </group>
     </>
   )
 }
@@ -156,7 +185,7 @@ function Planta({ k }: { k: number }) {
     // as folhas caídas levantam conforme rega
     for (const f of murcha.current) if (f) f.rotation.z = -0.9 * (1 - kk.current) - 0.15
   })
-  const verde = new THREE.Color("#6a7a48").lerp(new THREE.Color("#2fa84a"), k)
+  const verde = useMemo(() => new THREE.Color("#6a7a48").lerp(new THREE.Color("#2fa84a"), k), [k])
   return (
     <group ref={g}>
       <mesh position={[0, 0.55, 0]}><cylinderGeometry args={[0.016, 0.03, 1.1, 6]} /><meshStandardMaterial color="#4a7a3a" /></mesh>
@@ -187,3 +216,5 @@ function Planta({ k }: { k: number }) {
     </group>
   )
 }
+
+useGLTF.preload(URL_ESCONDIDO)

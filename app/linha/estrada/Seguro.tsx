@@ -4,7 +4,7 @@
 // cabine, o metrô) não derruba o jogo inteiro: se ele estourar, some só ele
 // e o resto segue. O erro vai pro console (e pro PostHog, se ligado).
 
-import { Component, type ReactNode } from "react"
+import { Component, Suspense, type ReactNode } from "react"
 import posthog from "posthog-js"
 
 export class Seguro extends Component<{ nome: string; children: ReactNode; reserva?: ReactNode }, { erro: boolean }> {
@@ -21,4 +21,18 @@ export class Seguro extends Component<{ nome: string; children: ReactNode; reser
   render() {
     return this.state.erro ? (this.props.reserva ?? null) : this.props.children
   }
+}
+
+/**
+ * Para todo pedaço da cena que carrega um .glb (useGLTF suspende e lança no 404):
+ * Suspense local (a suspensão não sobe pro Canvas) + Seguro (erro de rede não
+ * derruba a cena). `reserva` é o procedural: aparece enquanto baixa (a menos que
+ * `enquanto` seja dado; `enquanto={null}` = nada) e se falhar.
+ */
+export function ModeloSeguro({ nome, reserva, enquanto, children }: { nome: string; reserva?: ReactNode; enquanto?: ReactNode; children: ReactNode }) {
+  return (
+    <Seguro nome={nome} reserva={reserva}>
+      <Suspense fallback={enquanto === undefined ? (reserva ?? null) : enquanto}>{children}</Suspense>
+    </Seguro>
+  )
 }

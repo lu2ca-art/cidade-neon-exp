@@ -10,7 +10,8 @@ const CSP = [
   "media-src 'self' blob: https://*.public.blob.vercel-storage.com",
   "connect-src 'self' blob: data: https://*.public.blob.vercel-storage.com https://eu.i.posthog.com https://eu-assets.i.posthog.com https://va.vercel-scripts.com https://vitals.vercel-insights.com https://*.ingest.de.sentry.io",
   "font-src 'self' data:",
-  "frame-src 'self' https://www.youtube.com https://www.youtube-nocookie.com",
+  // (mapa-disco, B15b) o visualizador do holo: o Instagram (embed) e o ACC3SS (gamma)
+  "frame-src 'self' https://www.youtube.com https://www.youtube-nocookie.com https://www.instagram.com https://*.gamma.site",
   "worker-src 'self' blob:",
   "frame-ancestors 'self'",
   "object-src 'none'",

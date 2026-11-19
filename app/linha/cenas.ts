@@ -10,6 +10,7 @@
 import type { EstacaoId, ProvaId } from "./data"
 import type { LugarId } from "./lugares"
 import type { Tom } from "./roteiros"
+import type { FilmeId } from "./estrada/ganchoCena"
 
 // as seis relíquias do ritual do deserto (o jogo original): cada uma nasce
 // num lugar e todas se juntam no fim
@@ -48,11 +49,21 @@ export type PassoCena =
   | { t: "nucleo"; texto: string }
   | { t: "escolha"; opcoes: { label: string; tom: Tom; resposta: FalaCena[] }[] }
   // o gesto do lugar (cena.tsx desenha cada um)
-  | { t: "gesto"; id: "copos" | "danca" | "silencio" | "linha" | "tocar" | "fuga" }
+  | { t: "gesto"; id: "copos" | "danca" | "silencio" | "linha" | "tocar" | "fuga" | "tambores" | "holo" }
   // pôr frases soltas na ordem (a moradora do beco fala em pedaços)
   | { t: "gesto"; id: "ordem"; frases: string[] }
   // explorar a sala: tocar nas coisas (interior/: o quarto do Drewboy, a casa da D-Bee)
   | { t: "gesto"; id: "quarto" | "casa" | "casa-inicio" }
+  // (T49) tocar os instrumentos ganhos na casa da D-Bee (disco/InstrumentosCasa.tsx)
+  | { t: "gesto"; id: "instrumentos" }
+  // (ep. 1) o show da Nectar no palco do bar: assistir (a plateia) ou tocar (disco/ShowNoBar.tsx, a page.tsx desenha)
+  | { t: "gesto"; id: "show-nectar" }
+  // (T22) a casa da Ella: conhecer os quadros, pintar na tela (interior/salas/GaleriaElla.tsx)
+  | { t: "gesto"; id: "quadros" | "pintar" }
+  // (T22b) um filminho (estrada/ganchoCena.ts): hoje as falas em legenda sobre a
+  // cena parada, amanhã o vídeo (T70). Quem toca é CenaFilme.tsx; a sala, se
+  // tiver, põe a câmera devagar no assunto
+  | { t: "gesto"; id: "filme"; filme: FilmeId }
   // um dos minijogos que já existiam (provas.tsx), agora feito no lugar
   | { t: "gesto"; id: "prova"; prova: ProvaId }
   // titulo/texto: quando o cartão não deve dizer o nome do objeto (o
@@ -121,21 +132,21 @@ CENAS["casa-drewboy"] = {
   passos: [
     { t: "acao", texto: "AP 222. a porta tá destrancada. lá dentro, o quarto escuro, só a luz do espelho" },
     { t: "acao", texto: "ele tá sentado na cama, de frente pro espelho. de costas pra porta" },
-    { t: "fala", de: "Drewboy", texto: "…vc veio mesmo" },
-    { t: "fala", de: "Drewboy", texto: "eu tô de pijama por baixo dessa roupa. só pra vc saber" },
-    { t: "fala", de: "Drewboy", texto: "pode olhar. ninguém entra aqui faz tempo" },
+    { t: "fala", de: "Drew", texto: "…vc veio mesmo" },
+    { t: "fala", de: "Drew", texto: "eu tô de pijama por baixo dessa roupa. só pra vc saber" },
+    { t: "fala", de: "Drew", texto: "pode olhar. ninguém entra aqui faz tempo" },
     // explorar o quarto: o espelho, o tênis, a janela (interior/salas/Quarto.tsx)
     { t: "gesto", id: "quarto" },
     {
       t: "escolha",
       opcoes: [
-        { label: "pode ir de pijama", tom: "dormindo", resposta: [{ de: "Drewboy", texto: "kkkk. ninguém ia reparar mesmo" }] },
-        { label: "o que te fez descer?", tom: "acordando", resposta: [{ de: "Drewboy", texto: "o espelho do quarto. cansei de ver só ele" }] },
-        { label: "calça o tênis. a noite é curta", tom: "acordado", resposta: [{ de: "Drewboy", texto: "…tá. calcei" }] },
+        { label: "pode ir de pijama", tom: "dormindo", resposta: [{ de: "Drew", texto: "kkkk. ninguém ia reparar mesmo" }] },
+        { label: "o que te fez descer?", tom: "acordando", resposta: [{ de: "Drew", texto: "o espelho do quarto. cansei de ver só ele" }] },
+        { label: "calça o tênis. a noite é curta", tom: "acordado", resposta: [{ de: "Drew", texto: "…tá. calcei" }] },
       ],
     },
     { t: "acao", texto: "ele apaga a luz do espelho. desce a escada na sua frente e senta no banco da frente da kombi" },
-    { t: "fala", de: "Drewboy", texto: "bora antes que eu desista" },
+    { t: "fala", de: "Drew", texto: "bora antes que eu desista" },
     { t: "fim" },
   ],
 }
@@ -147,26 +158,26 @@ CENAS.balada = {
     { t: "acao", texto: "SEXTA. lá dentro, duzentas pessoas e duzentos celulares levantados. ninguém dança. todo mundo filma quem dança" },
     { t: "acao", texto: "no camarote, a mulher do copo. ela olha quem entra como quem escolhe", se: "copo" },
     { t: "acao", texto: "num canto, o Mubarak sozinho. levanta o copo pra vocês e não sorri", se: "copo" },
-    { t: "fala", de: "Drewboy", texto: "tá vendo? é isso. todo mundo olhando todo mundo" },
+    { t: "fala", de: "Drew", texto: "tá vendo? é isso. todo mundo olhando todo mundo" },
     { t: "nucleo", texto: "pista com baixo engajamento. trocando a música por um anúncio ✓" },
     { t: "acao", texto: "a música corta. entra um anúncio. ninguém abaixa o celular" },
-    { t: "fala", de: "Drewboy", texto: "…eu vou dançar" },
-    { t: "fala", de: "Drewboy", texto: "n filma" },
+    { t: "fala", de: "Drew", texto: "…eu vou dançar" },
+    { t: "fala", de: "Drew", texto: "n filma" },
     { t: "gesto", id: "danca" },
     { t: "acao", texto: "um por um, os celulares descem. abre uma roda. ele nem percebe: tá de olho fechado" },
-    { t: "fala", de: "Drewboy", texto: "…tava todo mundo olhando?" },
+    { t: "fala", de: "Drew", texto: "…tava todo mundo olhando?" },
     {
       t: "escolha",
       opcoes: [
-        { label: "acho que sim", tom: "dormindo", resposta: [{ de: "Drewboy", texto: "e eu nem liguei. isso é novo" }] },
-        { label: "e foi ruim?", tom: "acordando", resposta: [{ de: "Drewboy", texto: "n. foi a primeira vez que eu n tava me olhando" }] },
-        { label: "olharam. mas pararam de filmar", tom: "acordado", resposta: [{ de: "Drewboy", texto: "…a gente fez isso?" }, { de: "Drewboy", texto: "a D-Bee ia amar ver isso" }] },
+        { label: "acho que sim", tom: "dormindo", resposta: [{ de: "Drew", texto: "e eu nem liguei. isso é novo" }] },
+        { label: "e foi ruim?", tom: "acordando", resposta: [{ de: "Drew", texto: "n. foi a primeira vez que eu n tava me olhando" }] },
+        { label: "olharam. mas pararam de filmar", tom: "acordado", resposta: [{ de: "Drew", texto: "…a gente fez isso?" }, { de: "Drew", texto: "a D-Bee ia amar ver isso" }] },
       ],
     },
-    { t: "fala", de: "Drewboy", texto: "toma. tava no meu bolso a noite toda. rachou quando eu pulei" },
+    { t: "fala", de: "Drew", texto: "toma. tava no meu bolso a noite toda. rachou quando eu pulei" },
     { t: "ganha", objeto: "sexta", reliquia: "espelho" },
-    { t: "fala", de: "Drewboy", texto: "lembrei de uma coisa de ontem. eu tava num show. o chão tremendo, todo mundo pulando junto. depois mais nada" },
-    { t: "fala", de: "Drewboy", texto: "se um dia precisar dançar na frente do núcleo, eu danço" },
+    { t: "fala", de: "Drew", texto: "lembrei de uma coisa de ontem. eu tava num show. o chão tremendo, todo mundo pulando junto. depois mais nada" },
+    { t: "fala", de: "Drew", texto: "se um dia precisar dançar na frente do núcleo, eu danço" },
     { t: "fim" },
   ],
 }
@@ -393,7 +404,7 @@ CENAS["casa-dbee"] = {
     { t: "acao", texto: "um farol na estrada. depois outro. depois outro" },
     { t: "fala", de: "Ella", texto: "ela n tá, né", se: "chuva" },
     { t: "fala", de: "Notti", texto: "era essa a luz. eu vi lá de cima", se: "dopamina" },
-    { t: "fala", de: "Drewboy", texto: "vim de pijama de novo. foi mal", se: "sexta" },
+    { t: "fala", de: "Drew", texto: "vim de pijama de novo. foi mal", se: "sexta" },
     { t: "fala", de: "Alohan", texto: "ela deixou a porta aberta pra gente entrar.", se: "ontem" },
     { t: "fala", de: "LU2CA", texto: "ela sempre vai antes. pra gente aprender a ir sem ela", se: "nectar" },
     {
@@ -424,10 +435,10 @@ CENAS["casa-dbee"] = {
 // esconde saudade, nunca pede nada); o LU2CA reescreve
 export const CENA_MUBARAK_DREW: Cena = {
   lugar: "casa-drewboy",
-  titulo: "a casa do drewboy",
+  titulo: "a casa do drew",
   missao: "copo",
   passos: [
-    { t: "acao", texto: "a casa do drewboy. grafite em todas as paredes, roupa estilosa pendurada no varal da sala, duas caixas de som no chão" },
+    { t: "acao", texto: "a casa do drew. grafite em todas as paredes, roupa estilosa pendurada no varal da sala, duas caixas de som no chão" },
     { t: "fala", de: "Mubarak", texto: "então é aqui que o drew se esconde" },
     { t: "fala", de: "Mubarak", texto: "fazia tempo que eu não saía do bar. de verdade, digo" },
     { t: "acao", texto: "ele olha pra porta. pra rua. pra você" },

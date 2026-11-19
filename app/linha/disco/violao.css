@@ -1,0 +1,31 @@
+/* O VIOLÃO NO MUNDO (T64): o botão (aparece com o disco ou a rádio tocando) e o painel */
+.l-vl-botao { position: fixed; right: 16px; bottom: calc(150px + env(safe-area-inset-bottom)); z-index: 40; width: 58px; height: 58px; border-radius: 50%; border: 1px solid rgba(179, 140, 255, 0.85); background: rgba(10, 7, 22, 0.82); color: #f2eefa; display: grid; place-items: center; align-content: center; gap: 2px; padding: 0; box-shadow: 0 0 18px -4px #b38cff; touch-action: manipulation; animation: l-vl-entra 0.35s ease-out both; cursor: pointer; }
+.l-vl-botao small { font: 700 9px var(--font-geist-mono), ui-monospace, monospace; letter-spacing: 0.12em; text-transform: uppercase; color: #d9c9ff; }
+.l-vl-icone { display: block; width: 14px; height: 22px; border-radius: 7px 7px 8px 8px; background: #8a5a2c; position: relative; }
+.l-vl-icone::before { content: ""; position: absolute; left: 50%; top: -9px; width: 3px; height: 12px; transform: translateX(-50%); background: #3a2414; }
+.l-vl-icone::after { content: ""; position: absolute; left: 50%; top: 9px; width: 5px; height: 5px; border-radius: 50%; transform: translateX(-50%); background: #1a0f08; }
+@keyframes l-vl-entra { from { opacity: 0; transform: scale(0.7); } to { opacity: 1; transform: none; } }
+
+.l-vl-painel { position: fixed; left: 16px; right: 16px; bottom: calc(16px + env(safe-area-inset-bottom)); z-index: 40; max-width: 460px; margin: 0 auto; padding: 12px; border-radius: 16px; background: rgba(10, 7, 22, 0.9); border: 1px solid rgba(179, 140, 255, 0.5); color: #f2eefa; font-family: var(--font-geist-sans), system-ui, sans-serif; display: flex; flex-direction: column; gap: 8px; touch-action: manipulation; user-select: none; -webkit-user-select: none; }
+.l-vl-painel header { display: flex; align-items: center; justify-content: space-between; }
+.l-vl-painel header small { display: block; font: 9px var(--font-geist-mono), ui-monospace, monospace; letter-spacing: 0.14em; text-transform: uppercase; color: rgba(242, 238, 250, 0.55); }
+.l-vl-painel header b { font-size: 18px; color: #ffc857; }
+.l-vl-painel button { font: inherit; color: inherit; cursor: pointer; }
+.l-vl-fechar { width: 36px; height: 36px; border-radius: 50%; border: 1px solid rgba(242, 238, 250, 0.3); background: transparent; font-size: 20px !important; line-height: 1; }
+.l-vl-notas { display: flex; flex-direction: column; gap: 6px; }
+.l-vl-linha { display: grid; grid-template-columns: repeat(5, 1fr); gap: 6px; }
+.l-vl-linha button { height: 52px; border-radius: 12px; border: 1px solid rgba(179, 140, 255, 0.6); background: rgba(179, 140, 255, 0.18); font-weight: 800; font-size: 16px; touch-action: none; }
+.l-vl-linha button.is-tonica { background: #b38cff; color: #0a0716; }
+.l-vl-linha button.is-toca, .l-vl-linha button:active { background: #2fe8ff; color: #04131a; border-color: #2fe8ff; }
+.l-vl-acordes { display: grid; grid-template-columns: repeat(7, 1fr); gap: 4px; }
+.l-vl-acordes button { padding: 8px 0; border-radius: 10px; border: 1px solid rgba(255, 200, 87, 0.35); background: rgba(255, 200, 87, 0.08); font-weight: 800; font-size: 12px; display: flex; flex-direction: column; align-items: center; touch-action: none; }
+.l-vl-acordes button small { font: 8px var(--font-geist-mono), monospace; color: #ffd98a; }
+.l-vl-acordes button.is-sugere { border-color: rgba(255, 200, 87, 0.85); background: rgba(255, 200, 87, 0.18); }
+.l-vl-acordes button.is-on { background: #ffc857; color: #1a1204; }
+.l-vl-dica { margin: 0; font: 11px var(--font-geist-mono), ui-monospace, monospace; color: rgba(242, 238, 250, 0.6); text-align: center; }
+
+/* (T64) sem o violão: o botão apagado com o cadeado e o aviso do que libera */
+.l-vl-botao.is-trancado { opacity: 0.72; border-color: rgba(242, 238, 250, 0.35); box-shadow: none; }
+.l-vl-botao.is-trancado .l-vl-icone { filter: grayscale(1) brightness(0.7); }
+.l-vl-botao.is-trancado small { display: flex; align-items: center; gap: 3px; }
+.l-vl-aviso { position: fixed; right: 16px; bottom: calc(216px + env(safe-area-inset-bottom)); z-index: 40; max-width: 260px; }

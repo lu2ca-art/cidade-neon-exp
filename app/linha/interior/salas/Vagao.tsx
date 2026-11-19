@@ -10,6 +10,10 @@
 // Dois gestos, os dois na sala: TOCAR (o violão na sua mão; cada batida
 // certa, um artista levanta a cabeça) e FUGIR (cada toque é um passo pelo
 // corredor até a porta, o policial vindo atrás).
+//
+// (T64) igual à fuga do metrô (app/linha/metro, disco/metro.ts): no meio da
+// fuga o policial alcança e ARRANCA o violão das suas costas; você solta e
+// corre. Depois disso o violão fica na mão dele (e no trem, quando você pula).
 
 import { useFrame } from "@react-three/fiber"
 import { useEffect, useMemo, useRef, useState } from "react"
@@ -19,11 +23,15 @@ import { vib } from "../../som-carro"
 import { sinalizar } from "../bus"
 import { AnelRitmo, Caixa, Npc, Sala, useRitmo, type V3 } from "../comum"
 import { Camera, useToqueLivre, type Plano, type SalaProps } from "../motor"
+import { ModeloSeguro } from "../../estrada/Seguro"
+import { VagaoModelado, piscarMetro } from "../../estrada/MetroModelo"
 
 const BRANCO = "#eef2fb"
 const LILAS = "#b38cff"
 const META = 8
 const PASSOS = 14
+// (T64) em que passo da fuga o policial arranca o violão
+const ARRANCA = Math.round(PASSOS / 2)
 
 // o vagão vai de z −9 a z 9; a porta da plataforma fica no lado +x, em z 0
 const PLANOS: Record<string, Plano> = {
@@ -66,6 +74,7 @@ export function SalaVagao({ estado }: SalaProps) {
       vib(10)
       const n = passos + 1
       setPassos(n)
+      if (n === ARRANCA) { vib([30, 40, 60]); gota(1) }
       if (n >= PASSOS) setTimeout(() => sinalizar({ t: "fim-gesto" }), 500)
     }
   })
@@ -101,34 +110,24 @@ export function SalaVagao({ estado }: SalaProps) {
 
   // o policial: no fundo; levanta depois do toque e vem vindo na fuga
   const zPolicia = fase === "fugindo" ? -8.4 + (passos / PASSOS) * 7.5 : -8.4
+  // (T64) o violão: arrancado no meio da fuga (fica na mão do policial)
+  const arrancou = fase === "pulou" || (fase === "fugindo" && passos >= ARRANCA)
 
   return (
     <>
       <color attach="background" args={["#05060b"]} />
       <ambientLight intensity={0.45} color="#e6f0ff" />
       <hemisphereLight args={["#ffffff", "#20222c", 0.4]} />
-      {/* o vagão: branco, limpo, frio */}
-      <group>
-        <Sala larg={3} fundo={18} alto={2.5} parede="#d8dce8" chao="#8a8e9a" teto="#e8ecf4" sem={["dir"]} />
-        <ParedeComPorta />
-        <Janelas />
-        {/* os bancos dos dois lados */}
-        {[-1, 1].map((l) => <Caixa key={l} pos={[l * 1.15, 0.22, -1]} tam={[0.6, 0.44, 15]} cor="#9aa3b8" rough={0.5} />)}
-        {/* os ferros de segurar */}
-        {[-6, -2, 2, 6].map((z) => (
-          <mesh key={z} position={[0, 1.25, z]}>
-            <cylinderGeometry args={[0.025, 0.025, 2.5, 8]} />
-            <meshStandardMaterial color="#c8ccd8" metalness={0.8} roughness={0.25} />
-          </mesh>
-        ))}
-        {/* as luzes do teto, frias */}
-        {[-6, -2, 2, 6].map((z) => (
-          <group key={`l${z}`} position={[0, 2.46, z]}>
-            <Caixa pos={[0, 0, 0]} tam={[0.8, 0.03, 2]} cor="#ffffff" brilho={1.2} />
-            <pointLight position={[0, -0.3, 0]} color="#e8f0ff" intensity={2.2} distance={5} decay={2} />
-          </group>
-        ))}
-      </group>
+      {/* (06/11) o vagão modelado no Blender (metro.glb: aço riscado, bancos de plástico,
+          propagandas apagadas, a luminária que pisca); enquanto baixa, ou se falhar, as caixas de antes */}
+      <ModeloSeguro nome="vagao-glb" reserva={<VagaoCaixas />}>
+        <VagaoModelado />
+      </ModeloSeguro>
+      <Janelas />
+      {/* as luzes do teto, frias (as mesmas de sempre; a luminária é do modelo ou das caixas) */}
+      {[-6, -2, 2, 6].map((z) => (
+        <pointLight key={`l${z}`} position={[0, 2.16, z]} color="#e8f0ff" intensity={2.2} distance={5} decay={2} />
+      ))}
       {/* a plataforma da estação 6, do lado de fora da porta */}
       <Caixa pos={[4, 0.05, 0]} tam={[5, 0.1, 18]} cor="#2a2c38" />
       <Caixa pos={[1.62, 0.2, 0]} tam={[0.12, 0.08, 18]} cor="#ffc857" brilho={0.6} />
@@ -140,10 +139,31 @@ export function SalaVagao({ estado }: SalaProps) {
       ))}
       <Npc cor={BRANCO} pos={[0, 0, zPolicia]} vira={0} pele="#c8ccd8" falando={estado.falando === "NÚCLEO"} />
       {/* o violão na sua mão (enquanto ele é seu) */}
-      {fase !== "pulou" && fase !== "fugindo" && (fase !== "plataforma") && <ViolaoNaMao tocando={tocando} />}
+      {fase !== "plataforma" && !arrancou && <ViolaoNaMao tocando={tocando} />}
+      {arrancou && <ViolaoDoGuarda z={zPolicia} />}
       <AnelRitmo pos={[0, 0.05, 1.4]} cor={LILAS} fase={faseRitmo} raio={0.9} ativo={tocando && acertos < META} />
       <Camera plano={plano} rapido={fase === "fugindo"} />
     </>
+  )
+}
+
+// o vagão de antes (a reserva do modelado): branco, limpo, frio
+function VagaoCaixas() {
+  return (
+    <group>
+      <Sala larg={3} fundo={18} alto={2.5} parede="#d8dce8" chao="#8a8e9a" teto="#e8ecf4" sem={["dir"]} />
+      <ParedeComPorta />
+      {/* os bancos dos dois lados */}
+      {[-1, 1].map((l) => <Caixa key={l} pos={[l * 1.15, 0.22, -1]} tam={[0.6, 0.44, 15]} cor="#9aa3b8" rough={0.5} />)}
+      {/* os ferros de segurar */}
+      {[-6, -2, 2, 6].map((z) => (
+        <mesh key={z} position={[0, 1.25, z]}>
+          <cylinderGeometry args={[0.025, 0.025, 2.5, 8]} />
+          <meshStandardMaterial color="#c8ccd8" metalness={0.8} roughness={0.25} />
+        </mesh>
+      ))}
+      {[-6, -2, 2, 6].map((z) => <Caixa key={`l${z}`} pos={[0, 2.46, z]} tam={[0.8, 0.03, 2]} cor="#ffffff" brilho={1.2} />)}
+    </group>
   )
 }
 
@@ -169,7 +189,8 @@ function Janelas() {
     const t = new THREE.CanvasTexture(c); t.wrapS = THREE.RepeatWrapping; t.repeat.set(3, 1)
     return t
   }, [])
-  useFrame((_, dt) => { tex.offset.x += dt * 1.8 })
+  // (06/11) e o tubo fluorescente ruim do modelo pisca daqui (sem useFrame novo)
+  useFrame((st, dt) => { tex.offset.x += dt * 1.8; piscarMetro(st.clock.elapsedTime) })
   return (
     <group>
       {[-6.5, -3, 3, 6.5].map((z) => (
@@ -212,6 +233,19 @@ function Artista({ a, acordado, falando }: { a: (typeof ARTISTAS)[number]; acord
           <meshStandardMaterial color="#111" />
         </mesh>
       )}
+    </group>
+  )
+}
+
+// (T64) o violão na mão do policial, depois de arrancado (parado, pendurado do lado)
+function ViolaoDoGuarda({ z }: { z: number }) {
+  return (
+    <group position={[0.32, 0.55, z + 0.15]} rotation={[0.2, 0, -0.25]} scale={0.6}>
+      <mesh scale={[1, 1.2, 0.35]}>
+        <sphereGeometry args={[0.16, 10, 8]} />
+        <meshStandardMaterial color="#8a5a2c" roughness={0.5} />
+      </mesh>
+      <Caixa pos={[0, 0.45, 0.02]} tam={[0.045, 0.55, 0.03]} cor="#3a2414" />
     </group>
   )
 }

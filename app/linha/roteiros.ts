@@ -29,6 +29,24 @@
 
 import type { EstacaoId, ProvaId } from "./data"
 import type { Perfil } from "./missoes"
+import { qualMapa } from "./estrada/qualMapa"
+
+// ── (T41 B1, dono 29/10) A CHAVE DO JOGO VELHO. No jogo novo (o mapa-disco) não
+// tem mensagem nem diálogo de IA: só encontros, invasões e rádio, e o Nexo só
+// informa. Então, no disco, o jogo velho fica DESLIGADO (não apagado): os
+// chats, o grupo 222, o app N3XO_ de conversas, a LINHA 9, as ligações, os
+// "chamados", o tutorial velho e as missões velhas. O mapa velho (o lu2ca.art de
+// hoje) segue igual. Pra religar tudo no disco (teste, comparação), é virar
+// VELHO_NO_DISCO pra true. Quem desliga lê jogoVelho() (o mapa é lido uma vez
+// por aba: ele não muda sem recarregar a página) ──
+export const VELHO_NO_DISCO = false
+let mapaLido: ReturnType<typeof qualMapa> | null = null
+export function jogoVelho(): boolean {
+  if (VELHO_NO_DISCO) return true
+  if (typeof window === "undefined") return true
+  if (mapaLido === null) mapaLido = qualMapa()
+  return mapaLido !== "disco"
+}
 
 export type ChatId = "abertura" | "grupo" | EstacaoId
 
@@ -110,6 +128,9 @@ export const VOZES: Record<string, string> = {
   Ella: "#2fe8ff",
   Mubarak: "#ff6a35",
   Notti: "#5dffa0",
+  // (T41 B4) o Drewboy agora é o Drew. "Drewboy" fica como apelido da mesma
+  // cor, pros textos de fora destes arquivos que ainda usam o nome velho
+  Drew: "#ff3fb0",
   Drewboy: "#ff3fb0",
   Alohan: "#ffc857",
   LU2CA: "#b38cff",
@@ -168,7 +189,7 @@ export const ROTEIROS: Record<"abertura" | "grupo" | "chuva" | "copo" | "dopamin
   // de chegar só lê. Cada um do seu jeito (a voz de cada um: voz.md)
   grupo: {
     contato: "222",
-    status: "D-Bee, Mubarak, Notti, Ella, Drewboy, Alohan, Tony Gordo, Nizzy",
+    status: "D-Bee, Mubarak, Notti, Ella, Drew, Alohan, Tony Gordo, Nizzy",
     grupo: true,
     passos: [
       { t: "sistema", texto: "você entrou no grupo \"222\" por um link da rádio" },
@@ -180,7 +201,7 @@ export const ROTEIROS: Record<"abertura" | "grupo" | "chuva" | "copo" | "dopamin
       { t: "msg", de: "Ella", texto: "n tem graça, Mubarak" },
       { t: "msg", de: "Mubarak", texto: "tem um pouco" },
       { t: "nucleo", texto: "esta conversa reúne usuários de lados incompatíveis. recomendamos silenciar os demais participantes ✓" },
-      { t: "msg", de: "Drewboy", texto: "lados kkkk a gente nem se encontra pessoalmente" },
+      { t: "msg", de: "Drew", texto: "lados kkkk a gente nem se encontra pessoalmente" },
       { t: "msg", de: "Alohan", texto: "eles precisam que a gente brigue. gente brigando não canta junto." },
       { t: "msg", de: "D-Bee", texto: "por isso a música. toda vez que uma toca na rua, ele perde um pouco" },
       { t: "msg", de: "Notti", texto: "então bora tocar TODAS. agora" },
@@ -305,7 +326,7 @@ export const ROTEIROS: Record<"abertura" | "grupo" | "chuva" | "copo" | "dopamin
   },
 
   sexta: {
-    contato: "Drewboy",
+    contato: "Drew",
     status: "estação 4 · sexta-feira",
     passos: [
       { t: "msg", texto: (c) => `e aí ${c.nome}` },
@@ -475,10 +496,10 @@ export const ECOS: Partial<Record<EstacaoId, { de: string; texto: Texto }[]>> = 
     { de: "D-Bee", texto: "orgulho" },
   ],
   sexta: [
-    { de: "Drewboy", texto: "saí de casa" },
-    { de: "Drewboy", texto: (c) => `${c.nome} me buscou de kombi` },
+    { de: "Drew", texto: "saí de casa" },
+    { de: "Drew", texto: (c) => `${c.nome} me buscou de kombi` },
     { de: "D-Bee", texto: "e aí, gostou do espelho?" },
-    { de: "Drewboy", texto: "tô gostando" },
+    { de: "Drew", texto: "tô gostando" },
   ],
   ontem: [
     { de: "Alohan", texto: (c) => `${c.nome} escreveu no caderno.` },

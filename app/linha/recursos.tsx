@@ -11,6 +11,7 @@ import { useCallback, useEffect, useMemo, useRef, useState } from "react"
 import type { Save } from "./estado"
 import { gota, nomeDoTom, tomDaMusica, violao } from "./som"
 import { AppTopo } from "./os"
+import { Trancado, travarToques } from "./Trancado"
 
 /* ─── JARDIM ─────────────────────────────────────────────── */
 
@@ -59,7 +60,7 @@ export function JardimFundo({ flores }: { flores: Flor[] }) {
   return <div className="l-jardim-fundo"><JardimSvg flores={flores} /></div>
 }
 
-export function Jardim({ save, atualizar, onVoltar }: { save: Save; atualizar: (f: (s: Save) => Save) => void; onVoltar: () => void }) {
+export function Jardim({ save, atualizar, onVoltar, tranca }: { save: Save; atualizar: (f: (s: Save) => Save) => void; onVoltar: () => void; tranca?: string | null }) {
   const flores = save.jardim
   const svg = useRef<SVGSVGElement>(null)
   const [regador, setRegador] = useState<{ x: number; y: number } | null>(null)
@@ -136,8 +137,9 @@ export function Jardim({ save, atualizar, onVoltar }: { save: Save; atualizar: (
   }
 
   return (
-    <section className="l-appnativo l-jardim">
+    <section className={`l-appnativo l-jardim${tranca ? " is-trancado" : ""}`} {...travarToques(tranca)}>
       <AppTopo titulo="JARDIM" cor="#5dffa0" onVoltar={onVoltar} extra={`${flores.length} flores`} />
+      {tranca && <Trancado texto={tranca} />}
       <div
         className="l-jardim-area"
         onPointerDown={(e) => { (e.target as HTMLElement).setPointerCapture?.(e.pointerId); const p = ponto(e); setRegador(p); regar(p.x, p.y) }}
@@ -228,7 +230,7 @@ const CADENCIAS_MENOR: { nome: string; dica: string; graus: string[] }[] = [
 ]
 const COMUNS: Acorde[] = [{ r: 0, q: "" }, { r: 2, q: "" }, { r: 4, q: "" }, { r: 5, q: "" }, { r: 7, q: "" }, { r: 9, q: "" }, { r: 9, q: "m" }, { r: 2, q: "m" }, { r: 4, q: "m" }]
 
-export function Violao({ onVoltar }: { onVoltar: () => void }) {
+export function Violao({ onVoltar, tranca }: { onVoltar: () => void; tranca?: string | null }) {
   const [atual, setAtual] = useState<Acorde | null>(null)
   // o tom: vem do acorde escolhido (ou do "tocar junto")
   const [tom, setTom] = useState<{ r: number; menor: boolean } | null>(null)
@@ -294,8 +296,9 @@ export function Violao({ onVoltar }: { onVoltar: () => void }) {
   const cadencias = tom?.menor ? CADENCIAS_MENOR : CADENCIAS_MAIOR
 
   return (
-    <section className="l-appnativo l-violao">
+    <section className={`l-appnativo l-violao${tranca ? " is-trancado" : ""}`} {...travarToques(tranca)}>
       <AppTopo titulo="VIOLÃO" cor="#b38cff" onVoltar={onVoltar} extra={atual ? nomeAc(atual) : undefined} />
+      {tranca && <Trancado texto={tranca} />}
       <div className="l-violao-controles">
         {!tom ? (
           <>

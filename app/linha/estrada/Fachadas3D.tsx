@@ -11,8 +11,10 @@
 // e as casas de cada um. Medidas em metros; a frente (a rua) é o +Z, o chão
 // é o y = 0; cabe num terreno de ~18 × 16 m.
 
+import { useGLTF } from "@react-three/drei"
 import { useMemo } from "react"
 import * as THREE from "three"
+import { ModeloSeguro } from "./Seguro"
 
 type V3 = [number, number, number]
 
@@ -322,6 +324,37 @@ function Casinha({ cor, nome, jardim = false }: { cor: string; nome: string; jar
   )
 }
 
+// (09/11, ep. 7) a casa da Ella modelada: o mesmo nó que vai pro jogo
+// (lugares-cidade.glb, blender/scripts/lugares_cidade.py), a casinha é a reserva
+function CasaElla({ cor, nome }: { cor: string; nome: string }) {
+  const { nodes } = useGLTF("/models/lugares-cidade.glb") as unknown as { nodes: Record<string, THREE.Object3D> }
+  const partes = useMemo(() => {
+    const no = nodes["casa-ella"]
+    if (!no) throw new Error("lugares-cidade.glb sem o nó casa-ella")
+    no.updateWorldMatrix(true, true)
+    const inv = new THREE.Matrix4().copy(no.matrixWorld).invert()
+    const solido = new THREE.MeshStandardMaterial({ vertexColors: true, roughness: 0.6, metalness: 0.2 })
+    const planta = new THREE.MeshStandardMaterial({ vertexColors: true, roughness: 0.75, side: THREE.DoubleSide })
+    const luz = new THREE.MeshBasicMaterial({ vertexColors: true, toneMapped: false })
+    const neon = new THREE.MeshBasicMaterial({ color: cor, toneMapped: false })
+    const vidro = new THREE.MeshStandardMaterial({ color: "#2a3040", roughness: 0.12, metalness: 0.5, transparent: true, opacity: 0.55, depthWrite: false, side: THREE.DoubleSide })
+    const mats: Record<string, THREE.Material> = { solido, pe: solido, planta, luz, neon, pen: neon, vidro }
+    const out: { k: string; geo: THREE.BufferGeometry; mat: THREE.Material; m: THREE.Matrix4 }[] = []
+    no.traverse((o) => {
+      const m = o as THREE.Mesh
+      if (!m.isMesh) return
+      out.push({ k: m.name, geo: m.geometry, mat: mats[m.name.slice(m.name.lastIndexOf("_") + 1)] ?? solido, m: new THREE.Matrix4().multiplyMatrices(inv, m.matrixWorld) })
+    })
+    return out
+  }, [nodes, cor])
+  return (
+    <group>
+      {partes.map((p) => <mesh key={p.k} geometry={p.geo} material={p.mat} matrixAutoUpdate={false} matrix={p.m} />)}
+      <Letreiro txt={nome} cor={cor} p={[0, 3.32, 1.48]} w={2.4} h={0.5} fundo={null} />
+    </group>
+  )
+}
+
 function CasaDeserto({ cor }: { cor: string }) {
   // a casa da D-Bee: o barro do deserto, a varanda de madeira, a caixa d'água
   return (
@@ -355,7 +388,7 @@ export function Fachada3D({ tipo, cor, nome }: { tipo: TipoFachada; cor: string;
     case "estacao": return <Estacao cor={cor} />
     case "predinho": return <Predinho cor={cor} nome={nome} />
     case "casa": return <Casinha cor={cor} nome={nome} />
-    case "jardim": return <Casinha cor={cor} nome={nome} jardim />
+    case "jardim": return <ModeloSeguro nome="casa-ella-glb" reserva={<Casinha cor={cor} nome={nome} jardim />}><CasaElla cor={cor} nome={nome} /></ModeloSeguro>
     case "deserto": return <CasaDeserto cor={cor} />
   }
 }

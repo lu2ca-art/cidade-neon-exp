@@ -1,0 +1,9 @@
+{
+  "$schema": "https://openapi.vercel.sh/vercel.json",
+  "git": {
+    "deploymentEnabled": {
+      "feature/game/*": false,
+      "feature/game/mapa-disco": true
+    }
+  }
+}

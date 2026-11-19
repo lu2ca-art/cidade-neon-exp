@@ -17,7 +17,8 @@ import type { EstacaoId } from "../data"
 import type { LugarId } from "../lugares"
 import { useEstadoCena } from "./bus"
 import { chamarToqueLivre, olhar, type SalaProps } from "./motor"
-import { CARREGAR } from "./registro"
+import type { InstrumentoId } from "../disco/instrumentos"
+import { CARREGAR, type SalaId } from "./registro"
 
 // re-exporta o motor pra quem ainda importa daqui
 export { Camera, useToqueLivre, type Plano, type SalaProps } from "./motor"
@@ -26,11 +27,12 @@ export { Camera, useToqueLivre, type Plano, type SalaProps } from "./motor"
 // quando for desenhada pela primeira vez)
 const SALAS = Object.fromEntries(
   Object.entries(CARREGAR).map(([id, c]) => [id, lazy(() => c!().then((C) => ({ default: C })))]),
-) as Partial<Record<LugarId, LazyExoticComponent<ComponentType<SalaProps>>>>
+) as Partial<Record<SalaId, LazyExoticComponent<ComponentType<SalaProps>>>>
 
-export function Interior({ lugar, objetos = [], inicio = false, copos = [], popularidade = 0 }: { lugar: LugarId; objetos?: EstacaoId[]; inicio?: boolean; copos?: number[]; popularidade?: number }) {
-  // a sala vem num pedaço próprio do pacote (registro.ts)
-  const S = SALAS[lugar]
+export function Interior({ lugar, sala, objetos = [], inicio = false, copos = [], popularidade = 0, disco = false, instrumentos, novos }: { lugar: LugarId; sala?: SalaId; objetos?: EstacaoId[]; inicio?: boolean; copos?: number[]; popularidade?: number; disco?: boolean; instrumentos?: InstrumentoId[]; novos?: InstrumentoId[] }) {
+  // a sala vem num pedaço próprio do pacote (registro.ts); `sala` troca a do
+  // lugar pela casa de uma missão (T22: a galeria da Ella)
+  const S = SALAS[sala ?? lugar]
   const estado = useEstadoCena()
   const ult = useRef<{ x: number; y: number } | null>(null)
   if (!S) return null
@@ -39,7 +41,7 @@ export function Interior({ lugar, objetos = [], inicio = false, copos = [], popu
       className="l-interior"
       onPointerDown={(e) => { ult.current = { x: e.clientX, y: e.clientY }; olhar.arrastando = true; chamarToqueLivre() }}
       onPointerMove={(e) => {
-        if (!ult.current) return
+        if (!ult.current || olhar.travado) return
         olhar.yaw = THREE.MathUtils.clamp(olhar.yaw - (e.clientX - ult.current.x) * 0.004, -0.6, 0.6)
         olhar.pitch = THREE.MathUtils.clamp(olhar.pitch - (e.clientY - ult.current.y) * 0.003, -0.3, 0.3)
         ult.current = { x: e.clientX, y: e.clientY }
@@ -49,7 +51,7 @@ export function Interior({ lugar, objetos = [], inicio = false, copos = [], popu
     >
       <Canvas className="l-interior-cvs" dpr={[1, 1.5]} gl={{ antialias: false, powerPreference: "high-performance", stencil: false }} camera={{ fov: 50, near: 0.05, far: 200, position: [0, 1.6, 6] }}>
         <Suspense fallback={null}>
-          <Seguro nome={`sala-${lugar}`}><S estado={estado} objetos={objetos} inicio={inicio} copos={copos} popularidade={popularidade} /></Seguro>
+          <Seguro nome={`sala-${lugar}`}><S estado={estado} objetos={objetos} inicio={inicio} copos={copos} popularidade={popularidade} disco={disco} instrumentos={instrumentos} novos={novos} /></Seguro>
         </Suspense>
         <Seguro nome="lente-sala"><Cinema /></Seguro>
         {process.env.NODE_ENV !== "production" && <Medidor />}

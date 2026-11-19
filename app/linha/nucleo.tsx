@@ -7,7 +7,7 @@
 // perde a cor até alguém religar a antena — ver page.tsx e Corrida).
 
 import { useCallback, useEffect, useRef, useState } from "react"
-import { audioCtx } from "./som"
+import { audioCtx, saidaEfeitos } from "./som"
 
 export type Invasao = { id: number; forte: boolean } // forte = a que derruba
 
@@ -39,7 +39,7 @@ function bip(f = 880) {
   o.frequency.value = f
   g.gain.setValueAtTime(0.05, c.currentTime)
   g.gain.exponentialRampToValueAtTime(0.0001, c.currentTime + 0.12)
-  o.connect(g).connect(c.destination)
+  o.connect(g).connect(saidaEfeitos() ?? c.destination)
   o.start()
   o.stop(c.currentTime + 0.13)
 }

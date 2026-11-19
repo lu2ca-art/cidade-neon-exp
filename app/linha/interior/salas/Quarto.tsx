@@ -10,12 +10,16 @@
 
 import { useEffect, useMemo, useState } from "react"
 import * as THREE from "three"
+import { useGLTF } from "@react-three/drei"
+import { ModeloSeguro } from "../../estrada/Seguro"
 import { sinalizar } from "../bus"
 import { Caixa, Neon, Npc, Sala, Toque, useExplorar, type Coisa } from "../comum"
+import { SalaGlb } from "../modelo"
 import { Camera, type Plano, type SalaProps } from "../motor"
 
 const ROSA = "#ff3fb0"
 const CIANO = "#7fe8ff"
+const URL_QUARTO = "/models/quarto.glb"
 
 const PLANOS: Record<string, Plano> = {
   porta: { pos: [0.2, 1.65, 2.6], olha: [-0.2, 1.1, -1.4], fov: 60 },
@@ -28,9 +32,9 @@ const PLANOS: Record<string, Plano> = {
 }
 
 const COISAS: Coisa[] = [
-  { id: "espelho", pos: [-0.2, 1.4, -2.15], raio: 0.3, falas: [{ texto: "o espelho é maior que a janela", tipo: "acao" }, { de: "Drewboy", texto: "ele me vê mais do que todo mundo junto" }] },
-  { id: "tenis", pos: [1.3, 0.12, -1.3], raio: 0.22, falas: [{ texto: "um tênis novo, ainda na caixa", tipo: "acao" }, { de: "Drewboy", texto: "comprei pra sair. nunca saí com ele" }] },
-  { id: "janela", pos: [1.95, 1.5, -0.3], raio: 0.35, falas: [{ texto: "lá fora, a cidade. de longe, o grave abafado de uma balada", tipo: "acao" }, { de: "Drewboy", texto: "dá pra ouvir a SEXTA daqui. toda sexta" }] },
+  { id: "espelho", pos: [-0.2, 1.4, -2.15], raio: 0.3, falas: [{ texto: "o espelho é maior que a janela", tipo: "acao" }, { de: "Drew", texto: "ele me vê mais do que todo mundo junto" }] },
+  { id: "tenis", pos: [1.3, 0.12, -1.3], raio: 0.22, falas: [{ texto: "um tênis novo, ainda na caixa", tipo: "acao" }, { de: "Drew", texto: "comprei pra sair. nunca saí com ele" }] },
+  { id: "janela", pos: [1.95, 1.5, -0.3], raio: 0.35, falas: [{ texto: "lá fora, a cidade. de longe, o grave abafado de uma balada", tipo: "acao" }, { de: "Drew", texto: "dá pra ouvir a SEXTA daqui. toda sexta" }] },
 ]
 
 export function SalaQuarto({ estado }: SalaProps) {
@@ -51,7 +55,7 @@ export function SalaQuarto({ estado }: SalaProps) {
   const plano = useMemo(() => {
     if (olhando || estado.escolha) return PLANOS.quarto
     if (estado.falando === "Mubarak") return PLANOS.mubarak
-    if (estado.falando === "Drewboy" || estado.falando === "você") return PLANOS.drewboy
+    if ((estado.falando === "Drew" || estado.falando === "Drewboy") || estado.falando === "você") return PLANOS.drewboy
     return PLANOS.porta
   }, [estado, olhando])
   return (
@@ -59,43 +63,34 @@ export function SalaQuarto({ estado }: SalaProps) {
       <color attach="background" args={["#040409"]} />
       <ambientLight intensity={0.12} color="#b0c8ff" />
       <hemisphereLight args={["#9fb4ff", "#0a0610", 0.18]} />
-      <Sala larg={4} fundo={4.6} alto={2.6} parede="#1c1824" chao="#2a2028" teto="#100e14" />
+      {/* (06/11) o quarto modelado no Blender (blender/scripts/quarto.py, public/models/quarto.glb):
+          o taco gasto, a parede roxa descascando, a cama baixa de paletes com o
+          edredom amarrotado, o varal de roupa (jaqueta, moletom, a regata 22) com as
+          caixas de tênis embaixo, a prateleira de tênis com o LED, o tênis novo na
+          caixa com a tampa encostada, a roupa pelo chão, as caixas de som, o
+          toca-discos e o mixer nos engradados, a janela com grade e a cidade, os
+          pôsteres, as fotos na moldura do espelho, o skate e a bola. ~9 mil
+          triângulos, 106 KB. O espelho, os grafites e a gente seguem aqui no código.
+          Enquanto baixa, ou se falhar, as caixas de antes */}
+      <ModeloSeguro nome="quarto-glb" reserva={<QuartoCaixas />}>
+        <SalaGlb url={URL_QUARTO} />
+      </ModeloSeguro>
       {/* o espelho: a única luz do quarto (apaga quando ele sai) */}
       <group position={[-0.2, 1.4, -2.27]}>
         <Caixa pos={[0, 0, 0]} tam={[1.1, 1.9, 0.04]} cor="#c8d8ff" brilho={saiu ? 0.02 : 0.5} rough={0.05} metal={0.9} />
         <Neon pos={[0, 1.0, 0.05]} comp={1.1} cor={CIANO} luz={saiu ? 0 : 3} />
         {!saiu && <pointLight position={[0, 0, 0.8]} color={CIANO} intensity={4} distance={4} decay={2} />}
       </group>
-      {/* a cama desfeita */}
-      <Caixa pos={[-0.3, 0.25, -0.6]} tam={[1.5, 0.5, 2]} cor="#3a3044" />
-      <Caixa pos={[-0.3, 0.53, -0.4]} tam={[1.4, 0.08, 1.4]} cor="#5a4870" rough={1} />
-      <Caixa pos={[-0.3, 0.6, -1.4]} tam={[0.9, 0.14, 0.4]} cor="#d8d4e0" rough={1} />
-      {/* roupa no chão e o tênis na caixa */}
-      <Caixa pos={[0.9, 0.03, 0.6]} tam={[0.6, 0.05, 0.4]} cor="#4a2a40" rot={0.4} />
-      <Caixa pos={[-1.4, 0.03, 1.2]} tam={[0.5, 0.05, 0.35]} cor="#203048" rot={-0.7} />
-      <Caixa pos={[1.3, 0.07, -1.3]} tam={[0.42, 0.14, 0.26]} cor="#e8e2d8" />
-      <Caixa pos={[1.3, 0.16, -1.3]} tam={[0.3, 0.06, 0.12]} cor={ROSA} brilho={0.3} />
-      {/* a janela com a cidade */}
-      <group position={[1.98, 1.5, 0.2]}>
-        <Caixa pos={[0, 0, 0]} tam={[0.04, 1, 1.2]} cor="#0a0a18" brilho={0} />
-        {[[-0.3, 0.2, ROSA], [0.2, -0.1, "#ffc857"], [0.35, 0.25, CIANO], [-0.1, -0.3, "#b38cff"]].map(([z, y, c], i) => (
-          <mesh key={i} position={[-0.03, y as number, z as number]}>
-            <boxGeometry args={[0.01, 0.06, 0.06]} />
-            <meshBasicMaterial color={c as string} toneMapped={false} />
-          </mesh>
-        ))}
-        <pointLight position={[-0.5, 0, 0]} color={ROSA} intensity={1.2} distance={3} decay={2} />
-      </group>
+      {/* a luz da janela (a cidade lá fora) */}
+      <pointLight position={[1.48, 1.5, 0.2]} color={ROSA} intensity={1.2} distance={3} decay={2} />
       {/* a casa do drew (06/10, LU2CA): bem suburbana — grafite nas paredes,
           roupa estilosa pendurada, caixas de som */}
       <Grafite pos={[-1.98, 1.35, -0.2]} rot={Math.PI / 2} w={3.6} h={1.9} seed={3} />
       <Grafite pos={[1.1, 1.5, -2.28]} rot={0} w={1.6} h={1.5} seed={8} />
-      <Varal pos={[-1.85, 2.05, -0.6]} rot={Math.PI / 2} />
-      {[-1.6, 1.55].map((x) => <Som key={x} pos={[x, 0, x < 0 ? -1.8 : 1.5]} />)}
       <pointLight position={[-1.2, 2.1, 0.6]} color="#ffc857" intensity={1.4} distance={4} decay={2} />
       {mubarak && <Npc cor="#ff6a35" pos={[-1.3, 0, 0.3]} vira={2.36} falando={estado.falando === "Mubarak"} />}
       {/* ele, sentado na cama de frente pro espelho (sai quando desce) */}
-      {!saiu && <Npc cor={ROSA} pos={[-0.3, 0.12, -0.7]} vira={Math.PI} pose="sentada" falando={estado.falando === "Drewboy"} />}
+      {!saiu && <Npc cor={ROSA} pos={[-0.3, 0.12, -0.7]} vira={Math.PI} pose="sentada" falando={(estado.falando === "Drew" || estado.falando === "Drewboy")} />}
       {COISAS.map((c) => (
         <Toque key={c.id} pos={c.pos} raio={c.raio} cor={ROSA} ativo={olhando && !vistas.includes(c.id)} onToque={() => ver(c.id)} />
       ))}
@@ -171,3 +166,34 @@ function Som({ pos }: { pos: [number, number, number] }) {
     </group>
   )
 }
+
+// as caixas de antes (enquanto o modelo baixa, ou se ele falhar)
+function QuartoCaixas() {
+  return (
+    <>
+      <Sala larg={4} fundo={4.6} alto={2.6} parede="#1c1824" chao="#2a2028" teto="#100e14" />
+      {/* a cama desfeita */}
+      <Caixa pos={[-0.3, 0.25, -0.6]} tam={[1.5, 0.5, 2]} cor="#3a3044" />
+      <Caixa pos={[-0.3, 0.53, -0.4]} tam={[1.4, 0.08, 1.4]} cor="#5a4870" rough={1} />
+      <Caixa pos={[-0.3, 0.6, -1.4]} tam={[0.9, 0.14, 0.4]} cor="#d8d4e0" rough={1} />
+      {/* roupa no chão e o tênis na caixa */}
+      <Caixa pos={[0.9, 0.03, 0.6]} tam={[0.6, 0.05, 0.4]} cor="#4a2a40" rot={0.4} />
+      <Caixa pos={[-1.4, 0.03, 1.2]} tam={[0.5, 0.05, 0.35]} cor="#203048" rot={-0.7} />
+      <Caixa pos={[1.3, 0.07, -1.3]} tam={[0.42, 0.14, 0.26]} cor="#e8e2d8" />
+      <Caixa pos={[1.3, 0.16, -1.3]} tam={[0.3, 0.06, 0.12]} cor={ROSA} brilho={0.3} />
+      {/* a janela com a cidade */}
+      <group position={[1.98, 1.5, 0.2]}>
+        <Caixa pos={[0, 0, 0]} tam={[0.04, 1, 1.2]} cor="#0a0a18" brilho={0} />
+        {[[-0.3, 0.2, ROSA], [0.2, -0.1, "#ffc857"], [0.35, 0.25, CIANO], [-0.1, -0.3, "#b38cff"]].map(([z, y, c], i) => (
+          <mesh key={i} position={[-0.03, y as number, z as number]}>
+            <boxGeometry args={[0.01, 0.06, 0.06]} />
+            <meshBasicMaterial color={c as string} toneMapped={false} />
+          </mesh>
+        ))}
+      </group>
+      <Varal pos={[-1.85, 2.05, -0.6]} rot={Math.PI / 2} />
+      {[-1.6, 1.55].map((x) => <Som key={x} pos={[x, 0, x < 0 ? -1.8 : 1.5]} />)}
+    </>
+  )
+}
+useGLTF.preload(URL_QUARTO)

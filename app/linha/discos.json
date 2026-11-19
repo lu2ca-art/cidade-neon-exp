@@ -780,5 +780,80 @@
     "dur": 156
    }
   ]
+ },
+ "noturnos": {
+  "genero": "NOTURNOS",
+  "faixas": [
+   {
+    "titulo": "Noturno nº 1 em si bemol menor, op. 9 nº 1",
+    "autor": "Chopin, 1832 · toca Olga Gurevich",
+    "src": "/loja-discos/dp/chopin-noturno-1.mp3",
+    "dur": 337
+   },
+   {
+    "titulo": "Noturno nº 5 em fá sustenido maior, op. 15 nº 2",
+    "autor": "Chopin, 1833 · toca Luke Faulkner",
+    "src": "/loja-discos/dp/chopin-noturno-5.mp3",
+    "dur": 204
+   },
+   {
+    "titulo": "Noturno nº 8 em ré bemol maior, op. 27 nº 2",
+    "autor": "Chopin, 1836 · toca Frank Lévy",
+    "src": "/loja-discos/dp/chopin-noturno-8.mp3",
+    "dur": 378
+   },
+   {
+    "titulo": "Quarteto nº 2: Notturno",
+    "autor": "Borodin, 1881 · Musopen String Quartet",
+    "src": "/loja-discos/dp/borodin-notturno.mp3",
+    "dur": 547
+   }
+  ]
+ },
+ "orquestra": {
+  "genero": "ORQUESTRA",
+  "faixas": [
+   {
+    "titulo": "Peer Gynt, suíte 1: A manhã",
+    "autor": "Grieg, 1888 · Musopen Symphony",
+    "src": "/loja-discos/dp/grieg-manha.mp3",
+    "dur": 229
+   },
+   {
+    "titulo": "O Moldava (Má Vlast)",
+    "autor": "Smetana, 1874 · Musopen Symphony",
+    "src": "/loja-discos/dp/smetana-moldava.mp3",
+    "dur": 771
+   },
+   {
+    "titulo": "Abertura As Hébridas",
+    "autor": "Mendelssohn, 1830–33 · Musopen Symphony",
+    "src": "/loja-discos/dp/mendelssohn-hebridas.mp3",
+    "dur": 683
+   },
+   {
+    "titulo": "Sinfonia escocesa: Adagio",
+    "autor": "Mendelssohn, 1842 · Musopen Symphony",
+    "src": "/loja-discos/dp/mendelssohn-escocesa.mp3",
+    "dur": 572
+   }
+  ]
+ },
+ "78-rotacoes": {
+  "genero": "78 ROTAÇÕES",
+  "faixas": [
+   {
+    "titulo": "Pobre madrecita",
+    "autor": "Carlos Gardel, 1924 · música Ángel Greco, letra Juan A. Caruso",
+    "src": "/loja-discos/dp/gardel-pobre-madrecita.mp3",
+    "dur": 157
+   },
+   {
+    "titulo": "H.M.S. Pinafore: Fair moon, to thee I sing",
+    "autor": "Sullivan e Gilbert · elenco Odeon, 1907",
+    "src": "/loja-discos/dp/pinafore-fair-moon.mp3",
+    "dur": 199
+   }
+  ]
  }
 }
