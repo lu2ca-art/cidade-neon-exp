@@ -72,6 +72,12 @@ button:focus-visible,input:focus-visible,summary:focus-visible{outline:2px solid
 .notas li{min-width:0;border-top:1px solid var(--linha);padding-top:8px}
 .notas b{color:var(--texto);font-weight:600}
 @media (prefers-reduced-motion:reduce){.chip,.rot3d{transition:none}}
+.lados{position:absolute;left:12px;top:50%;transform:translateY(-50%);display:flex;flex-direction:column;gap:10px;z-index:5}
+.lado{--c:var(--neon);display:flex;flex-direction:column;align-items:center;gap:3px;width:62px;padding:9px 0 7px;border-radius:14px;border:1px solid var(--linha);background:rgba(8,8,20,.72);color:var(--apagado);font:600 10px var(--f-mono);letter-spacing:.06em;text-transform:uppercase;cursor:pointer;transition:color .2s,border-color .2s,box-shadow .2s;backdrop-filter:blur(6px)}
+.lado svg{width:26px;height:26px}
+.lado:hover{color:var(--texto)}
+.lado[aria-pressed=true]{color:#fff;border-color:var(--c);box-shadow:0 0 0 1px var(--c),0 0 18px -2px var(--c)}
+.lado[data-lado=cidade]{--c:#9b8cff}.lado[data-lado=suburbio]{--c:#ff6a35}.lado[data-lado=tuneis]{--c:#4dffd2}
 .wrap>header,.regua,.missao,.notas{display:none!important}.wrap{max-width:none!important;padding:0!important;gap:0!important;height:100vh;height:100dvh}.palco{height:100%}.cena{height:100%!important;min-height:0!important;border:0!important;border-radius:0!important}body{overflow:hidden}
 </style>
 
@@ -116,6 +122,11 @@ button:focus-visible,input:focus-visible,summary:focus-visible{outline:2px solid
   <div class="palco">
     <div class="cena" id="cena">
       <div class="rotulos" id="rotulos"></div>
+      <div class="lados" role="group" aria-label="Camadas do mapa">
+        <button type="button" class="lado" data-lado="cidade" aria-pressed="false" title="Cidade"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linejoin="round"><path d="M3 21h18M5 21V9l5-3v15M10 21V4l6 3v14M16 21v-9l3 1.5V21"/></svg><span>Cidade</span></button>
+        <button type="button" class="lado" data-lado="suburbio" aria-pressed="false" title="Subúrbio"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linejoin="round"><path d="M3 21h18M5 21v-8l5-4 5 4v8M15 21v-6l3-2.5 3 2.5v6M8.5 21v-4h3v4"/></svg><span>Subúrbio</span></button>
+        <button type="button" class="lado" data-lado="tuneis" aria-pressed="false" title="Túneis"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"><path d="M3 20v-6a9 9 0 0 1 18 0v6M7 20v-6a5 5 0 0 1 10 0v6M3 20h4M17 20h4"/></svg><span>Túneis</span></button>
+      </div>
       <div class="dica">arraste pra girar · pinça ou roda pra aproximar</div>
       <div class="toca" id="toca" hidden><span class="eq" aria-hidden="true"><i></i><i></i><i></i><i></i></span><div style="flex:1;min-width:200px"><div id="tocaTxt"></div><small id="tocaSub"></small></div><button class="chip" id="tocaMapa">Abrir o mapa</button></div>
     </div>
@@ -423,11 +434,11 @@ D.sal.forEach(s=>{const p=naCasca(s.x,s.z,.8);p.y+=.6;rotulo(s.n,gTun,p,'mini sa
 let camada='ilha',missao='nenhuma',hour=21,playing=false,aberto=null,destino=null,foco=null,aceita=null;
 const ALVO={ilha:{c:[0,0],t:[0,0]},aberta:{c:[8,0],t:[0,0]},cidade:{c:[8,0],t:[0,0]},suburbio:{c:[8,0],t:[0,0]},tuneis:{c:[8,0],t:[0,0]}}; // os túneis ficam colados no cone
 const cx=CX/U,cz=CZ/U;
-const FOCO={ilha:{p:[cx+30,12,cz+82],t:[cx,-10,cz]},aberta:{p:[cx+36,34,cz+96],t:[cx,-5,cz]},cidade:{p:[cx+10,40,cz+34],t:[cx,8,cz]},suburbio:{p:[cx+.5,26,cz+25],t:[cx,-.5,cz]},tuneis:{p:[cx+10,-22,cz+62],t:[cx,-14,cz]}};
-const OPAC={ilha:{ilha:1,cid:.42,tun:.8},aberta:{ilha:1,cid:.6,tun:.85},cidade:{ilha:.25,cid:1,tun:.2},suburbio:{ilha:1,cid:.06,tun:.2},tuneis:{ilha:.25,cid:.15,tun:1}};
+const FOCO={ilha:{p:[cx+4,78,cz+54],t:[cx,-6,cz+2]},aberta:{p:[cx+36,34,cz+96],t:[cx,-5,cz]},cidade:{p:[cx+10,40,cz+34],t:[cx,8,cz]},suburbio:{p:[cx+.5,26,cz+25],t:[cx,-.5,cz]},tuneis:{p:[cx+10,-22,cz+62],t:[cx,-14,cz]}};
+const OPAC={ilha:{ilha:1,cid:.55,tun:.8},aberta:{ilha:1,cid:.6,tun:.85},cidade:{ilha:.25,cid:1,tun:.2},suburbio:{ilha:1,cid:.06,tun:.2},tuneis:{ilha:.25,cid:.15,tun:1}};
 {const gy=yOf(Hm(VOCE.x,VOCE.z));ALVO.jogo=ALVO.ilha;OPAC.jogo=OPAC.ilha;FOCO.jogo={p:[VOCE.x/U+2.2,gy+3.2,VOCE.z/U+5],t:[VOCE.x/U,gy+.6,VOCE.z/U-1]}}
 const cur={kb:.4,cy:0,tz:0,ty:0,op:{ilha:1,cid:1,tun:1}};
-let tween=null;
+let tween=null;let LIG=new Set();const vis=k=>LIG.size===0||LIG.has(k);
 function voar(){const f=FOCO[camada];tween={p:new THREE.Vector3(...f.p),t:new THREE.Vector3(...f.t)};if(RM){camera.position.copy(tween.p);controls.target.copy(tween.t);tween=null}}
 controls.addEventListener('start',()=>{tween=null});
 
@@ -501,11 +512,11 @@ function frame(now){const dt=Math.min(.05,(now-last)/1000);last=now;T+=dt;
   labels.forEach(L=>{v3.copy(L.pos);L.grp.localToWorld(v3);v3.project(camera);
     const grpOp=L.grp===gIlha?cur.op.ilha:L.grp===gCid?cur.op.cid:cur.op.tun;
     let show=v3.z<1&&(grpOp>.5||(!L.tipo&&L.id&&estado(L.id)==='aceso'));
-    if(L.tipo&&L.tipo.includes('faixa'))show=show&&camada==='cidade';
-    if(L.tipo&&L.tipo.includes('salao'))show=show&&camada==='tuneis';
-    if(L.tipo==='grupo')show=show&&camada!=='suburbio'&&camada!=='tuneis';
-    if(L.tipo==='voce')show=show&&(camada==='suburbio'||camada==='jogo');
-    if(!L.tipo&&L.id){const st=estado(L.id);show=show&&(PI[L.id].cidade?(camada==='cidade'||st==='aceso'||aberto===L.id):(camada==='suburbio'||camada==='jogo'||st==='aceso'||L.id==='casa'||aberto===L.id));L.el.className='rot3d'+(st==='aceso'?' aceso':st==='apagado'?' apagado':'')+(aberto===L.id?' sel':'');L.el.style.setProperty('--b',st==='meio'?rgba(PI[L.id].c,.7):'rgba(160,160,200,.3)')}
+    if(L.tipo&&L.tipo.includes('faixa'))show=show&&LIG.has('cidade');
+    if(L.tipo&&L.tipo.includes('salao'))show=show&&LIG.has('tuneis');
+    if(L.tipo==='grupo')show=false; // (19/11) os lugares aparecem direto
+    if(L.tipo==='voce')show=show&&(vis('suburbio')||camada==='jogo');
+    if(!L.tipo&&L.id){const st=estado(L.id);show=show&&(PI[L.id].cidade?(vis('cidade')||st==='aceso'||aberto===L.id):(vis('suburbio')||camada==='jogo'||st==='aceso'||L.id==='casa'||aberto===L.id));L.el.className='rot3d'+(st==='aceso'?' aceso':st==='apagado'?' apagado':'')+(aberto===L.id?' sel':'');L.el.style.setProperty('--b',st==='meio'?rgba(PI[L.id].c,.7):'rgba(160,160,200,.3)')}
     L.el.style.display=show?'':'none';if(show)L.el.style.transform=`translate(${(v3.x*.5+.5)*w}px,${(-v3.y*.5+.5)*h}px) translate(-50%,-100%)`});
   if(!jan.hidden)drawVista(T);
   requestAnimationFrame(frame)}
@@ -666,7 +677,12 @@ document.getElementById('jir').addEventListener('click',()=>{if(!aberto)return;i
 document.getElementById('jfechar').addEventListener('click',()=>{jan.hidden=true;aberto=null});
 
 /* ---------- controles ---------- */
-function selCam(c){camada=c;document.querySelectorAll('[data-cam]').forEach(o=>o.setAttribute('aria-pressed',String(o.dataset.cam===c)));voar()}
+function aplicaCam(){camada=LIG.size===0?'ilha':LIG.size===1?[...LIG][0]:'combo';
+  if(camada==='combo'){const c=LIG.has('cidade');ALVO.combo={c:[c?8:0,0],t:[0,0]};OPAC.combo={ilha:LIG.has('suburbio')?1:.3,cid:c?1:.12,tun:LIG.has('tuneis')?1:.15};FOCO.combo=c?FOCO.aberta:FOCO.ilha}
+  const chip=LIG.size===3?'aberta':camada;document.querySelectorAll('[data-cam]').forEach(o=>o.setAttribute('aria-pressed',String(o.dataset.cam===chip)));
+  document.querySelectorAll('[data-lado]').forEach(o=>o.setAttribute('aria-pressed',String(LIG.has(o.dataset.lado))));voar()}
+function selCam(c){LIG=c==='ilha'?new Set():c==='aberta'?new Set(['cidade','suburbio','tuneis']):new Set([c]);aplicaCam()}
+document.querySelectorAll('[data-lado]').forEach(b=>b.addEventListener('click',()=>{const k=b.dataset.lado;LIG.has(k)?LIG.delete(k):LIG.add(k);aplicaCam()}));
 document.querySelectorAll('[data-cam]').forEach(b=>b.addEventListener('click',()=>selCam(b.dataset.cam)));
 function selMissao(k){missao=k;foco=null;if(aceita&&aceita!==k){aceita=null;toca.hidden=true}document.querySelectorAll('[data-mis]').forEach(o=>o.setAttribute('aria-pressed',String(o.dataset.mis===k)));textoMissao()}
 document.querySelectorAll('[data-mis]').forEach(b=>b.addEventListener('click',()=>{selMissao(b.dataset.mis);if(aberto)abrir(aberto)}));
@@ -680,7 +696,7 @@ function aceitar(id){const m=M[missao];aceita=missao;if(EMB){avisa({tipo:'aceita
   toca.hidden=false;toca.style.setProperty('--c',m.c);
   document.getElementById('tocaTxt').innerHTML=`<b>${m.nome}</b> aceita · tocando o instrumental de ${m.faixa}`;
   document.getElementById('tocaSub').textContent=`Andando na faixa ${m.faixa}, ela toca de verdade, com voz. O caminho até ${PI[id].nome} está aceso.`;
-  camada='jogo';document.querySelectorAll('[data-cam]').forEach(o=>o.setAttribute('aria-pressed','false'));voar()}
+  LIG=new Set();camada='jogo';document.querySelectorAll('[data-cam],[data-lado]').forEach(o=>o.setAttribute('aria-pressed','false'));voar()}
 document.getElementById('tocaMapa').addEventListener('click',()=>selCam('ilha'));
 function textoMissao(){const el=document.getElementById('missaoTxt');el.innerHTML='';const m=M[missao];
   if(missao==='nenhuma'){el.textContent='Sem missão aceita: todos os lugares ficam meio acesos e todas as faixas tocam. Escolha uma missão: a faixa dela acende na cidade e só os lugares dela ficam acesos.';return}
@@ -695,7 +711,7 @@ ps.addEventListener('click',()=>{playing=!playing;ps.setAttribute('aria-pressed'
 camera.position.set(...FOCO.ilha.p);controls.target.set(...FOCO.ilha.t);
 resize();textoMissao();
 {const ep=HASH.get('missao');if(ep&&M[ep])selMissao(ep)}
-if(EMB){const x=document.createElement('button');x.type='button';x.textContent='×';x.setAttribute('aria-label','fechar o mapa');x.style.cssText='position:fixed;top:10px;right:12px;z-index:50;width:40px;height:40px;border-radius:50%;border:1px solid #fff4;background:#0b0a12cc;color:#fff;font-size:24px;line-height:1;cursor:pointer';x.addEventListener('click',()=>avisa({tipo:'fechar'}));document.body.append(x);addEventListener('keydown',e=>{if(e.key==='Escape'||e.key==='m'||e.key==='M')avisa({tipo:'fechar'})})}
+if(EMB)addEventListener('keydown',e=>{if(e.key==='Escape'||e.key==='m'||e.key==='M')avisa({tipo:'fechar'})})
 requestAnimationFrame(frame);
 })();
 </script>

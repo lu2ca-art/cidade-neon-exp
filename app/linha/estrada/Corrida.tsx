@@ -3269,7 +3269,7 @@ export function Corrida({ alohanNoMapa = false, onVisitar, save, nivel, destino:
       )}
       {!andandoAlgo && (
         <Mapa M={M} apagada={viaApagada} aberta={viaAberta} foco={viaFoco} pose={jogo} missao={lugarDaMissao} marca={marca} onMarcar={setMarca} onAberto={(a) => { jogo.current.noMapa = a }} viagens={aneis.viagens} onViajar={viajar} onToqueMini={() => !!(discoM && oculos && anelApi.current?.toque())} pedido={pedeMapa} onIlustrado={discoM && historia ? () => abrirCartoes("mapa") : undefined} missoes={discoM ? mapaMissoes : null} painel={discoM ? mapaPainel : null} onIcone={onMapaIcone} fase={historia?.fase ?? null} alvoChao={alvoChao} corridaRua={corridaNoMapa} trancaPorta={trancaPortaMapa}
-          onDrone={droneOk ? (via) => { if (via === "mini" && DRONE.alvo) ligarDrone(false); else { ligarDrone(true); setDronePainel(via === "pedido" && !!(discoM && mapaPainel)) } return true } : undefined} />
+          onDrone={discoM && historia ? () => { if (cartoesAba === "mapa") { setCartoesAba(null); jogo.current.noMapa = false } else abrirCartoes("mapa"); return true } : droneOk ? (via) => { if (via === "mini" && DRONE.alvo) ligarDrone(false); else { ligarDrone(true); setDronePainel(via === "pedido" && !!(discoM && mapaPainel)) } return true } : undefined} />
       )}
       {discoM && historia && cartoesAba === "mapa" && (
         <MapaNovo M={discoM} historia={historia} pose={jogo as unknown as React.RefObject<{ via: number; u: number; wx?: number; wz?: number; livreOk?: boolean; voo?: boolean }>}

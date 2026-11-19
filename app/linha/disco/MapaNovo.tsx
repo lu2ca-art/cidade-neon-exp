@@ -5,11 +5,11 @@
 // cone; mapa-ilustrado.md), servida do próprio site em /mapa-ilustrado e aberta
 // por cima do jogo. Ela chega com onde você está (#voce=x,z) e a missão de agora
 // (#missao=ep). "Aceitar missão" lá dentro avisa aqui: marca o destino da missão
-// (o mesmo "ir" dos cartões) e fecha. O × e o Esc também fecham.
+// (o mesmo "ir" dos cartões) e fecha. (19/11) A bolinha do minimapa abre e fecha; o Esc também fecha.
 //
 // Desempenho: fechado, nem existe (o iframe só nasce ao abrir).
 
-import { useEffect, useMemo, useRef } from "react"
+import { useEffect, useMemo, useRef, useState } from "react"
 import type { MundoDisco } from "../estrada/mundoDisco"
 import type { HistoriaDisco } from "./historia"
 import { pontoVia } from "../estrada/alvoMissao"
@@ -59,10 +59,23 @@ export function MapaNovo({ M, historia, pose, onIr, onFechar }: {
     return () => { window.removeEventListener("message", msg); window.removeEventListener("keydown", esc, true) }
   }, [])
 
+  // (19/11, o dono) sai do mapa pela bolinha (o minimapa), no mesmo lugar dela: sem botão de entrar ou sair
+  const [bola] = useState(() => {
+    const r = typeof document !== "undefined" ? document.querySelector(".l-mapa-mini")?.getBoundingClientRect() : null
+    return r && r.width > 0 ? { left: r.left, top: r.top, size: r.width } : null
+  })
+
   return (
     <div role="dialog" aria-label="o mapa da Cidade Neon" onPointerDown={(e) => e.stopPropagation()}
       style={{ position: "fixed", inset: 0, zIndex: 60, background: "#05040a" }}>
       <iframe src={src} title="o mapa da Cidade Neon" style={{ width: "100%", height: "100%", border: 0, display: "block" }} />
+      {bola && (
+        <button type="button" aria-label="voltar pro jogo" onClick={() => cb.current.onFechar()}
+          style={{ position: "fixed", left: bola.left, top: bola.top, width: bola.size, height: bola.size, borderRadius: "50%", zIndex: 61, cursor: "pointer",
+            border: "2px solid #4dffd2", background: "radial-gradient(circle, #10142acc 55%, #05040acc)", boxShadow: "0 0 18px -2px #4dffd2", color: "#e9fff8", display: "grid", placeItems: "center" }}>
+          <svg viewBox="0 0 24 24" width={Math.round(bola.size * 0.32)} height={Math.round(bola.size * 0.32)} fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M3 6l6-3 6 3 6-3v15l-6 3-6-3-6 3z M9 3v15 M15 6v15" /></svg>
+        </button>
+      )}
     </div>
   )
 }
