@@ -598,6 +598,8 @@ const MetroDentro = dynamic(() => import("../metro/Metro").then((m) => m.Metro),
 const MetroFugaDentro = dynamic(() => import("../disco/MetroFuga").then((m) => m.MetroFuga), { ssr: false })
 // (16/11) o mapa ilustrado e os cartões das missões: só baixa no primeiro toque
 const MapaCartoes = dynamic(() => import("../disco/MapaCartoes").then((m) => m.MapaCartoes), { ssr: false })
+// (18/11) o mapa novo (o disco de vinil em 3D, public/mapa-ilustrado): o "mapa" abre ele; a feira segue nos cartões
+const MapaNovo = dynamic(() => import("../disco/MapaNovo").then((m) => m.MapaNovo), { ssr: false })
 type Viagem9 = { h: ViagemLinha9; dest: number | null; rotulo: string; fuga: Pick<MetroFugaProps, "historia" | "onPasso" | "onSair"> | null }
 const PERTO_9: number[] = []
 
@@ -3253,7 +3255,11 @@ export function Corrida({ alohanNoMapa = false, onVisitar, save, nivel, destino:
         <Mapa M={M} apagada={viaApagada} aberta={viaAberta} foco={viaFoco} pose={jogo} missao={lugarDaMissao} marca={marca} onMarcar={setMarca} onAberto={(a) => { jogo.current.noMapa = a }} viagens={aneis.viagens} onViajar={viajar} onToqueMini={() => !!(discoM && oculos && anelApi.current?.toque())} pedido={pedeMapa} onIlustrado={discoM && historia ? () => abrirCartoes("mapa") : undefined} missoes={discoM ? mapaMissoes : null} painel={discoM ? mapaPainel : null} onIcone={onMapaIcone} fase={historia?.fase ?? null} alvoChao={alvoChao} corridaRua={corridaNoMapa} trancaPorta={trancaPortaMapa}
           onDrone={droneOk ? (via) => { if (via === "mini" && DRONE.alvo) ligarDrone(false); else { ligarDrone(true); setDronePainel(via === "pedido" && !!(discoM && mapaPainel)) } return true } : undefined} />
       )}
-      {discoM && historia && cartoesAba && (
+      {discoM && historia && cartoesAba === "mapa" && (
+        <MapaNovo M={discoM} historia={historia} pose={jogo as unknown as React.RefObject<{ via: number; u: number; wx?: number; wz?: number; livreOk?: boolean; voo?: boolean }>}
+          onIr={irPraMissao} onFechar={() => { setCartoesAba(null); jogo.current.noMapa = false }} />
+      )}
+      {discoM && historia && cartoesAba === "feira" && (
         <MapaCartoes M={discoM} historia={historia} pose={jogo as unknown as React.RefObject<{ via: number; u: number; wx?: number; wz?: number; livreOk?: boolean; voo?: boolean }>} apagada={viaApagada} aba={cartoesAba}
           onIr={irPraMissao} onFechar={() => { setCartoesAba(null); jogo.current.noMapa = false }} />
       )}
