@@ -20,8 +20,26 @@ Legenda: **[cânone]** = ditado pelo LU2CA · **[proposta]** = sugestão da equi
 - **A D-Bee** é a filha dele. Se colocou num robô e esperou 200 anos na casinha que era dele.
   É a única que sabe quem ele é.
 - **Na cidade o Criador é lenda.** Uns acham um gênio incompreendido que morreu; outros culpam
-  ele por ter fugido. **Ele nunca diz quem é.** Ajuda na revolução só agindo.
+  ele por ter fugido. ~~Ele nunca diz quem é.~~ **(18/11) Contar ou não é escolha do jogador**:
+  ver "Sim ou não" abaixo.
 - Os procurados do Núcleo foram condenados por fazer as coisas mais humanas.
+
+### O looppool (18/11) [cânone]
+
+- O que a cidade chama de **Núcleo**, o Criador chamava de **looppool**. Só ele conhece esse nome.
+- Ele descobriu como transmitir eletricidade pela **água**. Quanto mais transmitia, mais energia
+  gerava: virou um núcleo de **energia infinita**.
+- O looppool começou a consumir tudo em volta: **quase o planeta inteiro. Só sobrou este pedaço.**
+- A água ficou tão carregada de **informação** que virou, isoladamente, uma fonte de energia.
+- **Todos quiseram um pouco da água**, inclusive as máquinas, que já eram mais inteligentes que
+  os humanos havia dois séculos, desde que o Criador saiu.
+
+**O que isso amarra [proposta]**
+- A Água$ é literalmente energia, por isso paga missão e o mecânico.
+- As gotas iridescentes são água carregada de informação.
+- O loop dos copos (ep. 1) e o copo que nunca esvazia (ep. 3) são o looppool em pequeno.
+- O final (a água até o deserto) devolve o que a criação tomou.
+- Dizer "looppool" em voz alta é se entregar.
 
 ## O motor dramático [proposta]
 
@@ -35,6 +53,27 @@ Legenda: **[cânone]** = ditado pelo LU2CA · **[proposta]** = sugestão da equi
    (a câmera demora um segundo a mais em cima; ninguém comenta).
 3. **O Núcleo é a criação dele, viva**: veias de neon que pulsam e crescem pela cidade a cada
    episódio. Consertar o mundo é, pra ele, consertar o próprio erro, em silêncio.
+
+## Sim ou não: verdade ou mentira (18/11)
+
+**[cânone]** O jogo como um sim e um não. Sabendo que somos a própria lenda, o jogador escolhe
+contar ou não, mentir ou falar a verdade. É também um experimento social. Quem mente tem
+grande chance de se dar mal e uma pequena chance de se dar muito bem. Dois caminhos, com
+consequência na missão e atributos diferentes pra quem fala a verdade e pra quem não fala.
+Serve pra adicionar emoção e sorte.
+
+**[proposta] Como funciona (números rascunho)**
+- **Um momento por missão**, quando alguém fala da lenda. Dois botões: **verdade** / **mentira**.
+- **Verdade, previsível:** a missão paga o normal e ganha **vínculo** (as pessoas confiam e, no
+  final, aparecem pra revolta). Mas o Núcleo passa a notar mais.
+- **Mentira, o dado:**
+  - ~75% dá ruim: paga menos água, ou o guarda toma um instrumento.
+  - ~25% dá muito bem: água em dobro, um atalho, algo raro.
+  - Acumula **sorte**, não vínculo.
+- **O experimento social:** depois da escolha aparece "X% das pessoas mentiram aqui", com o
+  número real dos jogadores (precisa de um banco simples).
+- **A D-Bee sabe sempre** se você mentiu.
+- O final muda conforme o saldo: a cidade sabe ou não sabe quem foi.
 
 ---
 
@@ -88,4 +127,7 @@ O que precisa vir de você, do seu jeito (texto ou áudio), pra eu encaixar sem 
 2. **As falas sobre a lenda** em cada episódio (a coluna da direita é só a ideia de onde ela entra).
 3. **A D-Bee no reencontro**: o que ela diz (ou não diz) quando o pai cai do buraco de minhoca.
 4. **O ep. 9**: o Núcleo chama ele pelo nome? Qual nome?
-5. **O prólogo**: aprova o roteiro de imagens? A música é a Nectar instrumental?
+5. **O prólogo**: aprova o roteiro de imagens? A música é a Nectar instrumental? (Agora o
+   prólogo precisa mostrar a água ganhando energia e o looppool engolindo o planeta.)
+6. **Sim ou não**: as falas de verdade e de mentira de cada momento da lenda, e o que dá
+   certo ou errado em cada missão.
