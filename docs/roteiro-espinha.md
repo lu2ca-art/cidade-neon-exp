@@ -124,12 +124,33 @@ Começa de novo.
 **[cânone] Moscou, perdeu.** Se a pessoa ficar 10 minutos sem fazer nada no sentido da
 narrativa, ela é pega pelo Núcleo: game over, começa de novo.
 
+**[cânone] A cenoura e o chicote (18/11)**
+- **Positivo:** recompensas visíveis na feira de missões puxam a pessoa pra história.
+- **Negativo, o hack:** se a pessoa não avança, o Núcleo começa a hackear. Apaga os menus um
+  por um e o holo para de funcionar. Hackeado, a polícia te acha e te pega.
+
+**[cânone] A polícia: drones infernais**
+- Podem te capturar durante o jogo. Capturado, você vai pro **corredor maluco das cápsulas
+  incubadoras**.
+- **No jogo normal, só rodam no subúrbio, nunca na cidade.** Eles acham que na cidade só tem
+  eles mesmos.
+- **A cidade é festa:** os loucos do racha andam lá e a polícia nunca vê. Dá pra derrubar os
+  carros e dane-se.
+- **No subúrbio a polícia é filha da puta.** Ela controla bem pra ninguém tentar subir; os
+  cidadãos lá de cima nem sabem que essa galera existe.
+- **A polícia não sabe que os túneis existem.** É por isso que a gente derrota ela.
+- **São poucos drones, mas rodam como um relógio:** cada hora estão num lugar. Se você estiver
+  lá: corre ou já era.
+
 **[proposta] Como isso funciona no jogo**
-- **"Fazer algo na narrativa"** = completar uma peça de missão. Rodar pelo mapa, ouvir rádio
-  ou ficar no estúdio não conta.
-- **O relógio não aparece.** O que aparece é a cidade fechando o cerco: as veias de neon
-  crescem na borda da tela, o carro do Núcleo passa mais perto. Nos últimos 2 minutos, a
-  música fica abafada e o holo falha.
+- **"Avançar na narrativa"** = completar uma peça de missão.
+- **O hack em etapas, a partir do relógio de 10 min (escondido):**
+  - aos 6 min, um menu some;
+  - aos 8 min, mais menus somem e o holo falha;
+  - aos 10 min, o holo apaga e os drones vêm atrás de você, onde você estiver.
+  - Completar uma peça de missão desfaz o hack.
+- **A ronda:** uma tabela fixa de pontos do subúrbio por hora do dia simulado. Dá pra decorar
+  o horário (e o mapa pode mostrar onde eles foram vistos por último).
 - **O relógio pausa** com a aba fechada ou o jogo pausado. Só conta o tempo jogando.
 - **"Começa de novo"** pode ser de duas formas (decisão do LU2CA):
   - do zero: perde tudo;
