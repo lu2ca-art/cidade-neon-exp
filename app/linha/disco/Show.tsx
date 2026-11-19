@@ -16,7 +16,7 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react"
 import { fazerMusica } from "../som"
 import { PISTAS, faixaDaPista, type PistaId } from "../estrada/pistas"
-import { COR_LANE, LANES, andarParticulas, desenharBraco, desenharHud, desenharPalco, desenharTomada, geometriaBraco, soltarFaiscas, type Nota, type Particula } from "../../neon-tiles/cena"
+import { COR_LANE, LANES, andarParticulas, desenharBraco, desenharHud, desenharPalco, desenharTomada, geometriaBraco, soltarFaiscas, type EscalaPalco, type Nota, type Particula } from "../../neon-tiles/cena"
 import { JANELA, PERFEITO, VISIVEL, multiplicador, notasDoChart, novoPlacar, type ChartGd, type Placar } from "../../neon-tiles/motor"
 import { ac, atrasoEstimado, carregarBuffer, montarShow, type Show as SomShow } from "../../neon-tiles/som"
 import { MODELOS, PALCOS, type Palco } from "../../neon-tiles/dados"
@@ -76,7 +76,9 @@ export interface PropsShow { faixa: FaixaShow; lugar: string; palco?: string; co
   // (T19) a letra que ele escreveu (a arte do LU2CA): aparece no cantar
   letra?: string[]
   // (§12) terminou e quer de novo: volta pra escolha, sem contar este
-  onDeNovo?: () => void }
+  onDeNovo?: () => void
+  // (16/11) o degrau na escada dos shows (disco/escadaShows.ts): o palco, a luz e o telão
+  escala?: EscalaPalco }
 // o chart novo (public/gd2): cada instrumento com os 4 níveis (a voz: a melodia) e a janela de 22 s de cada um
 export type ChartGd2 = ChartGd & { janelas?: Partial<Record<InstrumentoShow, number>>; voz?: { melodia: [number, number, number][] } } & Partial<Record<InstrumentoShow, unknown>>
 export const carregarChart = (faixa: FaixaShow) => fetch(`/gd2/${faixa}.json`).then((r) => (r.ok ? (r.json() as Promise<ChartGd2>) : Promise.reject()))
@@ -84,7 +86,7 @@ export const NOME_INST: Record<InstrumentoShow, string> = { voz: "só ver", guit
 
 // a pista do Guitar Driver (guitarra; o teclado e a bateria usam a mesma pista
 // com as notas deles até ganharem o jogo próprio)
-export function ShowPista({ faixa, lugar, palco: palcoId, cor, popularidade, onFim, onDeNovo, inst = "guitarra" }: PropsShow & { inst?: "guitarra" | "teclado" | "bateria" }) {
+export function ShowPista({ faixa, lugar, palco: palcoId, cor, popularidade, onFim, onDeNovo, escala, inst = "guitarra" }: PropsShow & { inst?: "guitarra" | "teclado" | "bateria" }) {
   const [estado, setEstado] = useState<Estado>("carregando")
   const [fim, setFim] = useState<ResultadoShow | null>(null)
   const cvs = useRef<HTMLCanvasElement>(null)
@@ -147,13 +149,13 @@ export function ShowPista({ faixa, lugar, palco: palcoId, cor, popularidade, onF
       const n = Math.min(4, Math.floor(tt / beat) + 1)
       if (n > contou) { contou = n; som?.baqueta() }
       ajustar(c)
-      desenharTomada(g, c.width, c.height, "contagem", tt, { palco, modelo, contagem: n, imgs, publico })
+      desenharTomada(g, c.width, c.height, "contagem", tt, { palco, modelo, contagem: n, imgs, publico, escala })
       if (tt >= beat * 4) { setEstado("tocando"); return }
       raf = requestAnimationFrame(loop)
     }
     raf = requestAnimationFrame(loop)
     return () => cancelAnimationFrame(raf)
-  }, [estado, palco, modelo, imgs, publico])
+  }, [estado, palco, modelo, imgs, publico, escala])
 
   const acabar = useCallback(() => {
     const j = jogo.current, p = j.placar
@@ -244,7 +246,7 @@ export function ShowPista({ faixa, lugar, palco: palcoId, cor, popularidade, onF
       const batida = Math.pow(1 - (fb < 0 ? fb + 1 : fb), 3)
       ajustar(c)
       const w = c.width, h = c.height
-      desenharPalco(g, w, h, { palco, energia: p.galera, neon: false, batida, t: agora, instrumento: "guitarra", modelo, imgs, vaia: p.galera < 0.15, publico, show: true })
+      desenharPalco(g, w, h, { palco, energia: p.galera, neon: false, batida, t: agora, instrumento: "guitarra", modelo, imgs, vaia: p.galera < 0.15, publico, show: true, escala })
       // (T21) o multiverso cinza: o palco perde a cor; a galera acesa devolve (o braço segue colorido)
       if (regra === "cinza") {
         g.globalCompositeOperation = "saturation"
@@ -265,7 +267,7 @@ export function ShowPista({ faixa, lugar, palco: palcoId, cor, popularidade, onF
     window.addEventListener("keydown", kd, true)
     window.addEventListener("keyup", ku, true)
     return () => { cancelAnimationFrame(raf); window.removeEventListener("keydown", kd, true); window.removeEventListener("keyup", ku, true) }
-  }, [estado, palco, modelo, imgs, publico, atraso, tocar, acabar, regra])
+  }, [estado, palco, modelo, imgs, publico, atraso, tocar, acabar, regra, escala])
 
   // o toque na pista: a coluna inteira (vários dedos ao mesmo tempo)
   const posDoToque = (e: React.PointerEvent) => {

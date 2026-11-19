@@ -20,7 +20,7 @@ import { SHOWS_XENOM, xenomPorId } from "./disco/xenom"
 import { prepararMetro } from "./disco/metro"
 import { VEICULOS } from "./disco/perseguicao"
 import { MOMENTOS, ehMomentoFinal, pedirNascerNoPalco } from "./disco/final"
-import { CHAO_LUGARES, SUBURBIO, type HistoriaDisco } from "./disco/historia"
+import { CHAO_LUGARES, giroPraCratera, type HistoriaDisco } from "./disco/historia"
 import { PISTAS } from "./estrada/pistas"
 import { GRAFITES } from "./grafite/grafites"
 
@@ -39,6 +39,10 @@ function discoDa(parte: string): Record<string, unknown> | null {
   if (parte === "povo.pouco") return { ...MEIO, feitas13: ["dbee", "oficina"] }
   if (parte === "povo.meio") return MEIO
   if (parte === "povo.cheio") { const { missao: _fora, ...sem } = FINAL; void _fora; return sem }
+  // (16/11, a escada dos shows) o bar (o mais simples), os palcos (a escada) e o show dos túneis (o povo quase todo)
+  if (parte === "show.bar") return { fase: "bar", holo: true }
+  if (parte === "show.escada") return { ...MEIO, palcos: { "calcada:nectar": 5, "bar:nectar": 5, "balada:nectar": 4, "terraco:nectar": 4, "calcada:ojala": 3 } }
+  if (parte === "show.tuneis") { const { missao: _fora, ...sem } = FINAL; void _fora; return sem }
   if (parte === "inicio" || parte === "minhoca") return null // save novo: começa no buraco de minhoca
   if (["casa", "casa.holo", "casa.tambor"].includes(parte)) return { fase: "casa", holo: false }
   // (T07) o tutorial do voo e do turbo: a Kombi já voa, os passos das dunas feitos
@@ -69,6 +73,8 @@ function discoDa(parte: string): Record<string, unknown> | null {
   if (parte === "nectar" || parte.startsWith("nectar.")) return { fase: "nectar", holo: true, nectar: parte.split(".")[1] || "quebra" }
   if (parte === "carreira.feira" || parte === "feira") return { fase: "carreira", holo: true }
   if (parte === "carreira.meio") return MEIO
+  // (18/11) o mapa novo (o disco de vinil em 3D): o meio da carreira, com o mapa já aberto
+  if (parte === "mapa.novo") return MEIO
   // (T37) a chegada de um login: quem já passou pela casa entra pelo túnel e cai nela de novo
   if (parte === "chegada") return MEIO
   if (parte.startsWith("missao.")) {
@@ -131,7 +137,11 @@ function discoDa(parte: string): Record<string, unknown> | null {
   // (T44) os rachas: a cidade livre, com um dos carros do mecânico logo à frente
   // (T29) o final: as 12 missões feitas (as portas e as músicas de todas), o final
   // pegado; a sequência começa direto (?parte=final) ou num momento (final.andar…)
-  if (parte === "final" || (parte.startsWith("final.") && ehMomentoFinal(parte.slice(6)))) return FINAL
+  // (16/11) a captura e o show: tudo feito menos o show do ep. 9 (a missão lu2ca pegada, no palco);
+  // final.show já com a captura feita e o palco alcançado (só falta assistir ou tocar)
+  if (parte === "final" || parte === "final.captura" || parte === "final.incubadoras" || parte === "final.controle") return ANTES_DO_SHOW
+  if (parte === "final.show") return { ...ANTES_DO_SHOW, capturaFinal: true, passos13: [...ANTES_DO_SHOW.passos13, "lu2ca:arte"] }
+  if (parte.startsWith("final.") && ehMomentoFinal(parte.slice(6))) return FINAL
   // (06/11) o mundo depois: as 13 feitas, o final também (plantas, cabines, rio e floresta).
   // "mundo.depois" começa na torre central; ".tuneis" desce direto pras trincheiras;
   // ".floresta" (09/11) nasce na porta do deserto, na beira da floresta
@@ -175,6 +185,11 @@ function discoDa(parte: string): Record<string, unknown> | null {
   if (parte === "vitrine.bar") return MEIO
   // (vitrine, parte 2) as salas da cidade fora da missão e a casa da D-Bee: a visita abre ao entrar
   if (parte in VISITAS) return MEIO
+  // (16/11) a entrega: o meio da carreira, entrega a Ella ao entrar (o hack e o corredor);
+  // e já entregue e paga: abre direto no corredor das incubadoras
+  // (16/11, o dono) só entrega quem já teve a missão feita: aqui a Ella já foi feita
+  if (parte === "entrega.hack") return { ...MEIO, feitas13: [...MEIO.feitas13, "ella"] }
+  if (parte === "entrega.incubadoras") return { ...MEIO, entregues: ["ella"], entreguesPagos: ["ella"] }
   return undefined as unknown as null
 }
 
@@ -204,7 +219,11 @@ const VISITAS: Record<string, string> = { "vitrine.balada": "balada", "vitrine.d
 // (T15–T25, T16) as peças novas, uma de cada, abertas direto
 const PECAS_NOVAS = ["missao.drew.arte", "missao.drew.jogo", "missao.xeriff.arte", "missao.notti.arte", "missao.notti.jogo", "missao.nizzy.arte", "missao.tony.jogo", "missao.tony.arte", "missao.mubarak.arte", "missao.mubarak.jogo"]
 export const OFICINA_PARTES = ["oficina.catar", "oficina.painel", "oficina.bancada", "oficina.agua", "oficina.pagar", "oficina.loja"]
-export const PARTES_TESTE = ["inicio", "minhoca", "casa", "casa.tambor", "casa.holo", "dunas", "subir.voo", "bar", "oficina", "oficina.show", ...OFICINA_PARTES, "subir", "quebra", "quebra.oficina", "perseguicao", "perseguicao.escolher", "perseguicao.gatilho", "nectar", "carreira.feira", "carreira.meio", "amigos", "amigos.missao", "chegada", "loja", "loja.roupas", "brecho", "palcos", "palcos.topo", "xenom", ...SHOWS_XENOM.map((x) => `xenom.${x.id}`), "xenom.album", ...MISSOES_FEIRA.map((m) => `missao.${m}`), "missao.lu2ca.letra", "missao.lu2ca.show", "missao.quadra.batida", "missao.quadra.basquete", "missao.ella.casa", "missao.tuneis.trincheiras", ...PECAS_NOVAS, ...MISSOES.map((m) => `missao.${m}`), "livre", "rachas", "torre", "torre.ponta", "kombi.dentro", "violao", "metro", "metro.tuneis", "grafite", "grafite.livre", "elevador", "elevador.subir", "elevador.terror", "instrumentos", "casa.instrumentos", "recompensa.instrumento", "vitrine.tunel", "vitrine.bar", ...Object.keys(VISITAS), "final", ...MOMENTOS.map((m) => `final.${m}`), "mundo.depois", "mundo.depois.tuneis", "mundo.depois.floresta", "instrumentos.kombi", "instrumentos.mundo", "elevador.deserto", "metro.passeio", "metro.violao", "loja.violao", "metro.comprado", "metro.sem-instrumento", "povo.pouco", "povo.meio", "povo.cheio"]
+// (16/11) o save de antes do show final: tudo feito menos o show do ep. 9 (lu2ca), ele pegado
+const SEM_SHOW = ANTES_DO_FINAL.filter((id) => id !== "lu2ca")
+const ANTES_DO_SHOW = { ...FINAL, missao: "lu2ca", feitas13: SEM_SHOW, passos13: SEM_SHOW.flatMap((id) => [`${id}:arte`, `${id}:jogo`]) }
+
+export const PARTES_TESTE = ["inicio", "minhoca", "casa", "casa.tambor", "casa.holo", "dunas", "subir.voo", "bar", "oficina", "oficina.show", ...OFICINA_PARTES, "subir", "quebra", "quebra.oficina", "perseguicao", "perseguicao.escolher", "perseguicao.gatilho", "nectar", "carreira.feira", "carreira.meio", "mapa.novo", "amigos", "amigos.missao", "chegada", "loja", "loja.roupas", "brecho", "palcos", "palcos.topo", "xenom", ...SHOWS_XENOM.map((x) => `xenom.${x.id}`), "xenom.album", ...MISSOES_FEIRA.map((m) => `missao.${m}`), "missao.lu2ca.letra", "missao.lu2ca.show", "missao.quadra.batida", "missao.quadra.basquete", "missao.ella.casa", "missao.tuneis.trincheiras", ...PECAS_NOVAS, ...MISSOES.map((m) => `missao.${m}`), "livre", "rachas", "torre", "torre.ponta", "kombi.dentro", "violao", "metro", "metro.tuneis", "grafite", "grafite.livre", "elevador", "elevador.subir", "elevador.terror", "instrumentos", "casa.instrumentos", "recompensa.instrumento", "vitrine.tunel", "vitrine.bar", ...Object.keys(VISITAS), "final", ...MOMENTOS.map((m) => `final.${m}`), "final.show", "mundo.depois", "mundo.depois.tuneis", "mundo.depois.floresta", "instrumentos.kombi", "instrumentos.mundo", "elevador.deserto", "metro.passeio", "metro.violao", "loja.violao", "metro.comprado", "metro.sem-instrumento", "povo.pouco", "povo.meio", "povo.cheio", "entrega.hack", "entrega.incubadoras", "show.bar", "show.tuneis", "show.escada"]
 
 // (T37) a parte aberta nesta carga da página: um link de parte leva direto ao
 // momento dele, sem a chegada do login na casinha (menos a própria "chegada")
@@ -234,15 +253,16 @@ export function aplicarParteDeTeste(): boolean {
   // (09/11, o povo) nasce de frente pro palco do subúrbio, atrás da plateia
   if (parte.startsWith("povo.")) { const p = CHAO_LUGARES.palco, a = Math.atan2(-p.x, -p.z); gravarOndeParou({ t: "chao", x: p.x + Math.sin(a) * 26, z: p.z + Math.cos(a) * 26, rumo: a + Math.PI }) }
   // (09/11) nasce de frente pra arara do brechó, na calçada: a porta olha pro meio do subúrbio (o pouso de LugaresChao)
-  if (parte === "brecho") { const l = CHAO_LUGARES.brecho, a = Math.atan2(SUBURBIO.x - l.x, SUBURBIO.z - l.z); gravarOndeParou({ t: "chao", x: l.x + Math.sin(a) * 18, z: l.z + Math.cos(a) * 18, rumo: a + Math.PI }) }
+  if (parte === "brecho") { const l = CHAO_LUGARES.brecho, a = giroPraCratera(l.x, l.z); gravarOndeParou({ t: "chao", x: l.x + Math.sin(a) * 18, z: l.z + Math.cos(a) * 18, rumo: a + Math.PI }) }
   if (disco === null) localStorage.removeItem(CHAVE_SAVE)
   // (T02) na carreira, as faixas feitas (o que acende as pistas) batem com as missões feitas
-  else localStorage.setItem(CHAVE_SAVE, JSON.stringify({ ...BASE_TESTE, ...(disco.fase === "carreira" ? { objetos: parte === "carreira.meio" || parte === "loja" || parte === "loja.roupas" || parte === "brecho" || parte === "loja.violao" || parte === "metro.comprado" || parte === "metro.sem-instrumento" || parte.startsWith("torre") || parte.startsWith("palcos") || parte.startsWith("xenom") ? ["nectar", "sexta"] : [] } : {}), ...(parte === "loja" || parte === "loja.roupas" || parte === "brecho" || parte === "loja.violao" || parte === "elevador.deserto" ? GRANA : {}), ...(parte.startsWith("missao.tony") ? { agua: 60, economia: 1 } : {}), ...(parte === "violao" || parte === "metro" || parte === "metro.passeio" || parte === "metro.violao" ? { violao: true, objetos: ["nectar", "sexta"] } : {}), ...(parte.startsWith("povo.") ? { hora: 22, popularidade: parte === "povo.cheio" ? 90 : parte === "povo.meio" ? 30 : 0 } : {}), ...(parte.startsWith("perseguicao") ? { popularidade: 60 } : {}), ...(parte === "final" || parte.startsWith("final.") || parte.startsWith("mundo.depois") ? { objetos: PISTAS.map((x) => x.id) } : {}), ...(parte.startsWith("oficina") || parte.startsWith("quebra") ? { agua: parte === "oficina.loja" ? 80 : 60, economia: 1 } : {}), ...(parte === "loja.violao" || parte === "metro.comprado" || parte === "metro.sem-instrumento" ? { violao: false, compras: parte === "metro.comprado" ? ["instrumento:guitarra"] : [] } : {}), disco }))
+  else localStorage.setItem(CHAVE_SAVE, JSON.stringify({ ...BASE_TESTE, ...(disco.fase === "carreira" ? { objetos: parte === "carreira.meio" || parte === "mapa.novo" || parte === "loja" || parte === "loja.roupas" || parte === "brecho" || parte === "loja.violao" || parte === "metro.comprado" || parte === "metro.sem-instrumento" || parte.startsWith("torre") || parte.startsWith("palcos") || parte === "show.escada" || parte.startsWith("xenom") ? ["nectar", "sexta"] : [] } : {}), ...(parte === "loja" || parte === "loja.roupas" || parte === "brecho" || parte === "loja.violao" || parte === "elevador.deserto" || parte === "entrega.hack" ? GRANA : {}), ...(parte.startsWith("missao.tony") ? { agua: 60, economia: 1 } : {}), ...(parte === "violao" || parte === "metro" || parte === "metro.passeio" || parte === "metro.violao" ? { violao: true, objetos: ["nectar", "sexta"] } : {}), ...(parte === "show.tuneis" ? { popularidade: 80 } : {}), ...(parte.startsWith("povo.") ? { hora: 22, popularidade: parte === "povo.cheio" ? 90 : parte === "povo.meio" ? 30 : 0 } : {}), ...(parte.startsWith("perseguicao") ? { popularidade: 60 } : {}), ...(parte === "final" || parte.startsWith("final.") || parte.startsWith("mundo.depois") ? { objetos: PISTAS.map((x) => x.id) } : {}), ...(parte.startsWith("oficina") || parte.startsWith("quebra") ? { agua: parte === "oficina.loja" ? 80 : 60, economia: 1 } : {}), ...(parte === "loja.violao" || parte === "metro.comprado" || parte === "metro.sem-instrumento" ? { violao: false, compras: parte === "metro.comprado" ? ["instrumento:guitarra"] : [] } : {}), disco }))
   // (T03) a loja já abre no celular
   if (parte === "loja" || parte === "loja.roupas" || parte === "loja.violao") url.searchParams.set("app", "loja")
   if (parte === "loja.roupas") url.searchParams.set("aba", "roupa")
-  if (parte.startsWith("palcos") || parte === "xenom" || parte === "xenom.album") url.searchParams.set("app", "palcos")
+  if (parte.startsWith("palcos") || parte === "show.escada" || parte === "xenom" || parte === "xenom.album") url.searchParams.set("app", "palcos")
   if (parte === "rachas") url.searchParams.set("racha", "perto")
+  if (parte === "mapa.novo") url.searchParams.set("abrir", "mapa")
   // (T59) a câmera de dentro (a mesma chave do botão "1ª pessoa")
   if (parte === "kombi.dentro" || parte === "instrumentos.kombi") localStorage.setItem("cn-linha-cam", "dentro")
   // (bíblia §13) nasce a 30 m do didgeridoo, de frente pra ele
@@ -252,11 +272,12 @@ export function aplicarParteDeTeste(): boolean {
   // (T06) a cena da casa começa no tambor (ela senta no tapete e chama)
   if (parte === "casa.tambor") url.searchParams.set("cena", "tambor")
   // (T63) as trincheiras: entrou no jogo, desce direto pela boca do túnel
-  if (parte === "missao.tuneis.trincheiras" || parte === "mundo.depois.tuneis" || parte === "grafite" || parte === "grafite.livre" || parte === "metro.tuneis" || parte === "elevador.subir" || parte === "elevador.terror") url.searchParams.set("descer", "tuneis")
+  if (parte === "missao.tuneis.trincheiras" || parte === "mundo.depois.tuneis" || parte === "grafite" || parte === "grafite.livre" || parte === "metro.tuneis" || parte === "elevador.subir" || parte === "elevador.terror" || parte === "show.tuneis") url.searchParams.set("descer", "tuneis")
   if (parte === "elevador.subir") pedirDescida(1, null)
   if (parte === "elevador.deserto" || parte === "mundo.depois.floresta") pedirNascerNaPorta()
   // (09/11) o final: a Kombi nasce na frente do palco do deserto (o "andar" começa ali)
-  if (parte === "final" || parte === "final.palco" || parte === "final.andar") pedirNascerNoPalco()
+  // (16/11) a captura, o prédio e o show também começam no palco do deserto
+  if (parte === "final" || parte === "final.palco" || parte === "final.show" || parte === "final.captura" || parte === "final.incubadoras" || parte === "final.controle") pedirNascerNoPalco()
   // (T47) o elevador de terror: desce no salão da TORRE 2, na frente do elevador, como se fosse a 1ª vez
   if (parte === "elevador.terror") { pedirDescida(2, null); esquecerTerror() }
   // (T61) a rotatória: começa chegando na torre (a central pela Nectar; a da
@@ -271,9 +292,10 @@ export function aplicarParteDeTeste(): boolean {
   // (lote D) o que abre direto ao entrar no jogo (page.tsx, abrirAoEntrar)
   const abrir: Record<string, string> = { elevador: "elevador", instrumentos: "casa", "casa.instrumentos": "casa", "recompensa.instrumento": "recompensa", "vitrine.tunel": "tunel", "vitrine.bar": "sinuca" }
   if (abrir[parte]) url.searchParams.set("abrir", abrir[parte])
+  if (parte === "entrega.hack") url.searchParams.set("abrir", "entrega:ella")
   if (VISITAS[parte]) url.searchParams.set("abrir", `visita:${VISITAS[parte]}`)
-  // (T29) o final: começa no palco (final) ou no momento pedido (final.andar, .nucleo, .agua, .chuva, .floresta)
-  if (parte === "final" || parte.startsWith("final.")) url.searchParams.set("abrir", `final:${parte === "final" ? "palco" : parte.slice(6)}`)
+  // (T29; 16/11) o final: começa na captura (final), no show (final.show = o palco) ou no momento pedido (final.controle, .andar…)
+  if (parte === "final" || parte.startsWith("final.")) url.searchParams.set("abrir", parte === "final.show" ? "missao:lu2ca" : `final:${parte === "final" ? "captura" : parte.slice(6)}`)
   // tira o ?parte da URL: recarregar não troca o save de novo
   url.searchParams.delete("parte")
   url.searchParams.set("teste", "1")

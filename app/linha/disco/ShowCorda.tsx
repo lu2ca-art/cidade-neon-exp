@@ -43,7 +43,7 @@ type NotaCorda = { t: number; lane: number; dur: number; ok: boolean; errou: boo
 
 const ajustar = ajustarShow
 
-export function ShowCorda({ faixa, lugar, palco: palcoId, cor, popularidade, onFim, onDeNovo }: PropsShow) {
+export function ShowCorda({ faixa, lugar, palco: palcoId, cor, popularidade, onFim, onDeNovo, escala }: PropsShow) {
   const [estado, setEstado] = useState<"carregando" | "tocando" | "fim" | "erro">("carregando")
   const [fim, setFim] = useState<ResultadoShow | null>(null)
   const cvs = useRef<HTMLCanvasElement>(null)
@@ -140,7 +140,7 @@ export function ShowCorda({ faixa, lugar, palco: palcoId, cor, popularidade, onF
       j.vib = Math.max(0, j.vib - dt * 3)
       // o palco atrás
       const fb = ((agora - j.t0) / (60 / j.bpm)) % 1
-      desenharPalco(g, w, h, { palco, energia: p.galera, neon: false, batida: Math.pow(1 - (fb < 0 ? fb + 1 : fb), 3), t: agora, instrumento: "baixo", modelo, imgs, vaia: p.galera < 0.15, publico, show: true })
+      desenharPalco(g, w, h, { palco, energia: p.galera, neon: false, batida: Math.pow(1 - (fb < 0 ? fb + 1 : fb), 3), t: agora, instrumento: "baixo", modelo, imgs, vaia: p.galera < 0.15, publico, show: true, escala })
       g.fillStyle = "rgba(4,3,12,0.55)"; g.fillRect(0, 0, w, h)
       const xLinha = w * 0.2, pxs = (w - xLinha) / VER
       // as 4 faixas de fundo (os trilhos das cores)
@@ -205,7 +205,7 @@ export function ShowCorda({ faixa, lugar, palco: palcoId, cor, popularidade, onF
     window.addEventListener("keydown", kd, true)
     window.addEventListener("keyup", ku, true)
     return () => { cancelAnimationFrame(raf); window.removeEventListener("keydown", kd, true); window.removeEventListener("keyup", ku, true) }
-  }, [estado, palco, modelo, imgs, publico, atraso, acabar])
+  }, [estado, palco, modelo, imgs, publico, atraso, acabar, escala])
 
   // o toque contínuo: com o dedo na tela, a altura do dedo é a altura da corda
   // (entre as 4 faixas); tirou o dedo, a corda abafa

@@ -57,6 +57,7 @@ export const INFO: Record<string, { t: string; d: string }> = {
   mapa: { t: "o mapa", d: "toca pra abrir. as missões moram aqui: cada ícone é uma missão, na pista dela. marcar um lugar já é aceitar: a rota acende e, chegando lá, você entra direto." },
   anel: { t: "as missões", d: "a missão de agora gira em volta do mapa: o nome e o ícone dela. toca: a checklist dá a volta; toca de novo: o mapa com as missões." },
   clima: { t: "o clima", d: "o tempo de onde a Kombi está agora: cada lugar da cidade tem o seu. o deserto nunca chove." },
+  feira: { t: "a feira de missões", d: "os cartões das missões: quem é cada um, a recompensa, o crime e o que você encontra e libera. o mesmo que os ícones do mapa." },
   agua: { t: "água", d: "a coisa mais valiosa num mundo seco. as gotas da pista viram água: rega as flores, compra tudo, e a cada 100 gotas, duas viagens rápidas." },
   controles: { t: "os controles", d: "no celular: um lado da tela vira pra ele; os dois juntos freiam (parado, dá ré). no ar: um lado gira, os dois juntos dão o mortal. no teclado: ↓ freia, Q é a manobra." },
   piloto: { t: "piloto", d: "o volante do lado do GPS: a Kombi dirige sozinha. com destino (uma missão ou um ponto no mapa), vai pela rota, troca de pista sozinha e para lá. sem destino, passeia pela rua (pra ouvir a música inteira). virou, acelerou ou freou: o volante volta pra você na hora. só de Kombi." },
@@ -584,6 +585,17 @@ export function HoloIcones({ onApp }: { onApp: (id: AppId) => void }) {
         </button>
       ))}
     </nav>
+  )
+}
+
+// (16/11, o dono) A FEIRA DE MISSÕES E RECOMPENSAS no holo, não só no mapa: o ícone
+// abre os mesmos cartões do mapa ilustrado (disco/MapaCartoes.tsx). `n` = quantos dá pra fazer agora
+export function HoloFeira({ n, onAbrir }: { n: number; onAbrir: () => void }) {
+  return (
+    <button type="button" className="l-holo-feira" data-info="feira" aria-label="a feira de missões e recompensas" onPointerDown={(e) => e.stopPropagation()} onClick={onAbrir}>
+      <svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><rect x="4" y="3" width="16" height="18" rx="2" /><circle cx="12" cy="10" r="3" /><path d="M7.5 18c1-2.3 2.6-3.4 4.5-3.4s3.5 1.1 4.5 3.4" /></svg>
+      {n > 0 && <b>{n}</b>}
+    </button>
   )
 }
 

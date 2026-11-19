@@ -2,6 +2,34 @@
 
 Refeito em 09/11/2026, pelas palavras do dono em `projetos/cidade-neon/episodios.md`, "Pra decidir no final". O foco é o povo: os nove só aparecem à frente das multidões, nos focos. Do final antigo fica só a chuva caindo. **Saíram:** os feixes de luz, a cena dos nove sob os monumentos, a despedida do Criador (vídeo e falas) e a Kombi no quintal.
 
+## A ordem nova (16/11, o dono): a captura vem antes do show
+
+Fonte: `episodios.md`, "A entrega e as incubadoras" e "A ordem do final". Todos capturados → resgate nas incubadoras → elevador até a sala de controle do Núcleo → o show da CHUVA e o resto do final abaixo.
+
+| # | Momento | O que se vê | Tempo | Link |
+|---|---|---|---|---|
+| 0a | A captura | chegou no palco do deserto pro show do ep. 9 (missão `lu2ca`) com o resto feito: em vez do show, a câmera do palco com a plateia e uma linha só, "vistos andando com um veículo desconhecido pela cidade" (RASCUNHO) | 5 s | `?parte=final` ou `?parte=final.captura` |
+| 0b | As incubadoras | o hack das propagandas (sem grana) e o corredor com os nove (`pedirIncubadoras`, `capturados()`); o chamado sem a D-Bee, que também está numa incubadora | espera quebrar todas | `?parte=final.incubadoras` |
+| 0c | A sala de controle | todas quebradas, a porta do elevador no fim da sala acende: tocar sobe (escuro, um zumbido). Na sala, os nove em volta do painel e as três falas do plano, uma por vez (RASCUNHO, `disco/finalTextos.ts`) | ~15 s | `?parte=final.controle` |
+
+Depois da sala, a captura fica no save (`capturaFinal`) e a pessoa está de volta no palco: a missão `lu2ca` segue (chegar, depois o show).
+
+## O jogo acaba no show (16/11, o dono)
+
+A CHUVA toca **uma vez só**: a do show final, no **degrau "final"** da escada dos shows (`escadaShows.ts`). A pessoa escolhe, como nos outros shows:
+- **assistir** (`ShowAfinador` no mundo, cantando junto): o mundo segue vivo atrás e o final acontece ao mesmo tempo. **palco** (20 s, a plateia cheia) → **agua** (24 s, a água já liberada na sala corre do Núcleo até a casa da D-Bee, e o povo sai a pé pela rua) → **chuva** (30 s, a chuva limpa) → **floresta** (fica até a música acabar). Acabou a CHUVA: o final fica feito.
+- **tocar** (o show de sempre): logo depois, a cena curta, **chuva** (12 s) → **floresta** (18 s), sem música (só a chuva).
+
+**Saíram:** o gesto "convocar o povo" (que reiniciava a CHUVA), o "andar" até as torres, os focos e o Núcleo fritando. O código deles fica parado (o tipo e o 3D), sem entrar na sequência.
+
+**Save antigo:** quem já tinha feito o show e não o final passa pela captura quando o final começa e, saindo da sala, vê a cena curta. Quem já terminou o final não refaz nada: a floresta e o mundo depois ficam.
+
+**A torneira** antiga dos túneis fica só sugerida: na sala de controle a água é liberada. Não aparece na tela: pergunta pro dono.
+
+**Links:** `final` e `final.captura` (do começo), `final.incubadoras`, `final.controle`, `final.show` (direto no show, a captura feita), `final.palco`, `final.agua`, `final.chuva`, `final.floresta` (cada momento sem música).
+
+> As seções abaixo descrevem o final de 09/11; o que mudou em 16/11 está acima e vale por cima delas.
+
 ## Como destrava e onde começa
 
 - **Destrava** pela regra que já existia (`disco/portas.ts`, `MISSOES13.final.requer`): as 11 missões dos 9 episódios feitas. O Xeriff é livre e não conta.
@@ -34,11 +62,13 @@ Na missão do show da CHUVA (`lu2ca`) e no final, a plateia enche uma meia-lua e
 
 ## Texto na tela
 
-Só o do gesto: **"convocar o povo" (RASCUNHO, `TEXTO_GESTO` em `disco/final.ts`)**. Nenhuma legenda, nenhuma fala. Os textos que falavam dos nove nos pontos e da D-Bee acionando a chuva saíram (`sugestoesDbee.ts`, `vinhetasXenom.ts`); os textos da missão em `portas.ts` também viraram só "convocar o povo" (RASCUNHO).
+Antes do show, as falas de `disco/finalTextos.ts` (RASCUNHO, só palavras do dono). Depois, só o do gesto: **"convocar o povo" (RASCUNHO, `TEXTO_GESTO` em `disco/final.ts`)**. Nenhuma legenda, nenhuma fala. Os textos que falavam dos nove nos pontos e da D-Bee acionando a chuva saíram (`sugestoesDbee.ts`, `vinhetasXenom.ts`); os textos da missão em `portas.ts` também viraram só "convocar o povo" (RASCUNHO).
 
 ## Onde mora cada coisa
 
-- `app/linha/disco/final.ts`: os momentos, os tempos, o texto do gesto e o estado ao vivo (`FINAL_VIVO`).
+- `app/linha/disco/final.ts`: os momentos, os tempos, o texto do gesto e o estado ao vivo (`FINAL_VIVO`); `capturaAntesDoShow`, `capturados`, `seguirFinal`.
+- `app/linha/disco/finalTextos.ts`: as falas da captura, do corredor e da sala (RASCUNHO).
+- `app/linha/disco/EntregaCena.tsx` (com `final`): o corredor com o elevador; `SalaControle.tsx`: a subida e a sala (Canvas próprio, só ali, tudo `MeshBasicMaterial` e instanciado).
 - `app/linha/disco/FinalTela.tsx`: o gesto, a CHUVA e o tempo de cada momento.
 - `app/linha/estrada/FinalPovo.tsx`: o 3D do final (a plateia, os focos, o Núcleo fritando, a água) e a câmera. `FinalMultidao.tsx` é a ponte pra `Multidao` e o povo a pé (`PovoAndando`).
 - `app/linha/estrada/Floresta.tsx`: a floresta e as plantas da Ella.

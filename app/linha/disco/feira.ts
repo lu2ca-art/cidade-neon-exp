@@ -8,7 +8,7 @@
 //
 // Números de gosto: tudo em FEIRA, num lugar só.
 
-import { CHAO_LUGARES } from "./historia"
+import { CHAO_LUGARES, CRATERA } from "./historia"
 
 export type ItemFeiraId = "cogumelo" | "pimentao" | "abobrinha" | "cenoura"
 
@@ -80,7 +80,8 @@ export function sortearLeva(rand: () => number, c: Cortes, n: number): ItemFeira
 // ── onde fica: a rua da feira no mundo ──
 const F = CHAO_LUGARES.feira
 // o corredor aponta pro bar (por onde se chega): local +X ao longo da rua, +Z pra banca
-export const FEIRA_RUMO = Math.atan2(-(F.z + 675), F.x + 737)
+// (18/11) a rua corre no rumo da cratera (o subúrbio é o anel em volta dela; CHAO_PONTAS igual)
+export const FEIRA_RUMO = Math.atan2(-(F.z - CRATERA.z), F.x - CRATERA.x)
 const SEN = Math.sin(FEIRA_RUMO), COS = Math.cos(FEIRA_RUMO)
 export const naFeira = (lx: number, lz: number) => ({ x: F.x + lx * COS + lz * SEN, z: F.z - lx * SEN + lz * COS })
 // a banca da barganha: a frente do tampo; o plano do jogo fica 0,4 m antes

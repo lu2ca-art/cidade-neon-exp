@@ -96,6 +96,10 @@ import { faixaXenom, lerShowXenom, registrarXenom, showXenom, XENOM_CONFIG } fro
 import { Show } from "./disco/ShowBanda"
 import { lotacaoDoPovo } from "./disco/povo"
 import { ShowNoBar } from "./disco/ShowNoBar"
+import { ShowAfinador } from "./disco/ShowAfinador"
+import { ShowTuneis } from "./disco/ShowTuneis"
+import { degrau, degrauDoShow, escalaDoDegrau, genteNoDegrau } from "./disco/escadaShows"
+import { SHOW_TUNEIS_CFG } from "./disco/showNosTuneis"
 import { Jornal, calcularManchete } from "./disco/Jornal"
 import type { HistoriaDisco, Manchete } from "./disco/historia"
 import { aplicarRecompensa } from "./disco/recompensas"
@@ -104,13 +108,14 @@ import { MARCOS, episodioDaMissao, proximaDaSequencia, quemAbre, rotuloDoEpisodi
 import { avisoSemAgua, faltaProBolso, nomesDosSacos } from "./disco/feira"
 import { pararBeat } from "./disco/beatDoCaminho"
 import { EscolhaEsporte, type EsporteId } from "./disco/EscolhaEsporte"
-import { faixaDaMissao } from "./disco/pistasLiberadas"
+import { faixaContinua, faixaDaMissao } from "./disco/pistasLiberadas"
 import { naKombi, ordemKombi, IDS13, ehMissao13, MISSOES13, alvo13, checklist13, concluir, contarEvento, disponiveis, emTeste, feita13, instrumentosGanhos, ordemDe, kombiNoConserto, portaAberta, normalizarMissao, ofertas13, pecaAgora13, pecaFeita, sincronizar, trancado, type CenaId, type MissaoId, type Oferta13, type PortaId, type Recompensa13 } from "./disco/portas"
 import { FinalTela } from "./disco/FinalTela"
-import { definirFinalFeito, definirLotado, type MomentoFinal } from "./disco/final"
+import { capturaAntesDoShow, capturados, definirFinalFeito, definirLotado, seguirFinal, FINAL_VIVO, type MomentoFinal } from "./disco/final"
 import { motoLiberada } from "./estrada/zonas"
 import { TRANCA_DESERTO, TRANCA_ELEVADOR, pedirSubida, tomarDescida } from "./disco/elevadores"
 import { semVoo } from "./disco/historia"
+import { entregar, entregues, ouvirEntrega, pedirEntrega, recuperar } from "./disco/entrega"
 import { Peca } from "./disco/pecas/Peca"
 import { brilhar } from "./disco/brilho"
 import { avisarRadio, notch, usePedraNaTela } from "./estrada/Holo"
@@ -156,6 +161,8 @@ const GrafiteTrincheiras = dynamic(() => import("./disco/Grafite").then((m) => m
 // os 3 grafites da parede (os mesmos de trincheiras/geo.ts GRAFITES_NA_PAREDE; só os ids, sem puxar o 3D)
 const GRAFITES_IDS = GRAFITES_T12.slice(0, 3).map((g) => g.id)
 const MetroTuneis = dynamic(() => import("./disco/MetroTuneis").then((m) => m.MetroTuneis), { ssr: false })
+// (16/11) a entrega: o hack e o corredor das incubadoras (só baixa quando acontece; disco/entrega.ts)
+const EntregaCena = dynamic(() => import("./disco/EntregaCena").then((m) => m.EntregaCena), { ssr: false })
 
 // (jogador novo 2) o cadeado dos lugares do chão no prólogo (RASCUNHO: o dono reescreve)
 const TRANCA_PROLOGO = "abre mais pra frente na história"
@@ -225,6 +232,8 @@ function confShow(id: string): { faixa: FaixaShow; lugar: string; cor: string; p
   // (T20) um palco da carreira: "palco:<palco>:<faixa>" (disco/palcos.ts)
   const pc = lerShowDoPalco(id)
   if (pc) return { faixa: pc.faixa, lugar: nomeDoPalco(pc.palco).no, cor: pc.palco.cor, palco: pc.palco.gd }
+  // (16/11) o show nos túneis: "tuneis:<faixa>" (disco/showTuneis.ts)
+  if (id.startsWith("tuneis:")) { const p = PISTAS.find((x) => x.id === id.slice(7)); return p ? { faixa: p.id, lugar: SHOW_TUNEIS_CFG.no, cor: SHOW_TUNEIS_CFG.cor, palco: "tuneis" } : null }
   if (id.startsWith("rua:")) {
     const p = PISTAS.find((x) => x.id === id.slice(4))
     return p ? { faixa: p.id, lugar: "na rua", cor: COR_PISTA[p.faixa] ?? "#ffc857", palco: "rua" } : null
@@ -358,6 +367,8 @@ export default function LinhaPage() {
   const [trincheiras, setTrincheiras] = useState<{ missao: MissaoId | null; descendo: boolean; chegaNa?: number | null } | null>(null)
   // (T64, 06/11) a fuga do metrô aberta lá embaixo (o trem do salão): as trincheiras pausam
   const [metroTuneis, setMetroTuneis] = useState(false)
+  // (16/11) tocando no palco dos túneis: o canvas das trincheiras pausa
+  const [palcoTuneis, setPalcoTuneis] = useState(false)
   // o Núcleo vindo atrás depois de uma cena que mexeu com ele
   const [perseguido, setPerseguido] = useState(false)
   // a ilha do topo virou bifurcação: a conversa do painel se recolhe
@@ -1143,11 +1154,10 @@ export default function LinhaPage() {
     pegarMissao(id)
   }
   const pegarMissao = (id: MissaoId) => {
-    // (08/11, bíblia §3) aceitou: começa a música completa da missão (sem faixa: segue o instrumental da pista)
+    // (18/11, o dono) aceitou: começa o instrumental da música da missão; a completa toca andando na pista dela (sem faixa: segue o instrumental da pista)
     const faixa = faixaDaMissao(id)
-    // (14/11, o dono) durante a missão toca o instrumental da faixa dela (não a cantada)
-    if (faixa) pistaSom.tocarDaMissao({ ...faixa, completa: faixa.inst }, id)
-    setSave((s) => comHistoria(s, (h) => ({ ...h, missao: id })))
+    if (faixa) pistaSom.tocarDaMissao(faixa, id)
+    setSave((s) => comHistoria(s, (h) => ({ ...h, missao: id, ...(faixa ? { ultimaFaixa: faixa.id } : {}) })))
     setLargadas((l) => l.filter((x) => x !== id))
     track("mission_step", { mission_id: `disco-${id}`, step: "pegou", perfil: save.perfil ?? "?", fio_pos: -1 })
   }
@@ -1161,6 +1171,24 @@ export default function LinhaPage() {
   const [pingpong, setPingpong] = useState(false)
   // (T29) o final passando agora: o momento em que ele começou (disco/Final.tsx toca o resto)
   const [finalAgora, setFinalAgora] = useState<MomentoFinal | null>(null)
+  // (16/11) o show final: assistir (o final passa junto) ou tocar (a cena curta depois); e a
+  // chave da tela do final (abrir de novo num momento recomeça a tela)
+  const [modoShowFinal, setModoShowFinal] = useState<"ver" | "tocar" | null>(null)
+  const [finalChave, setFinalChave] = useState(0)
+  const modoShowFinalRef = useRef(modoShowFinal)
+  const finalAgoraRef = useRef(finalAgora)
+  useEffect(() => { modoShowFinalRef.current = modoShowFinal; finalAgoraRef.current = finalAgora })
+  // (16/11) a entrega (disco/entrega.ts): o cartão chama pedirEntrega(id); aqui o save
+  // muda (a grana, o "entregue") e a cena abre: o hack, depois o corredor das incubadoras
+  const [entregaAgora, setEntregaAgora] = useState<{ amigos: MissaoId[]; agua: number; hack: boolean; final?: boolean; inicio?: "controle" } | null>(null)
+  useEffect(() => ouvirEntrega((p) => {
+    if (p.t === "incubadoras") { if (p.amigos.length) setEntregaAgora({ amigos: p.amigos, agua: 0, hack: false }); return }
+    const r = entregar(saveRef.current, p.id)
+    if (r.save === saveRef.current) return
+    saveRef.current = r.save
+    setSave(r.save)
+    setEntregaAgora({ amigos: [p.id], agua: r.agua, hack: true })
+  }), [])
   // (trilha sonora, 05/11) a introdução da missão aberta (o balão por cima do mundo)
   // (revisão 05/11) m0/ativa0: a distância até o lugar e a missão pegada quando o balão abriu
   const [introMissao, setIntroMissao] = useState<{ id: MissaoId; quem: string; texto: string; m0: number; ativa0: MissaoId | null } | null>(null)
@@ -1226,6 +1254,8 @@ export default function LinhaPage() {
   // o Guitar Driver aberto agora (na rua, ou a peça de tocar ao vivo de uma missão)
   const showAgora = HIST && hist.show && confShow(hist.show) && !cena && tela.t === "corrida" ? hist.show : null
   const showConf = showAgora ? confShow(showAgora)! : null
+  // (16/11) a escada dos shows (disco/escadaShows.ts): cada show no seu degrau (a gente, o palco, a luz, o telão)
+  const degrauAgora = showAgora ? degrauDoShow(showAgora) : null
   // (T19) a peça de escrever a letra aberta agora (a arte do LU2CA)
   const letraAgora = (() => {
     if (!HIST || !hist.aberta13 || cena || tela.t !== "corrida") return null
@@ -1356,10 +1386,14 @@ export default function LinhaPage() {
     track("mission_step", { mission_id: `disco-${id}`, step: "porta", perfil: s0.perfil ?? "?", fio_pos: -1 })
     // (09/11, o dono) o show da CHUVA acabou e os 9 episódios estão feitos: o final
     // começa ali mesmo, no palco (pega a missão: recarregar a página volta pro palco)
+    // (16/11, o dono) o jogo acaba no show: assistindo, o final já passou junto e acaba com a
+    // CHUVA; tocando, vem a cena curta (a chuva limpa e a floresta), sem música
     if (id === "lu2ca" && disponiveis(hist13(s1)).includes("final")) {
       setSave((s) => comHistoria(s, (h) => ({ ...h, missao: "final" })))
-      abrirFinal("palco")
+      if (modoShowFinalRef.current === "ver" && finalAgoraRef.current) setTimeout(() => fimFinalRef.current(), 0)
+      else abrirFinal("chuva")
     }
+    if (id === "lu2ca") setModoShowFinal(null)
   }
   // (T63) desceu a rampa da boca do túnel: a porta escurece e, lá embaixo, as
   // trincheiras (no mesmo jogo, sem trocar de página). A estrada sai da cena
@@ -1402,7 +1436,7 @@ export default function LinhaPage() {
   }
   // chegou no lugar da missão: abre a peça de agora; sem peça (feitas ou "em breve"), a porta
   const chegouNaMissao = (id: MissaoId, semIntro = false) => {
-    if (recompensa || pingpong || provaMissao || showAgora || letraAgora || batidaMissao || basquete || esporteEscolha || esporteJogo || cenaAgora || feiraAgora || cena || trincheiras || finalAgora || (introMissao && !semIntro)) return
+    if (recompensa || pingpong || provaMissao || showAgora || letraAgora || batidaMissao || basquete || esporteEscolha || esporteJogo || cenaAgora || feiraAgora || cena || trincheiras || (finalAgora && !(id === "lu2ca" && modoShowFinal === "ver")) || (introMissao && !semIntro)) return
     // (começo novo) abriu (o balão ou a peça): o "toca pra começar" do notch sai
     if (INTRO_ADIADA.missao === id) { INTRO_ADIADA.missao = ""; INTRO_ADIADA.texto = ""; INTRO_ADIADA.toque = null }
     const pc = pecaAgora13(hist13(saveRef.current), id)
@@ -1413,6 +1447,9 @@ export default function LinhaPage() {
     if (!como || como.t === "historia" || como.t === "evento") return
     // (09/11, ep. 5) sem o dinheiro de um saco, a feira espera: o aviso só diz quanto falta
     if (como.t === "feira" && faltaProBolso(saveRef.current.agua ?? 0) > 0) { avisar("A FEIRA", avisoSemAgua(saveRef.current.agua ?? 0), CHAO_LUGARES.feira.cor); return }
+    // (16/11, o dono) chegou no palco do deserto pro show do ep. 9 com o resto feito: antes
+    // do show, todo mundo é capturado (disco/final.ts: captura → incubadoras → sala de controle)
+    if (id === "lu2ca" && capturaAntesDoShow(hist13(saveRef.current))) { abrirFinal("captura"); return }
     // (bloco 1 · D) chegar já é a peça (o caminho de patins e jetpack até o Drew): fica feita e a próxima segue
     if (como.t === "chegar") { pecaFeitaNaMissao(id, pc.qual); return }
     // (trilha sonora, 05/11; bíblia 9) nenhum jogo surge do nada: antes da peça, quem
@@ -1440,7 +1477,8 @@ export default function LinhaPage() {
     // (T22) a casa da pessoa: entra e só sai depois de passar por tudo
     else if (como.t === "casa") entrarNaCasa(id)
     // (T29) o final: a sequência começa no palco do show da CHUVA (disco/final.ts)
-    else if (como.t === "final") abrirFinal("palco")
+    // (16/11) save que já fez o show e não passou pela captura: ela vem antes do palco
+    else if (como.t === "final") abrirFinal(hist13(saveRef.current).capturaFinal ? "chuva" : "captura")
   }
   // (T29) O FINAL: o jogo atrás com as faixas de cinema, a câmera roteirizada
   // (estrada/FinalPovo.tsx) e a tela dos momentos (disco/FinalTela.tsx). Acabou: as
@@ -1450,6 +1488,7 @@ export default function LinhaPage() {
     setIntroMissao(null)
     setCinema("lugar")
     setFinalAgora(m)
+    setFinalChave((k) => k + 1)
     setFinalMomento(m)
     track("mission_step", { mission_id: "disco-final", step: `final:${m}`, perfil: saveRef.current.perfil ?? "?", fio_pos: -1 })
   }
@@ -1457,7 +1496,26 @@ export default function LinhaPage() {
   const aoMomentoFinal = (m: MomentoFinal) => {
     setFinalMomento(m)
     setCinema(m === "andar" ? null : "lugar")
+    // (16/11) o prédio do Núcleo: o hack e o corredor com todos; o atalho do controle abre direto na sala
+    if (m === "incubadoras") setEntregaAgora({ amigos: capturados(), agua: 0, hack: true, final: true })
+    if (m === "controle") setEntregaAgora((a) => a ?? { amigos: capturados(), agua: 0, hack: false, final: true, inicio: "controle" })
   }
+  // (16/11) a sala de controle acabou: a captura fica no save e o show segue. Se o show do
+  // ep. 9 ainda não foi feito, o final fecha e a missão lu2ca continua ali no palco (chegar,
+  // depois o show; no fim dele o final volta no palco). Se já foi (save antigo), segue pro palco
+  const fimCaptura = () => {
+    setEntregaAgora(null)
+    const s = comHistoria(saveRef.current, (h) => ({ ...h, capturaFinal: true as const }))
+    saveRef.current = s
+    setSave(s)
+    // save antigo que já fez o show: a cena curta (a chuva limpa e a floresta)
+    if (feita13(hist13(s), "lu2ca")) { abrirFinal("chuva"); return }
+    setFinalAgora(null)
+    setFinalMomento(null)
+    setCinema(null)
+    setTimeout(() => chegouSemIntro.current("lu2ca"), 900)
+  }
+  const fimFinalRef = useRef<() => void>(() => {})
   const fimFinal = () => {
     setFinalAgora(null)
     setFinalMomento(null)
@@ -1504,7 +1562,7 @@ export default function LinhaPage() {
   useEffect(() => { chegouSemIntro.current = (m) => chegouNaMissao(m, true) })
   const pecaFeitaNaMissaoRef = useRef(pecaFeitaNaMissao)
   const abrirFinalRef = useRef<(m: MomentoFinal) => void>(() => {})
-  useEffect(() => { chegouRef.current = chegouNaMissao; abrirPortaRef.current = abrirPortaDe; pecaFeitaNaMissaoRef.current = pecaFeitaNaMissao; abrirFinalRef.current = abrirFinal })
+  useEffect(() => { chegouRef.current = chegouNaMissao; abrirPortaRef.current = abrirPortaDe; pecaFeitaNaMissaoRef.current = pecaFeitaNaMissao; abrirFinalRef.current = abrirFinal; fimFinalRef.current = fimFinal })
   // (T29) o final já visto neste save: a floresta e o mundo depois ficam. Vale desde as
   // peças feitas (antes da porta abrir), pra floresta não piscar quando o final acaba
   const finalFeito = HIST && (feita13(hist13(save), "final") || ordemDe("final").every((q) => pecaFeita(hist13(save), "final", q)))
@@ -1525,6 +1583,8 @@ export default function LinhaPage() {
   useEffect(() => {
     const qual = abrirAoEntrar.current
     if (!HIST || !qual || tela.t !== "corrida" || cena) return
+    // (16/11) a entrega: um personagem entregue de teste (o hack e o corredor)
+    if (qual.startsWith("entrega:")) { abrirAoEntrar.current = null; const id = qual.slice(8) as MissaoId; setTimeout(() => pedirEntrega(id), 1200); return }
     abrirAoEntrar.current = null
     const u = new URL(location.href); u.searchParams.delete("abrir"); history.replaceState(history.state, "", u.pathname + u.search + u.hash)
     setTimeout(() => {
@@ -1533,12 +1593,23 @@ export default function LinhaPage() {
       else if (qual === "recompensa") abrirPortaRef.current("mubarak")
       // (T29) ?parte=final e final.<momento>: a sequência começa direto naquele momento
       else if (qual.startsWith("final:")) abrirFinalRef.current(qual.slice(6) as MomentoFinal)
+      // (16/11) final.show: o show final direto (a captura feita, falta só tocar ou assistir)
+      else if (qual === "missao:lu2ca") chegouSemIntro.current("lu2ca")
       // (vitrine) o túnel no começo e a sinuca do bar
       else if (qual === "tunel") descerTrincheiras(null)
       else if (qual === "sinuca") setSinucaBar(true)
       else if (qual.startsWith("visita:")) visitarSalaRef.current(qual.slice(7) as LugarId)
     }, 1200)
   }, [HIST, tela.t, cena])
+  // (16/11) saiu no meio do corredor (recarregou): quem ainda está entregue volta pras incubadoras (sem o hack)
+  const entregaPendente = useRef(false)
+  useEffect(() => {
+    if (!HIST || entregaPendente.current || entregaAgora || tela.t !== "corrida" || cena) return
+    const pend = entregues(historiaDe(save))
+    if (!pend.length) return
+    entregaPendente.current = true
+    setTimeout(() => setEntregaAgora((a) => a ?? { amigos: pend, agua: 0, hack: false }), 1200)
+  }, [HIST, save, entregaAgora, tela.t, cena])
   // (T47) o elevador: abre (como o posto) e fecha no fim-gesto da sala; as falas
   // que a sala manda (bus.ts) aparecem na legenda dele
   const abrirElevador = () => {
@@ -1660,6 +1731,9 @@ export default function LinhaPage() {
   }
   // a completa que esperava a rádio não começa se a missão já saiu (feita ou largada)
   useEffect(() => { pistaSom.esquecerPendente(missaoCarreira) }, [missaoCarreira])
+  // (18/11, o dono) as pistas: a missão aceita (a pista dela toca com voz) e a Crypto (a última música de missão)
+  useEffect(() => { pistaSom.definirMissao(missaoCarreira && ehMissao13(missaoCarreira) ? faixaDaMissao(missaoCarreira) : null, missaoCarreira ?? null) }, [missaoCarreira])
+  useEffect(() => { const p = PISTAS.find((x) => x.id === hist.ultimaFaixa); pistaSom.definirCrypto(p ? faixaContinua(p) : null) }, [hist.ultimaFaixa])
   // a faixa da pista vive na página (não na estrada, que desmonta numa sala): sai da página, para
   useEffect(() => () => pistaSom.parar(), [])
   // (só baixa o som da missão se ele vai tocar: sem faixa de pista, no deserto)
@@ -1694,8 +1768,9 @@ export default function LinhaPage() {
       setJornal(mx)
       return
     }
-    const faixaDoJornal = pc ? pc.faixa : id.startsWith("rua:") ? id.slice(4) : id
-    const m = { ...calcularManchete(r, faixaDoJornal, conf.lugar, popAntes, Date.now()), neon: pc ? cacheNoPalco(base, pc.palco) : base }
+    const tun = id.startsWith("tuneis:")
+    const faixaDoJornal = pc ? pc.faixa : id.startsWith("rua:") ? id.slice(4) : tun ? id.slice(7) : id
+    const m = { ...calcularManchete(r, faixaDoJornal, conf.lugar, popAntes, Date.now()), neon: pc ? cacheNoPalco(base, pc.palco) : tun ? Math.round(base * SHOW_TUNEIS_CFG.paga) : base }
     const reg = pc ? registrarShow(hist13(saveRef.current), pc.palco.id, pc.faixa, r.nota) : null
     setSave((s) => comHistoria({ ...ganhar(s, m.neon), popularidade: Math.min(100, (s.popularidade ?? 0) + m.pop) }, (h) => ({ ...(pc ? registrarShow(h, pc.palco.id, pc.faixa, r.nota).h : h), show: undefined, shows: [...(h.shows ?? []), m] })))
     if (reg && reg.nivel > reg.nivelAntes) {
@@ -2586,7 +2661,8 @@ export default function LinhaPage() {
   const app = tela.t === "app" ? APPS.find((a) => a.id === tela.id)! : null
   // o celular aberto por cima da estrada: a Kombi segue sozinha, devagar
   const celularAberto = estrada && (tela.t === "home" || tela.t === "app" || tela.t === "chat")
-  const corridaPausada = (tela.t !== "corrida" && tela.t !== "chegada" && !celularAberto) || !!visor || !!showAgora || !!jornal || pingpong || caderno || !!recompensa || rua || !!provaMissao || !!letraAgora || !!oficinaTela || !!trincheiras || sinucaBar || !!janelaChao || !!esporteEscolha || !!esporteJogo
+  // (16/11) assistindo o show final, o mundo segue vivo atrás (o final acontece nele)
+  const corridaPausada = (tela.t !== "corrida" && tela.t !== "chegada" && !celularAberto) || !!visor || (!!showAgora && !(showAgora === "missao:lu2ca" && modoShowFinal === "ver")) || !!jornal || pingpong || caderno || !!recompensa || rua || !!provaMissao || !!letraAgora || !!oficinaTela || !!trincheiras || sinucaBar || !!janelaChao || !!esporteEscolha || !!esporteJogo || !!entregaAgora
 
   // (disco) o óculos de realidade aumentada: a tela larga no desktop e o
   // celular translúcido por cima da cidade (LU2CA 19/10)
@@ -2797,7 +2873,20 @@ export default function LinhaPage() {
         {tela.t === "entrada" && (D ? <InicioDisco save={save} onEntrar={entrar} /> : <Entrada save={save} onEntrar={entrar} />)}
         {minhoca && <Minhoca onFim={fimMinhoca} dur={chegadaLogin ? CHEGADA.minhocaMsVolta : CHEGADA.minhocaMs} />}
         {rastroMinhoca && <Minhoca saida onFim={() => {}} />}
-        {showAgora && <Show key={showAgora} faixa={showConf!.faixa} lugar={showConf!.lugar} palco={showConf!.palco} cor={showConf!.cor} popularidade={showAgora === "missao:lu2ca" ? 100 : lotacao} letra={hist.letras?.[showConf!.faixa]} onFim={fimShow} />}
+        {/* (16/11, o dono) o show final da CHUVA: escolhe assistir ou tocar, como nos outros. Assistindo, o
+            final acontece ao mesmo tempo no mundo (FinalTela + FinalPovo) e a CHUVA toca uma vez só */}
+        {showAgora === "missao:lu2ca" && modoShowFinal !== "tocar" && (modoShowFinal === "ver"
+          ? <ShowAfinador faixa={showConf!.faixa} lugar={showConf!.lugar} palco={showConf!.palco} cor={showConf!.cor} popularidade={100} noMundo inteira letra={hist.letras?.[showConf!.faixa]} onFim={fimShow} />
+          : (
+            <div className="l-show is-no-mundo" style={{ ["--cor" as string]: showConf!.cor }} onPointerDown={(e) => e.stopPropagation()}>
+              <header className="l-show-topo"><small>o show final · no deserto</small><b className="l-show-revela">CHUVA</b></header>
+              <div className="l-show-escolha">
+                <button type="button" onClick={() => { setModoShowFinal("ver"); abrirFinal("palco") }}><b>assistir</b><small>canta da plateia</small></button>
+                <button type="button" onClick={() => setModoShowFinal("tocar")}><b>tocar</b><small>sobe no palco: guitarra, baixo, bateria ou teclado</small></button>
+              </div>
+            </div>
+          ))}
+        {showAgora && (showAgora !== "missao:lu2ca" || modoShowFinal === "tocar") && <Show key={showAgora} faixa={showConf!.faixa} lugar={showConf!.lugar} palco={showConf!.palco} cor={showConf!.cor} popularidade={showAgora === "missao:lu2ca" ? 100 : degrauAgora ? genteNoDegrau(degrauAgora, lotacao) : lotacao} escala={degrauAgora ? escalaDoDegrau(degrauAgora) : undefined} letra={hist.letras?.[showConf!.faixa]} onFim={fimShow} />}
         {/* (T19) a arte do LU2CA: escrever a letra (rascunho, disco/letras.ts); a estrofe vai pro show */}
         {letraAgora && <Letra conf={letraAgora.conf} cor={MISSOES13[letraAgora.missao].cor} quem={MISSOES13[letraAgora.missao].quem} onFim={(linhas: string[]) => {
           const l = letraAgora
@@ -2881,7 +2970,12 @@ export default function LinhaPage() {
         })()}
         {/* (T15–T25, T16) as peças das missões das pessoas (disco/pecas/): acabou, a próxima (ou a porta) segue sozinha */}
         {/* (T29) o final: o gesto no palco e a sequência, com o jogo atrás */}
-        {finalAgora && <FinalTela inicio={finalAgora} onFim={fimFinal} onMomento={aoMomentoFinal} />}
+        {finalAgora && <FinalTela key={finalChave} inicio={finalAgora} assistindo={modoShowFinal === "ver"} onFim={fimFinal} onMomento={aoMomentoFinal} />}
+        {/* (16/11) a entrega: o hack e o corredor das incubadoras; achou = volta pro save */}
+        {entregaAgora && <EntregaCena amigos={entregaAgora.amigos} agua={entregaAgora.agua} hack={entregaAgora.hack} final={entregaAgora.final} inicio={entregaAgora.inicio}
+          onAchou={(id) => setSave((s) => recuperar(s, [id]))}
+          onControle={() => { if (FINAL_VIVO.momento === "incubadoras") seguirFinal() }}
+          onFim={entregaAgora.final ? fimCaptura : () => setEntregaAgora(null)} />}
         {introMissao && <IntroMissao quem={introMissao.quem} texto={introMissao.texto} cor={MISSOES13[introMissao.id].cor}
           onBora={() => { const id = introMissao.id; introVista.current.add(id); setIntroMissao(null); setTimeout(() => chegouSemIntro.current(id), 0) }}
           onDepois={() => {
@@ -3049,7 +3143,7 @@ export default function LinhaPage() {
           <button type="button" className="l-home-bar" onClick={() => setTela({ t: "home" })} aria-label="início" />
         )}
         {cena && cenaDe(cena.lugar) && (
-          <Interior key={`sala:${cena.lugar}:${cena.especial ?? ""}`} lugar={cena.lugar} sala={cena.especial === "ella-galeria" ? "galeria-ella" : undefined} objetos={save.objetos} inicio={!!cena.inicio} copos={save.copos} popularidade={lotacao} disco={cena.especial === "disco-casa" || cena.especial === "disco-bar" || cena.especial === "show-nectar" || cena.especial === "visita-bar" || cena.especial === "dbee-instrumentos"} instrumentos={cena.lugar === "casa-dbee" ? instrumentosGanhos(h13) : undefined} novos={cena.especial === "dbee-instrumentos" ? instrumentosNovos(h13) : undefined} />
+          <Interior key={`sala:${cena.lugar}:${cena.especial ?? ""}`} lugar={cena.lugar} sala={cena.especial === "ella-galeria" ? "galeria-ella" : undefined} objetos={save.objetos} inicio={!!cena.inicio} copos={save.copos} popularidade={cena.lugar === "bar" ? genteNoDegrau(degrau("bar"), lotacao) : lotacao} disco={cena.especial === "disco-casa" || cena.especial === "disco-bar" || cena.especial === "show-nectar" || cena.especial === "visita-bar" || cena.especial === "dbee-instrumentos"} instrumentos={cena.lugar === "casa-dbee" ? instrumentosGanhos(h13) : undefined} novos={cena.especial === "dbee-instrumentos" ? instrumentosNovos(h13) : undefined} />
         )}
         {cena && (
           <CenaLugar
@@ -3066,7 +3160,7 @@ export default function LinhaPage() {
             onTom={(tom) => setSave((s) => ({ ...s, tons: { ...s.tons, [tom]: (s.tons?.[tom] ?? 0) + 1 } }))}
             onFim={cena.especial === "visita" ? fimVisita : cena.especial === "visita-bar" ? fimVisitaBar : cena.especial === "ella-galeria" ? fimCasaMissao : cena.especial === "disco-casa" ? fimCasaDisco : cena.especial === "dbee-instrumentos" ? fimCasaInstrumentos : cena.especial === "disco-bar" ? fimBarDisco : cena.especial === "show-nectar" ? fimShowNectar : cena.especial === "disco-oficina" ? fimOficina : cena.inicio ? fimInicio : cena.especial === "mubarak-drew" ? fimMubarakDrew : fimCena}
             onNeon={(n) => setSave((s) => ganhar(s, n))}
-            gestoShow={(pronto) => <ShowNoBar popularidade={lotacao} onTocar={() => { showNoBar.current = { r: null, tocar: true }; pronto() }} onFim={(r) => { showNoBar.current = { r, tocar: false }; pronto() }} />}
+            gestoShow={(pronto) => <ShowNoBar popularidade={genteNoDegrau(degrau("bar"), lotacao)} onTocar={() => { showNoBar.current = { r: null, tocar: true }; pronto() }} onFim={(r) => { showNoBar.current = { r, tocar: false }; pronto() }} />}
           />
         )}
         {/* (T63) a porta do túnel: escurece; lá embaixo, as trincheiras (a estrada sai da cena) */}
@@ -3078,7 +3172,7 @@ export default function LinhaPage() {
         })()}
         {janelaChao && <div className="l-janela-mundo"><AppJanela app={janelaChao.app} rota={janelaChao.rota} onFechar={fecharJanelaChao} /></div>}
         {sinucaBar && <SinucaBar tranca={trancaSinuca(h13)} onSair={() => { setSinucaBar(false); barFechou.current = Date.now() }} />}
-        {trincheiras && !trincheiras.descendo && <Trincheiras noJogo={{ missao: trincheiras.missao, onSubir: subirDasTrincheiras, pausado: metroTuneis, tranca: HIST && hist.fase !== "carreira" && hist.fase !== "livre" ? "chegue na cidade pra correr" : null, motos: HIST && motoLiberada(hist), chegaNa: trincheiras.chegaNa ?? null,
+        {trincheiras && !trincheiras.descendo && <Trincheiras noJogo={{ missao: trincheiras.missao, onSubir: subirDasTrincheiras, pausado: metroTuneis || palcoTuneis, tranca: HIST && hist.fase !== "carreira" && hist.fase !== "livre" ? "chegue na cidade pra correr" : null, motos: HIST && motoLiberada(hist), chegaNa: trincheiras.chegaNa ?? null,
           elevador: HIST ? { tranca: trancaElevador, onSubir: subirPeloElevador } : undefined }} />}
         {/* (notas 04/11) a rádio livre: fora da estrada (túneis, salas) ela também liga */}
         {D && emSala && !trincheiras?.descendo && <button type="button" className={`l-radio-livre${radioManda ? " is-on" : ""}`} onPointerDown={(e) => e.stopPropagation()} onClick={alternarRadioLivre}>{radioManda ? "rádio · desligar" : "rádio · ligar"}</button>}
@@ -3087,6 +3181,8 @@ export default function LinhaPage() {
           tag={hist.tagLivre ?? null} livre={HIST && (feita13(hist, "tuneis") || GRAFITES_IDS.every((g) => (hist.grafites ?? []).includes(g)))} trancaLivre={facaMissao("tuneis", "pintar a parede")}
           paredes={hist.paredesLivres ?? []} onParede={(i, d) => setSave((s) => comHistoria(s, (h) => ({ ...h, paredesLivres: comParede(h.paredesLivres, i, d) })))} />}
         {/* (T64, 06/11) o trem do salão do metrô: depois da fuga de quando te pegam, a fuga de novo; antes, o cadeado */}
+        {/* (16/11) o palco dos túneis: perto dele, o show (assistir da plateia ou tocar) */}
+        {HIST && trincheiras && !trincheiras.descendo && <ShowTuneis h={h13} popularidade={save.popularidade ?? 0} escondido={metroTuneis} onPausa={setPalcoTuneis} onFim={(r, id) => fimShow(r, id)} />}
         {HIST && trincheiras && !trincheiras.descendo && <MetroTuneis liberado={metroFeito(hist)} onAberto={setMetroTuneis} />}
         {viagem && (
           <Viagem

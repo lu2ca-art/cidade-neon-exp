@@ -521,6 +521,8 @@ export const naKombi = (h: HistoriaDisco | null | undefined) => ordemKombi(h).sl
 export function instrumentosGanhos(h: HistoriaDisco | null | undefined): InstrumentoId[] {
   if (!h) return []
   const tem = new Set<InstrumentoId>([...(h.instrumentos ?? []), ...(h.instrumentosAchados ?? [])])
-  for (const id of IDS13) { const x = MISSOES13[id].recompensa.instrumento; if (x && feita13(h, id)) tem.add(x) }
+  // (16/11) os das missões, menos os tomados na entrega (comprado ou achado de novo, volta)
+  const tomados = h.instrumentosTomados ?? []
+  for (const id of IDS13) { const x = MISSOES13[id].recompensa.instrumento; if (x && feita13(h, id) && !tomados.includes(x)) tem.add(x) }
   return [...tem]
 }

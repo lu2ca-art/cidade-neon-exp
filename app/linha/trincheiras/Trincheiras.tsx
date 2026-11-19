@@ -60,6 +60,7 @@ import { PocoTerror } from "./PocoTerror"
 import { EntradasElevador } from "../disco/Elevadores3D"
 import { FOV_PAREDE, PAREDE_ABERTA } from "./atlasParedes"
 import { ParedesPintadas } from "./ParedesPintadas"
+import { PalcoTuneis } from "./PalcoTuneis"
 
 const NEVOA = "#1a0f24"
 const NEVOA_LONGE = 340 // a névoa fecha aqui
@@ -501,6 +502,8 @@ export function Trincheiras({ noJogo }: { noJogo?: NoJogo } = {}) {
         <EntradasElevador />
         {/* (08/11) as paredes livres do grafite: uma malha, um atlas, só perto */}
         <ParedesPintadas />
+        {/* (16/11) o palco dos túneis no salão do metrô (o show mais colorido; só perto) */}
+        <PalcoTuneis />
         <ResolucaoDinamica fixa={fixa} max={QUALIDADE.dprMax} />
         <Cinema maxLente={QUALIDADE.lente} />
       </Canvas>}

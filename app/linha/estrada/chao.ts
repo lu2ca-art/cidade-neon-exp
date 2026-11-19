@@ -10,7 +10,7 @@
 //     carros despencados meio enterrados e pneus)
 
 import * as THREE from "three"
-import { CASA, CHAO_LUGARES, QUEDA, SAIDA_CASA, SUBURBIO } from "../disco/historia"
+import { CASA, CHAO_LUGARES, CRATERA, ES_DISCO, ILHA, QUEDA, SAIDA_CASA } from "../disco/historia"
 import { cresceuNoRumo } from "./raioCidade"
 
 export const CHAO = -12
@@ -108,14 +108,25 @@ const CX = (CASA.x + SAIDA_CASA.x) / 2, CZ = (CASA.z + SAIDA_CASA.z) / 2
 const PLANO_R = 110, PLANO_T = 260
 let hCasa: number | null = null
 export function alturaExata(x: number, z: number) {
+  return alturaSemBeira(x, z) - beiraDaIlha(x, z)
+}
+function alturaSemBeira(x: number, z: number) {
   const h = dunas(x, z) + morros(x, z)
   const dc = Math.hypot(x - CX, z - CZ)
   if (dc >= PLANO_T) return h
   hCasa ??= dunas(CX, CZ)
   return hCasa + (h - hCasa) * suave(PLANO_R, PLANO_T, dc)
 }
+// (19/11) A BEIRA DA ILHA (historia.ts, ILHA): nos últimos metros o chão arredonda pra baixo,
+// como a borda de um disco; depois é o céu. O cone (ilha.ts) pendura dessa altura
+export function beiraDaIlha(x: number, z: number) {
+  const d = Math.hypot(x - ILHA.x, z - ILHA.z)
+  return 22 * Math.pow(suave(ILHA.r - ILHA.beira * 2, ILHA.r, d), 1.6)
+}
 // o lixão (0–1): manchas dentro da cidade
-export function zonaLixo(x: number, z: number) {
+// (19/11) o disco abre ×1.22 a partir da cratera (historia.ts, ES_DISCO): o lixão abre junto
+export function zonaLixo(x0: number, z0: number) {
+  const x = CRATERA.x + (x0 - CRATERA.x) / ES_DISCO, z = CRATERA.z + (z0 - CRATERA.z) / ES_DISCO
   const r = Math.hypot(x, z)
   return suave(0.5, 0.6, fbm(x / 600 + 20, z / 600 - 8)) * (1 - suave(1000, 1300, r))
 }
@@ -148,8 +159,8 @@ export function chaoEm(x: number, z: number) {
 const QL = CHAO_LUGARES.quadra
 export const QUADRA = {
   x: QL.x, z: QL.z,
-  // o comprimento da quadra aponta pro centro do subúrbio (de lado pra quem chega)
-  rot: Math.atan2(SUBURBIO.x - QL.x, SUBURBIO.z - QL.z) + Math.PI / 2,
+  // o comprimento da quadra fica de lado pra cratera (18/11: o subúrbio é o anel em volta dela)
+  rot: Math.atan2(CRATERA.x - QL.x, CRATERA.z - QL.z) + Math.PI / 2,
   comp: 34, larg: 21, // o piso (a quadra 28 × 15 e a folga em volta)
   topo: 0,
 }
@@ -178,11 +189,12 @@ function naQuadra(x: number, z: number, h: number) {
 // a vala, desenhado mais fino que a grade (o resto da grade ali afunda e fica
 // escondido embaixo dele). O fundo da rampa é a porta: CHAO_LUGARES.tuneis ──
 const BP = CHAO_LUGARES.tuneis
-const BL = Math.hypot(BP.x - SUBURBIO.x, BP.z - SUBURBIO.z)
+// (18/11) a rampa desce vindo da cratera pra porta (o subúrbio é o anel em volta dela)
+const BL = Math.hypot(BP.x - CRATERA.x, BP.z - CRATERA.z)
 // o rumo da rampa (desce indo do subúrbio pra porta) e o de lado
 export const BOCA = {
   x: BP.x, z: BP.z,
-  ax: (BP.x - SUBURBIO.x) / BL, az: (BP.z - SUBURBIO.z) / BL,
+  ax: (BP.x - CRATERA.x) / BL, az: (BP.z - CRATERA.z) / BL,
   comp: 40, // o comprimento da rampa (m)
   fundo: 6.5, // quanto desce (m)
   meia: 6.5, // a meia largura da vala (m)
@@ -297,6 +309,9 @@ export function geoChao() {
     const X = pos.getX(i), Z = pos.getZ(i)
     const ix = Math.round((X + TAM / 2) / (TAM / SEG)), iz = Math.round((Z + TAM / 2) / (TAM / SEG))
     pos.setY(i, g[iz * n + ix])
+    // (19/11) a ilha: o que passa da beira encosta nela (a borda vira um círculo; o resto é céu)
+    const dx = X - ILHA.x, dz = Z - ILHA.z, d = Math.hypot(dx, dz)
+    if (d > ILHA.r) { const bx = ILHA.x + (dx / d) * ILHA.r, bz = ILHA.z + (dz / d) * ILHA.r; pos.setX(i, bx); pos.setZ(i, bz); pos.setY(i, alturaExata(bx, bz)) }
   }
   geo.computeVertexNormals()
   const nor = geo.attributes.normal

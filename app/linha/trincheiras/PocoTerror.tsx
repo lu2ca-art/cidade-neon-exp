@@ -39,13 +39,13 @@ type Regrado = { mat: THREE.MeshBasicMaterial; base: THREE.Color; regra: Regra }
 // peça (cabine, porta, cama, capsula, maquina, andar, poco), com as malhas
 // _solido (cor no vértice com a AO assada, gravada ×4), _luz (cor fixa),
 // _neon (sem cor: a cor vem daqui) e _vidro (o líquido da cápsula)
-const URL_TERROR = "/models/terror.glb"
+export const URL_TERROR = "/models/terror.glb"
 const PECAS_GLB = ["cabine", "porta", "cama", "capsula", "maquina", "andar", "poco"] as const
-type PecaGlb = (typeof PECAS_GLB)[number]
-type Grupo = "solido" | "luz" | "neon" | "vidro"
-type Nos = Record<string, THREE.Object3D>
+export type PecaGlb = (typeof PECAS_GLB)[number]
+export type Grupo = "solido" | "luz" | "neon" | "vidro"
+export type Nos = Record<string, THREE.Object3D>
 const NEON: Partial<Record<PecaGlb, string>> = { cabine: "#ff2a2a", cama: "#4ff3ff", maquina: "#ff5c8a" }
-const GANHO = 0.25 // o sólido sai do Blender ×4 (8 bits nos tons escuros); aqui volta
+export const GANHO = 0.25 // o sólido sai do Blender ×4 (8 bits nos tons escuros); aqui volta
 function regraGlb(id: PecaGlb, g: Grupo): Regra {
   if (g === "solido") return id === "cabine" || id === "porta" || id === "poco" ? "perto" : "andar"
   if (g === "neon") return id === "cabine" ? "emerg" : "resp"
@@ -67,9 +67,10 @@ function copiar(g: THREE.BufferGeometry, m: THREE.Matrix4, cor: boolean) {
   o.applyMatrix4(m)
   return o
 }
-function lerGlb(nodes: Nos) {
+// (16/11) as incubadoras da entrega (disco/EntregaCena.tsx) reaproveitam as peças daqui
+export function lerGlb(nodes: Nos) {
   const geos: THREE.BufferGeometry[] = [], regs: Regrado[] = []
-  const pecas = {} as Record<PecaGlb, { geo: THREE.BufferGeometry; mat: THREE.MeshBasicMaterial }[]>
+  const pecas = {} as Record<PecaGlb, { geo: THREE.BufferGeometry; mat: THREE.MeshBasicMaterial; grupo: Grupo }[]>
   const inv = new THREE.Matrix4(), rel = new THREE.Matrix4()
   for (const id of PECAS_GLB) {
     const no = nodes[id]
@@ -91,7 +92,7 @@ function lerGlb(nodes: Nos) {
         : { vertexColors: true, toneMapped: false }
       const mat = new THREE.MeshBasicMaterial(p)
       geos.push(geo); regs.push({ mat, base: mat.color.clone(), regra: regraGlb(id, g) })
-      pecas[id].push({ geo, mat })
+      pecas[id].push({ geo, mat, grupo: g })
     })
     if (!pecas[id].length) throw new Error(`terror.glb: o nó ${id} sem malha`)
   }

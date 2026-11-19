@@ -3,8 +3,9 @@
 //
 // - a zona do som: cidade (nas pistas), subúrbio (no chão, perto do anel),
 //   deserto (no chão, longe) e túneis (as trincheiras)
-// - no subúrbio e nos túneis a rádio passa pelo filtro de rádio antigo
-//   (som.ts, radioAntiga); na cidade e no deserto, limpa
+// - no subúrbio a rádio passa pelo filtro de rádio antigo (som.ts, radioAntiga);
+//   no deserto, rádio antigo com SINAL RUIM (18/11, o dono: mais chiado, o sinal
+//   indo e voltando); nos TÚNEIS a rádio não pega (só a mídia física); na cidade, limpa
 // - a PRIMEIRA chegada do deserto no subúrbio avisa quem ouve (a page.tsx liga
 //   a rádio uma vez só e grava no save; depois respeita se ele desligou)
 //
@@ -29,8 +30,9 @@ export function zonaDoSom(livre: boolean, wx: number | undefined, wz: number | u
   return alemDaCidade(wx, wz) > RAIO_DESERTO ? "deserto" : "suburbio"
 }
 
-// o filtro de rádio antigo vale aqui
-export const ZONAS_RADIO_ANTIGA: ZonaSom[] = ["suburbio", "tuneis"]
+// o filtro de rádio antigo vale aqui; no deserto, com sinal ruim; nos túneis a
+// rádio não pega: lá só a mídia física (o MP3, os discos) (18/11, o dono)
+export const ZONAS_RADIO_ANTIGA: ZonaSom[] = ["suburbio"]
 
 let zona: ZonaSom | null = null
 const ouvintes = new Set<() => void>()
@@ -42,7 +44,7 @@ export function definirZonaSom(z: ZonaSom) {
   if (z === zona) return
   const antes = zona
   zona = z
-  radioAntiga(ZONAS_RADIO_ANTIGA.includes(z))
+  radioAntiga(z === "deserto" ? "ruim" : z === "tuneis" ? "mudo" : ZONAS_RADIO_ANTIGA.includes(z))
   if (antes === "deserto" && z === "suburbio") ouvintes.forEach((f) => f())
   ouvintesZona.forEach((f) => f(z, antes))
 }

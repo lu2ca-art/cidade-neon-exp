@@ -26,7 +26,7 @@ import { GANHO, URL_MUNDO_DEPOIS, geoDe, instanciar, type Lugar } from "./MundoD
 import { densidadeRua } from "./manifestos/comum"
 import { alemDaCidade } from "./raioCidade"
 import { ruinasNoMundo } from "./ruinas"
-import { CASA, CHAO_LUGARES, SUBURBIO } from "../disco/historia"
+import { CASA, CHAO_LUGARES, ILHA, SUBURBIO, foraDoSuburbio, naIlha } from "../disco/historia"
 import { FLORESTA as CFG, PLANTA_ELLA, lerFinal, ouvirFinal } from "../disco/final"
 
 const NADA = { momento: null, feito: false }
@@ -67,7 +67,8 @@ type CelulaPerto = { k: string; x: number; z: number; arvores: Lugar[]; moitas: 
 type CelulaLonge = { k: string; x: number; z: number; cones: Lugar[] }
 
 // ── onde nasce: o deserto, fora da cidade, do subúrbio e da casa ──
-const livre = (x: number, z: number) => alemDaCidade(x, z) > CFG.alemDaCidade && Math.hypot(x - SUBURBIO.x, z - SUBURBIO.z) > SUBURBIO.r + CFG.folgaSuburbio && Math.hypot(x - CASA.x, z - CASA.z) > CFG.folgaCasa
+// (19/11) e dentro da ilha (depois da beira é o céu)
+const livre = (x: number, z: number) => naIlha(x, z, ILHA.beira * 2) && alemDaCidade(x, z) > CFG.alemDaCidade && foraDoSuburbio(x, z) > CFG.folgaSuburbio && Math.hypot(x - CASA.x, z - CASA.z) > CFG.folgaCasa
 
 function colocar(M: MundoDisco) {
   let sem = 509

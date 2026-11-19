@@ -23,6 +23,16 @@
 // (ruas-faixa, 05/11) uma volta na pista (saída → ida → torre da ponta → volta →
 // entrada) dura a faixa inteira na velocidade da pista (2 × BPM km/h): ESCALA_GRUPO/ALONGA.
 // As bordas são parede (pista de Gran Turismo: quem quiser sair, voa).
+//
+// (19/11, o dono: "aquele mapa flutuante novo é o do jogo") O DISCO DE VINIL: cada
+// pista é uma volta inteira em torno da cratera (o rótulo), na forma do mapa
+// ilustrado (vinil.json, tirado de lá: scripts/vinil-extrai.js). A faixa 1 na
+// borda, a 9 perto do rótulo. As duas pontas da volta chegam na rotatória da torre
+// do grupo dela (GRUPOS), e cada torre fica em cima do buraco do seu salão nos
+// túneis. A torre central é o eixo do disco, no meio da cratera, com a rotatória
+// dela fechada (sem pista: chega-se voando, de elevador ou pela Linha 9).
+// A altura de cada volta segue a do mapa (a pista de verdade, exagerada pelo jeito
+// dela); quem cede num cruzamento é a relaxação de sempre (alturas).
 
 import * as THREE from "three"
 import { amostrar, derivar, type Pista } from "./pista"
@@ -32,6 +42,7 @@ import type { Rede } from "../rede/rede"
 import type { FreqId } from "../radio"
 import { CANTEIROS } from "./canteiros"
 import DESENHO from "./polvo-desenho.json"
+import VINIL from "./vinil.json"
 import { chaoEm, geoChao } from "./chao"
 
 const MEIA_PISTA = 8.4 // meia largura da pista: 4 faixas, 2 por sentido, canteiro aberto (LU2CA 19/10)
@@ -63,6 +74,9 @@ export const V_TORRE = 26 // m/s na torre (~95 km/h): a rotatória é de passear
 const R_PONTA = 66
 const RA_PONTA = 118 // até onde a torre da ponta ocupa (as linhas chegam nessa borda)
 const RAMO_PONTA = 36
+// (19/11, o vinil) a torre da ponta recebe 6 alças (as 2 pontas de cada volta)
+const R_VINIL = 100
+const RA_VINIL = 175
 const GRUPOS = [["Nectar", "Sexta-Feira", "Ojalá"], ["Rollercoaster", "Swav", "DopaminA"], ["Copo Americano", "CHUVA", "Sabe Ontem?"]]
 
 export type ParteDisco = "ida" | "volta" | "balao" | "saida" | "entrada" | "anel"
@@ -186,7 +200,7 @@ const L_GOTA = comprimento(gota(new THREE.Vector2(), new THREE.Vector2(0, 1)))
 // um "fio" é tudo que tem altura a decidir: as pistas (ondas próprias) e as
 // alças das torres (presas nas duas pontas: a espiral e o começo/fim da pista)
 // (fixo: as alças. A altura é a do perfil, e quem cede num cruzamento é a pista)
-type Fio = { pos: THREE.Vector2[]; tan: THREE.Vector2[]; hIni: number; hFim: number | null; dono: number; gota: boolean; isenta: number; onda: boolean; fixo?: number[] }
+type Fio = { pos: THREE.Vector2[]; tan: THREE.Vector2[]; hIni: number; hFim: number | null; dono: number; gota: boolean; isenta: number; onda: boolean; fixo?: number[]; alvo?: (f: number) => number }
 type Coluna = { x: number; z: number; r: number; topo: number } // a área de uma torre
 
 // a altura de cada fio; depois os fios se afastam onde se cruzam (relaxação),
@@ -199,7 +213,8 @@ function alturas(F: Fio[], colunas: Coluna[]) {
       const s = i * 2, sf = (n - 1 - i) * 2
       if (f.fixo) { h[i] = f.fixo[i]; continue }
       if (!f.onda) { h[i] = f.hFim === null ? f.hIni : f.hIni + (f.hFim - f.hIni) * (i / (n - 1)); continue }
-      const onda = 26 + 11 * Math.sin(s / (140 + k * 9) + a) + 6 * Math.sin(s / (61 + k * 4) + b)
+      // (19/11) a volta de vinil: a altura do mapa ilustrado; sem ela, as ondas de antes
+      const onda = f.alvo ? f.alvo(i / Math.max(1, n - 1)) : 26 + 11 * Math.sin(s / (140 + k * 9) + a) + 6 * Math.sin(s / (61 + k * 4) + b)
       const w = Math.min(1, s / 260), e = w * w * (3 - 2 * w)
       let y = f.hIni * (1 - e) + onda * e
       if (f.hFim !== null) { const wf = Math.min(1, sf / 260), ef = wf * wf * (3 - 2 * wf); y = f.hFim * (1 - ef) + y * ef }
@@ -518,44 +533,122 @@ export function montarMundoDisco(ajuste?: AjusteDisco): MundoDisco {
   const B = DESENHO.bracos
   const escalaG = ajuste?.escala ?? ESCALA_GRUPO, alonga = ajuste?.alonga ?? ALONGA
   const grupoDe = (nome: string) => GRUPOS.findIndex((g) => g.includes(nome))
-  const brutos0 = B.map((b) => tracado(b.pts))
-  const cabeca0 = P(500, 500)
-  // a ponta de cada linha que fica na cabeça (presa na central) e a outra
-  const brutos = brutos0.map((c, k) => {
-    const g = grupoDe(B[k].nome), sg = g >= 0 ? escalaG[g] ?? 1 : 1, a = alonga[B[k].nome] ?? 1
-    const iniNaCabeca = c[0].distanceTo(cabeca0) < c[c.length - 1].distanceTo(cabeca0)
-    const out = crescer(c.map((q) => q.clone().sub(cabeca0)), sg, a, iniNaCabeca ? PRESO_CENTRAL : PRESO_PONTA, iniNaCabeca ? PRESO_PONTA : PRESO_CENTRAL)
-    return out.map((q) => q.add(cabeca0))
+  void escalaG; void alonga; void crescer; void tracado // (o desenho antigo: ver a nota do vinil no topo)
+  // (19/11) as voltas de vinil: a forma do mapa e, nas duas pontas, a curva até a torre do grupo
+  const VN = VINIL as { centro: { x: number; z: number }; torres: { n: number; x: number; z: number }[]; faixas: { nome: string; pts: number[][]; alt: number[]; rad: number }[] }
+  const faixaDe = (nome: string) => VN.faixas.find((f) => f.nome === nome)!
+  // ── (19/11) as voltas: a forma do mapa → desvia das torres dos outros grupos → as duas
+  // pontas viram até um PORTÃO próprio na borda da torre do grupo (os 6 portões de cada
+  // torre espaçados em volta dela) → onde duas voltas correm PARALELAS a menos de pista e
+  // meia, se afastam de lado (no rumo do centro do disco). Cruzar atravessado fica: aí uma
+  // passa por cima da outra (alturas) ──
+  const O = new THREE.Vector2(VN.centro.x, VN.centro.z)
+  const TW = VN.torres.map((t) => new THREE.Vector2(t.x, t.z))
+  // desvia das torres dos outros grupos: empurra até R0 da torre, sumindo até R1
+  const desviar = (pts: THREE.Vector2[], g: number) => TW.forEach((Ot, j) => {
+    if (j === g) return
+    const R0 = RA_VINIL + 70, R1 = R0 + 260
+    for (const q of pts) {
+      const d = q.distanceTo(Ot)
+      if (d >= R1) continue
+      const alvo = d < R0 ? R0 : d + (R0 - d) * (1 - (d - R0) / (R1 - R0)) ** 2
+      const dir = d > 1e-3 ? q.clone().sub(Ot).normalize() : new THREE.Vector2(1, 0)
+      q.copy(Ot).addScaledVector(dir, Math.max(d, alvo))
+    }
   })
+  const voltas = B.map((b) => { const pts = faixaDe(b.nome).pts.map(([x, z]) => new THREE.Vector2(x, z)); desviar(pts, grupoDe(b.nome)); return pts })
+  // as janelas (a fração da volta que vira até a torre) e os portões
+  const jan = voltas.map((pts, k) => {
+    const T0 = TW[grupoDe(B[k].nome)], L = comprimento(pts), n = pts.length - 1
+    const janela = (q: THREE.Vector2) => Math.min(0.2, Math.max(500, 3 * q.distanceTo(T0)) / L)
+    const wi = janela(pts[0]), wf = janela(pts[n])
+    const ang = (u: number) => { const q = pts[Math.round(u * n)]; return Math.atan2(q.y - T0.y, q.x - T0.x) }
+    return { wi, wf, ai: ang(wi), af: ang(1 - wf) }
+  })
+  const angPortao = new Map<string, number>()
+  TW.forEach((_, g) => {
+    const ks = B.map((b, k) => (grupoDe(b.nome) === g ? k : -1)).filter((k) => k >= 0)
+    const alvo = ks.flatMap((k) => [jan[k].ai, jan[k].af]), esp = espacarNoCirculo(alvo, (40 * Math.PI) / 180)
+    ks.forEach((k, i) => { angPortao.set(`${k}i`, esp[2 * i]); angPortao.set(`${k}f`, esp[2 * i + 1]) })
+  })
+  const brutos = voltas.map((pts, k) => {
+    const T0 = TW[grupoDe(B[k].nome)], n = pts.length - 1, { wi, wf } = jan[k]
+    const portao = (a: number) => T0.clone().add(new THREE.Vector2(Math.cos(a), Math.sin(a)).multiplyScalar(RA_VINIL + 30))
+    const Pi = portao(angPortao.get(`${k}i`)!), Pf = portao(angPortao.get(`${k}f`)!)
+    return pts.map((q, i) => {
+      const u = i / n, s = u < wi ? 1 - u / wi : u > 1 - wf ? (u - (1 - wf)) / wf : 0
+      return q.clone().lerp(u < 0.5 ? Pi : Pf, s * s * (3 - 2 * s))
+    })
+  })
+  {
+    const SEP = 2 * MEIA_PISTA + 10
+    const tan = (c: THREE.Vector2[], i: number) => c[Math.min(c.length - 1, i + 1)].clone().sub(c[Math.max(0, i - 1)]).normalize()
+    // perto da própria torre a volta não se mexe (o portão é dela)
+    const preso = brutos.map((c, k) => { const T0 = TW[grupoDe(B[k].nome)]; return c.map((q) => q.distanceTo(T0) < RA_VINIL + 80) })
+    const CELP = 40
+    for (let it = 0; it < 80; it++) {
+      const grade = new Map<string, number[]>()
+      brutos.forEach((c, k) => c.forEach((q, i) => { const key = `${Math.floor(q.x / CELP)},${Math.floor(q.y / CELP)}`; let l = grade.get(key); if (!l) grade.set(key, (l = [])); l.push(k, i) }))
+      const desl = brutos.map((c) => c.map(() => 0))
+      let mexeu = 0
+      brutos.forEach((A, a) => A.forEach((qa, i) => {
+        const cx = Math.floor(qa.x / CELP), cz = Math.floor(qa.y / CELP)
+        for (let dx = -1; dx <= 1; dx++) for (let dz = -1; dz <= 1; dz++) {
+          const l = grade.get(`${cx + dx},${cz + dz}`); if (!l) continue
+          for (let q = 0; q < l.length; q += 2) {
+            const b2 = l[q], j = l[q + 1]
+            if (b2 <= a) continue
+            const qb = brutos[b2][j], d = qa.distanceTo(qb)
+            if (d >= SEP || Math.abs(tan(A, i).dot(tan(brutos[b2], j))) < 0.35) continue
+            const s = qa.distanceTo(O) >= qb.distanceTo(O) ? 1 : -1, f = (SEP - d) / 2 + 1
+            if (!preso[a][i]) desl[a][i] = s * Math.max(Math.abs(desl[a][i]), f)
+            if (!preso[b2][j]) desl[b2][j] = -s * Math.max(Math.abs(desl[b2][j]), f)
+            mexeu++
+          }
+        }
+      }))
+      if (!mexeu) break
+      brutos.forEach((c, k) => {
+        const dd = desl[k], n = c.length
+        c.forEach((q, i) => {
+          if (preso[k][i]) return
+          let t = 0, w = 0
+          for (let r = -3; r <= 3; r++) { const j = Math.max(0, Math.min(n - 1, i + r)), ww = 1 - Math.abs(r) / 4; t += dd[j] * ww; w += ww }
+          if (t) q.addScaledVector(q.clone().sub(O).normalize(), (t / w) * 1.6)
+        })
+      })
+    }
+  }
+  // alisa o que o afastar deixou torto (3 passadas, fora do pedaço preso na torre)
+  brutos.forEach((c, k) => {
+    const T0 = TW[grupoDe(B[k].nome)], n = c.length
+    for (let pass = 0; pass < 3; pass++) {
+      const src = c.map((q) => q.clone())
+      for (let i = 2; i < n - 2; i++) {
+        if (src[i].distanceTo(T0) < RA_VINIL + 80) continue
+        c[i].copy(src[i - 2]).add(src[i - 1]).add(src[i]).add(src[i + 1]).add(src[i + 2]).multiplyScalar(0.2)
+      }
+    }
+    desviar(c, grupoDe(B[k].nome)) // o alisar pode puxar de volta pra perto de outra torre
+  })
+  // a altura do mapa ao longo da volta; nos 12% de cada ponta assenta na altura da torre
+  const altDe = (nome: string) => { const a = faixaDe(nome).alt; return (f: number) => { const x = Math.max(0, Math.min(1, f)) * (a.length - 1), i = Math.floor(x), w = x - i, y = a[i] * (1 - w) + a[Math.min(a.length - 1, i + 1)] * w, e = Math.min(1, Math.min(f, 1 - f) / 0.12), s = e * e * (3 - 2 * e); return Y_ANEL_PONTA + (y - Y_ANEL_PONTA) * s } }
   const idDe = (nome: string) => B.findIndex((b) => b.nome === nome)
   // ── (LU2CA 19/10: "atenha exatamente ao desenho, isso é minha arte também")
   // a torre principal fica na CABEÇA do desenho (o círculo do editor); as das
   // pontas, nas trifurcações (onde as 3 linhas se encontram). O pedaço que o
   // desenho tem dentro de uma torre fica dentro dela; fora, o traçado é exato ──
-  const cabeca = P(500, 500)
-  const C = { x: cabeca.x, z: cabeca.y }
-  // em cada grupo, a ponta de cada linha que fica longe da cabeça (a outra está nela)
-  const pontaLonge = (k: number) => { const c = brutos[k]; return c[0].distanceTo(cabeca) > c[c.length - 1].distanceTo(cabeca) ? "inicio" as const : "fim" as const }
-  const ptDe = (k: number, ponta: "inicio" | "fim") => (ponta === "inicio" ? brutos[k][0] : brutos[k][brutos[k].length - 1])
+  const C = { x: VN.centro.x, z: VN.centro.z }
   type Membro = { k: number; ponta: "inicio" | "fim" }
   const defs: { C: { x: number; z: number }; R: number; y: number; RA: number; nucleo: number; ramo: number; membros: Membro[]; nome: string }[] = [
     { C, R: R_SOBE, y: Y_ANEL, RA: RA_CABECA, nucleo: NUCLEO, ramo: RAMO, membros: [], nome: "central" },
   ]
+  // (19/11) cada torre recebe as duas pontas das 3 voltas do grupo (6 alças): a rotatória é maior
   GRUPOS.forEach((nomes, g) => {
     const ks = nomes.map(idDe).filter((k) => k >= 0)
-    const ms = ks.map((k) => ({ k, ponta: pontaLonge(k) }))
-    const pts = ms.map((m) => ptDe(m.k, m.ponta))
-    const cx = pts.reduce((a, p) => a + p.x, 0) / pts.length, cz = pts.reduce((a, p) => a + p.y, 0) / pts.length
-    // (cada linha chega no seu andar: um estacionamento com a espiral ligando os
-    // andares. A que fica colada na cabeça encolhe pra não encostar na central)
-    const RA = Math.min(RA_PONTA, Math.hypot(cx - C.x, cz - C.z) - RA_VIZINHA - 6)
-    const R = Math.min(R_PONTA, RA - RAMO_PONTA - 12)
-    defs.push({ C: { x: cx, z: cz }, R, y: Y_ANEL_PONTA, RA, nucleo: R - 24 - MEIA_PISTA - 8, ramo: RAMO_PONTA, membros: ms, nome: `torre ${g + 1}` })
-  })
-  // a outra ponta de cada linha liga na torre principal
-  B.forEach((_, k) => {
-    const longe = defs.slice(1).find((d) => d.membros.some((m) => m.k === k))?.membros.find((m) => m.k === k)?.ponta
-    defs[0].membros.push({ k, ponta: longe === "inicio" ? "fim" : "inicio" })
+    const ms = ks.flatMap((k) => [{ k, ponta: "inicio" as const }, { k, ponta: "fim" as const }])
+    const tw = VN.torres[g]
+    defs.push({ C: { x: tw.x, z: tw.z }, R: R_VINIL, y: Y_ANEL_PONTA, RA: RA_VINIL, nucleo: R_VINIL - 24 - MEIA_PISTA - 8, ramo: RAMO_PONTA, membros: ms, nome: `torre ${g + 1}` })
   })
   // ── corta cada desenho na borda das torres das suas duas pontas ──
   const T = brutos.map((c, k) => {
@@ -630,7 +723,7 @@ export function montarMundoDisco(ajuste?: AjusteDisco): MundoDisco {
     return { t, d, naEsp, phiE, phiS, phiQ, phiIni, topo: d.y, alcas }
   })
   // ── as alturas: as pistas e as alças juntas (cada alça presa na espiral e na pista) ──
-  const fios: Fio[] = T.map((tt, k) => ({ pos: tt.pos, tan: tt.tan, hIni: Y_ANEL, hFim: null, dono: k, gota: fimDe[k] < 0, isenta: -1, onda: true }))
+  const fios: Fio[] = T.map((tt, k) => ({ pos: tt.pos, tan: tt.tan, hIni: Y_ANEL, hFim: null, dono: k, gota: fimDe[k] < 0, isenta: -1, onda: true, alvo: altDe(B[k].nome) }))
   for (const tw of torres) for (const a of tw.alcas) {
     if (a.ponta === "inicio") fios[a.k].hIni = a.hJ; else fios[a.k].hFim = a.hJ
     const Lt = comprimento(a.saida.slice(a.saida.length - a.nTronco))
@@ -680,6 +773,16 @@ export function montarMundoDisco(ajuste?: AjusteDisco): MundoDisco {
       return pts
     }
     const anel: MundoDisco["aneis"][number] = { torre: t, vias: [], ini: [], L: 0, saidas: [] }
+    // (19/11) a central do vinil não recebe pista: o anel é uma volta só, fechada nela mesma
+    if (!marcos.length) {
+      const v = viaDe(trecho(phiIni, phiIni + dois, d.R, d.y), `disco:torre${t}:anel0`, "rampa", "disco", COR_TORRE, true)
+      Object.assign(v, { abreFora: [] })
+      const n0 = no(), vi = nova(v, { pista: -1, parte: "anel", torre: t })
+      ligar(vi, n0, n0)
+      anel.vias.push(vi); anel.ini.push(0); anel.L = v.L
+      anelDe.push(anel)
+      return noDe
+    }
     let U0 = 0
     for (let k = 0; k < marcos.length; k++) {
       const A = marcos[k], Bm = marcos[(k + 1) % marcos.length]

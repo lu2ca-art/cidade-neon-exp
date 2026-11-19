@@ -25,6 +25,91 @@ export interface Cartao {
 
 export const MESA: Cartao[] = [
   {
+    parte: "livre",
+    nome: "O mundo virou o mapa novo: as pistas são voltas de vinil em volta da cratera",
+    data: "2026-11-19",
+    tarefa: "mundo vinil",
+    olhar: "As 9 pistas agora são voltas inteiras em torno da cratera, na forma do mapa novo (a faixa 1 na borda, a 9 perto do meio). As duas pontas de cada volta chegam na torre do grupo dela, e as 3 torres ficam em cima dos buracos dos túneis. A torre central fica no meio da cratera. No chão, o subúrbio é o anel em volta da cratera, aberto como no mapa e cheio de casinhas, com os lugares nos pontos do mapa. A Linha 9 virou uma estrela: da central até cada torre, por cima das pistas.",
+    perguntas: ["Dirigindo, as voltas têm o jeito de cada música (umas retas e rápidas, outras tortas e com sobe e desce)?", "O jogo ficou pesado? (as pistas somam o dobro de asfalto)", "Passar de uma pista pra outra (na torre, voando ou pela Linha 9) ficou claro?", "O anel de casinhas ficou bom ou precisa de mais vida?"],
+    mais: [{ parte: "mapa.novo", nome: "o mapa novo, pra comparar" }, { parte: "brecho", nome: "no anel do subúrbio" }, { parte: "metro", nome: "a Linha 9" }],
+  },
+
+  {
+    parte: "brecho",
+    nome: "O subúrbio em anel: os lugares na beira da cratera, como no mapa novo",
+    data: "2026-11-19",
+    tarefa: "subúrbio em anel",
+    olhar: "O subúrbio virou o anel em volta da cratera (o lixão grande do meio). Os 12 lugares (bar, oficina, palco, quadra, túneis, ginásio, galeria, discos, batida, flores, brechó, feira) estão nos pontos do mapa novo, com a porta virada pra cratera. Este link nasce no brechó; abra o mapa grande e vá de lugar em lugar. O bairro antigo dos prédios ficou onde estava, dentro do anel.",
+    perguntas: ["Os lugares ficaram bem onde estão, ou algum ficou num canto ruim (morro, embaixo de pista)?", "A rádio, a zona e o veículo trocam certo ao entrar e sair do anel?"],
+    mais: [{ parte: "bar", nome: "no bar" }, { parte: "oficina", nome: "na oficina" }, { parte: "mapa.novo", nome: "o mapa novo, pra comparar" }],
+  },
+
+  {
+    parte: "mapa.novo",
+    nome: "O mapa novo dentro do jogo: o disco de vinil em 3D",
+    data: "2026-11-18",
+    tarefa: "mapa novo no jogo",
+    olhar: "O jogo abre e, em um segundo, o mapa novo abre por cima: a cidade como disco de vinil, o subúrbio em anel, os túneis colados no cone. O \"Você\" é onde você está de verdade, e ele já abre na missão de agora. Toque num lugar da missão e em \"Aceitar missão\": o mapa fecha e o destino fica marcado no jogo. O × ou o Esc fecham. Depois, ele abre de novo pelo mapa grande, em \"o mapa ilustrado\".",
+    perguntas: ["O mapa abriu rápido e girou liso?", "O Você apareceu no lugar certo? (o mundo do jogo ainda é o de antes: as pistas e o subúrbio ainda não mudaram de lugar)", "Aceitar missão: o destino marcado no jogo bateu com o lugar escolhido?"],
+  },
+
+  {
+    parte: "carreira.meio",
+    nome: "A lógica das músicas: a Rádio Crypto nas pistas, a música da missão na pista dela, silêncio no ar",
+    data: "2026-11-18",
+    tarefa: "lógica das músicas",
+    olhar: "Aceite uma missão pelo holo. Nas pistas toca a Rádio Cidade Neon Crypto: o instrumental da música dessa missão, em loop. Entre na pista da missão: a música do álbum, com voz, entra no mesmo ponto; saindo dela, volta o instrumental. Pule: no ar a música para e volta do mesmo ponto quando cai no chão. Largue a missão: o instrumental dela continua sendo o da Crypto. Pelo botão de baixo, no deserto: ligue a rádio, a Xenom e a Crypto com sinal ruim. Nos túneis a rádio não pega.",
+    perguntas: ["A troca de voz pra instrumental, no mesmo ponto, ao sair da pista da missão ficou boa?", "O sinal ruim do deserto está forte demais ou de menos?", "No ar, o MP3 e o toca-discos seguem tocando: confere?"],
+    mais: [{ parte: "elevador.deserto", nome: "no deserto (ligue a rádio)" }],
+  },
+
+  {
+    parte: "final",
+    nome: "O final novo: capturados, a sala de controle e o jogo acabando no show da CHUVA",
+    data: "2026-11-16",
+    tarefa: "final",
+    olhar: "Abre no palco do deserto: a linha da captura, o hack e o corredor das incubadoras com os nove. Quebre todas, toque no elevador e veja o plano na sala de controle. Volta pro palco e começa o show da CHUVA, com a escolha de sempre. Assistindo: a CHUVA toca uma vez só e, enquanto o LU2CA canta, a câmera mostra o palco cheio, a água correndo do Núcleo até o deserto com o povo saindo na rua, a chuva limpa e o deserto virando floresta; o jogo acaba quando a música acaba. Tocando: o show de sempre e, logo depois, uma cena curta (a chuva limpa e a floresta), sem música. Não tem mais o gesto \"convocar o povo\", a ida até as torres nem o Núcleo fritando.",
+    perguntas: ["As três frases da sala ficam ou você reescreve? Quem fala?", "Assistindo, o tempo de cada parte (palco 20 s, água 24 s, chuva 30 s, a floresta até o fim) combina com a música?", "A torneira dos túneis precisa aparecer na tela?"],
+    mais: [{ parte: "final.show", nome: "direto no show final (assistir ou tocar)" }, { parte: "final.controle", nome: "direto na sala de controle" }, { parte: "final.chuva", nome: "só a cena curta de depois (a chuva limpa e a floresta)" }],
+  },
+
+  {
+    parte: "show.tuneis",
+    nome: "Os shows crescem: do bar simples até o show colorido dos túneis",
+    data: "2026-11-16",
+    tarefa: "escada dos shows",
+    olhar: "Aqui você já desce nos túneis com o jogo quase no fim. Vá de patins até o SALÃO DO METRÔ (pela descida, a TORRE 1 e o RIO SECO A): o palco novo fica no salão, com telão, canhões de luz, a projeção colorida nas paredes e a água no chão refletindo as cores. Chegando perto, o botão \"o show\": escolha a música e assista da plateia (a câmera vai pro meio do povo) ou toque. Nos outros atalhos: o show do bar fica pequeno, com pouca luz e sem telão; os palcos de cima têm mais luz, telão e gente.",
+    perguntas: ["A vista dos túneis ficou bonita como você imaginou? Mais cor, menos?", "O show dos túneis abre depois do ep. 2 (Mubarak). É esse o momento?", "O salão do metrô é o lugar certo do palco, ou quer perto de onde vai ficar a torneira?", "O bar está simples o bastante?"],
+    mais: [{ parte: "show.bar", nome: "o show do bar (o mais simples)" }, { parte: "show.escada", nome: "a escada dos palcos (do bar ao alto das torres)" }],
+  },
+  {
+    parte: "entrega.hack",
+    nome: "Liberar ou entregar: os botões no cartão e o preço da traição",
+    data: "2026-11-16",
+    tarefa: "entrega e incubadoras",
+    olhar: "Abra o mapa pelo holo e toque num personagem cuja missão você já fez: embaixo do cartão aparecem \"liberar\" (marca a missão no mapa, como antes) e \"entregar\" com a recompensa, agora entre 1.000 e 2.000 Água$. Entregar pede um segundo toque. Aí vem o hack: aparece a grana e logo em vermelho \"tomaram tudo\". Depois do corredor, confira o bolso: Água$ zerada, sem discos, roupas, compras e nenhum instrumento (nem os das missões); os episódios feitos continuam. O LU2CA e a D-Bee nunca têm o botão, e quem já foi entregue e resgatado também não. Este link entrega a Ella direto, com dinheiro no bolso.",
+    perguntas: ["Os valores por personagem (1.000 a 2.000) estão bons?"],
+    mais: [{ parte: "carreira.meio", nome: "o mapa com os cartões (sem entregar)" }],
+  },
+  {
+    parte: "carreira.meio",
+    nome: "O mapa ilustrado e os cartões das missões (a feira de recompensas)",
+    data: "2026-11-16",
+    tarefa: "mapa e cartões",
+    olhar: "Com o holo ligado, toque no ícone novo do cartão, ao lado do mapa: abre a feira com um cartão por personagem (foto, recompensa, o crime e o checklist do que você encontra e libera). As abas de cima trocam o mapa: cidade, subúrbio com o deserto em volta e túneis. Cada ícone de missão fica no lugar dela; toque e o cartão abre. O mesmo mapa abre pelo botão novo na vista do drone. No subúrbio, a rua clara é a da corrida e a rosa é a da feira.",
+    perguntas: ["No subúrbio, agora dá pra entender as ruas?", "O crime e a recompensa de cada um estão certos? (são rascunho, ficam em app/linha/disco/cartoes.ts)", "O ícone do cartão no holo ficou num bom lugar no seu celular, em pé e deitado?", "A foto ilustrada serve até chegarem os personagens do Tripo?"],
+    mais: [{ parte: "carreira.feira", nome: "começo da carreira (poucas missões abertas)" }],
+  },
+  {
+    parte: "entrega.hack",
+    nome: "Entregar um amigo: o hack das propagandas e o corredor das incubadoras",
+    data: "2026-11-16",
+    tarefa: "entrega e incubadoras",
+    olhar: "Aqui a Ella é entregue logo que o jogo abre: você ganha a Água$ e as propagandas do Núcleo invadem a tela cada vez mais rápido, até a visão turvar e escurecer. Você acorda no corredor das incubadoras, no escuro, com o mesmo som grave do elevador de terror; a luz volta aos trancos e chega o chamado da D-Bee. Toque em cada incubadora pra quebrar (arraste pro lado pra olhar). A Ella está na última: achou, ela volta pra história. O botão de entregar no cartão do mapa entra quando a frente do mapa juntar.",
+    perguntas: ["O hack desnorteia o bastante, ou quer mais tempo, mais rápido, outras propagandas?", "O corredor dá medo? Quantas incubadoras quer (hoje 12)?", "Quanto de Água$ quer pagar por entregar cada um? (rascunho: 200 a 400)", "Entregar de novo, depois de recuperar, paga de novo? (hoje não paga)", "A fala da D-Bee (\"quebra todas as incubadoras. Ella tá numa delas\") fica assim ou você reescreve?", "O LU2CA também pode ser entregue?"],
+    mais: [{ parte: "entrega.incubadoras", nome: "direto no corredor das incubadoras (sem o hack)" }],
+  },
+  {
     parte: "missao.tony.jogo",
     nome: "Revisão: feira só leva se tiver saldo; tecla solta não prende o acelerador",
     data: "2026-11-09",
@@ -64,7 +149,7 @@ export const MESA: Cartao[] = [
     tarefa: "final",
     olhar: "Você abre em cima do palco novo, no centro do deserto, olhando a plateia enorme. Toque na tela uma vez: começa a CHUVA e a Kombi fica livre. Siga o GPS até as torres, com o povo saindo a pé do deserto. Em cada torre das pontas há três multidões, cada uma com um dos nove na frente, na cor dele. Chegando em qualquer torre, só assista: a água seca nas paredes do Núcleo, ele frita de dentro pra fora, a água chega nos canais, a chuva cai e o deserto vira floresta.",
     perguntas: ["O lugar do palco parece o centro do deserto, ou prefere outro ponto?", "A plateia ficou enorme o bastante? E o iPhone continua liso?", "Dá pra ver o povo se espalhando enquanto dirige?", "Dá pra reconhecer quem lidera cada multidão só pela cor, ou precisa de mais?", "Chegar em qualquer torre já começa a cena: é isso, ou tem que ser no Núcleo?", "A cena do Núcleo fritando convence? Dá pra entender que cortaram o abastecimento?", "A CHUVA segue inteira, sem corte, do toque até o fim?"],
-    mais: [{ parte: "final.andar", nome: "direto no volante, depois do gesto (sem música)" }, { parte: "final.nucleo", nome: "só o Núcleo fritando" }, { parte: "final.agua", nome: "só a água até o deserto" }, { parte: "final.floresta", nome: "só o deserto virando floresta" }, { parte: "mundo.depois.floresta", nome: "voltando a jogar: a floresta e o subúrbio com as plantas" }],
+    mais: [{ parte: "final.agua", nome: "só a água até o deserto" }, { parte: "final.floresta", nome: "só o deserto virando floresta" }, { parte: "mundo.depois.floresta", nome: "voltando a jogar: a floresta e o subúrbio com as plantas" }],
   },
   {
     parte: "loja.violao",

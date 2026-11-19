@@ -51,7 +51,9 @@ import { MundoDepois } from "./MundoDepois"
 import { CAM_ROTEIRO, FINAL_VIVO, lerFinal, nascerNoPalcoDeserto, ouvirFinal } from "../disco/final"
 import { VELO, intensidade } from "./velo"
 import { geoJoia, matJoia } from "./joia"
-import { CASA, RAIO_CASA, SAIDA_CASA, CHEGADA, PARADA_CASA, ENTRA_CHEGADA, CAM_CHEGADA, FALAS_DUNAS, FALAS_DUNAS_SUB, SUBURBIO, CHAO_LUGARES, RAIO_CHAO, semVoo, type HistoriaDisco, type LugarChao } from "../disco/historia"
+import { ILHA } from "../disco/historia"
+import { Ilha } from "./DesenhoIlha"
+import { CASA, RAIO_CASA, SAIDA_CASA, CHEGADA, PARADA_CASA, ENTRA_CHEGADA, CAM_CHEGADA, FALAS_DUNAS, FALAS_DUNAS_SUB, SUBURBIO, CHAO_LUGARES, RAIO_CHAO, foraDoSuburbio, semVoo, type HistoriaDisco, type LugarChao } from "../disco/historia"
 import { lerPoseTutorial } from "../disco/tutorialConf"
 import { trilhaEnsina } from "../disco/trilhaPedras"
 import { LugaresChao } from "../disco/LugaresChao"
@@ -64,7 +66,7 @@ import { gravarOndeParou, lerOndeParou, nasceuOndeParou, ondeNasceu, type Desemb
 import { FeixeGuia } from "./FeixeGuia"
 import { CAM_FEIRA } from "../disco/feira"
 import { CHEGADA_MISSAO, chegouNoAlvo, escreverGuia, escreverPiloto, INTRO_ADIADA, pontoDoAlvo, type LugarMissao } from "./alvoMissao"
-import { NAV, ladoDaFaixa } from "./nav"
+import { NAV, ladoDaFaixa, pistaPerto } from "./nav"
 import { temJetpack } from "../disco/metro"
 import { falaMetroQuebra } from "../disco/quebra"
 import { foraNaBoca, nascerNoTunel, pararNaBoca, saidaDoTunel } from "../disco/tuneis"
@@ -78,8 +80,8 @@ import { ATROPELO, forcaAtropelo, G_DISCO, VIB_ATROPELO } from "./atropelo"
 import { RobosCaidos } from "../disco/RobosCaidos"
 import { COL_PASSO, Campo, type ToqueCampo } from "../disco/Campo"
 import { guitarLivre } from "../disco/capsula"
-import { luzDosEpisodios } from "../disco/episodios"
-import { feita13, type MissaoId } from "../disco/portas"
+import { episodiosAbertos, luzDosEpisodios } from "../disco/episodios"
+import { MISSOES13, feita13, type MissaoId } from "../disco/portas"
 import { RachasCena, RachasHud, novoEstadoRacha, type EstadoRacha } from "../disco/Rachas"
 import { CorridaRuaCena, CorridaRuaHud } from "../disco/CorridaDeRua"
 import { CORRIDA_RUA_CFG, RUA, naVoltaRua, type PoseRua, type ResultadoRua } from "../disco/corridaRua"
@@ -98,7 +100,7 @@ import { NIVEIS, QUALIDADE, guardarQualidade, ouvirQualidade } from "./qualidade
 import { MedirAparelho } from "./MedirAparelho"
 import { qualMapa } from "./qualMapa"
 import { OculosMapa } from "./Oculos"
-import { avisarRadio, notch, HoloAjuda, HoloAjustes, HoloAnel, type AnelApi, HoloApps, HoloClima, HoloDestaque, HoloIcones, HoloIlha, HoloLetreiro, HoloSom, INFO, useNexoTutorial, type ChecklistHolo, type Clima, type NexoAgora } from "./Holo"
+import { avisarRadio, notch, HoloAjuda, HoloAjustes, HoloAnel, type AnelApi, HoloApps, HoloClima, HoloDestaque, HoloFeira, HoloIcones, HoloIlha, HoloLetreiro, HoloSom, INFO, useNexoTutorial, type ChecklistHolo, type Clima, type NexoAgora } from "./Holo"
 import type { AppId } from "../os"
 import { faixaContinua } from "../disco/pistasLiberadas"
 import { PISTAS, faixaDaPista, velocidade as velPista, type Pista as PistaFaixa } from "./pistas"
@@ -123,6 +125,8 @@ import { Seguro } from "./Seguro"
 import { Suburbio } from "./Suburbio"
 import { RuinasSuburbio } from "./RuinasSuburbio"
 import { ruinasNoMundo } from "./ruinas"
+import { casasDoAnel } from "./casasAnel"
+import { CasasAnel } from "./DesenhoCasasAnel"
 import { KombiHerbal } from "./KombiHerbal"
 import { Capa } from "../capa"
 import { discosDaKombi } from "../discos"
@@ -597,6 +601,10 @@ type ItemGuia = { k: string; d: number; cor: string; rot: string; tipo: "estacao
 // (09/11) o interior do metrô: só baixa quando alguém entra numa estação
 const MetroDentro = dynamic(() => import("../metro/Metro").then((m) => m.Metro), { ssr: false })
 const MetroFugaDentro = dynamic(() => import("../disco/MetroFuga").then((m) => m.MetroFuga), { ssr: false })
+// (16/11) o mapa ilustrado e os cartões das missões: só baixa no primeiro toque
+const MapaCartoes = dynamic(() => import("../disco/MapaCartoes").then((m) => m.MapaCartoes), { ssr: false })
+// (18/11) o mapa novo (o disco de vinil em 3D, public/mapa-ilustrado): o "mapa" abre ele; a feira segue nos cartões
+const MapaNovo = dynamic(() => import("../disco/MapaNovo").then((m) => m.MapaNovo), { ssr: false })
 type Viagem9 = { h: ViagemLinha9; dest: number | null; rotulo: string; fuga: Pick<MetroFugaProps, "historia" | "onPasso" | "onSair"> | null }
 const PERTO_9: number[] = []
 
@@ -622,6 +630,11 @@ export function Corrida({ alohanNoMapa = false, onVisitar, save, nivel, destino:
   const lugarDaMissao: LugarId | null = !caido && alvo?.t === "lugar" ? alvo.lugar : null
   // o destino que você marcou no mapa (senão, o mapa aponta a missão)
   const [marca, setMarca] = useState<Marca | null>(null)
+  // (16/11) o mapa ilustrado com os cartões (disco/MapaCartoes.tsx): "mapa" abre na camada de onde
+  // ele está, "feira" na lista dos cartões (o ícone do holo). null = fechado (nem montado)
+  const [cartoesAba, setCartoesAba] = useState<"mapa" | "feira" | null>(null)
+  // (19/11, o dono) escolheu a missão na feira: o mapa abre com ela marcada
+  const [missaoNoMapa, setMissaoNoMapa] = useState<MissaoId | null>(null)
   // os ANÉIS (17/10, mapa 2.0): cada 100 que você pega viram duas viagens
   // rápidas pelo mapa. Ficam guardados no aparelho
   // a dica do mapa 2.0 (nas 3 primeiras entradas, fora da abertura): o que é novo
@@ -1360,6 +1373,31 @@ export function Corrida({ alohanNoMapa = false, onVisitar, save, nivel, destino:
   // (27/10) o drone é da D-Bee: no disco, só depois que ela dá (nas dunas); quem já passou de lá já tem
   const droneOk = !MAPA_2D && (!discoM || !historia || !!historia.drone || !(historia.fase === "minhoca" || historia.fase === "casa" || historia.fase === "dunas"))
   // (LU2CA 21/10) celular (em pé ou deitado): os widgets do holo numa ilha só
+  // (16/11) abre o mapa ilustrado (o drone desce: por baixo dele nada desenha à toa)
+  const abrirCartoes = (aba: "mapa" | "feira") => { ligarDrone(false); jogo.current.noMapa = true; setCartoesAba(aba) }
+  // (18/11, Mesa: mapa.novo) ?abrir=mapa: o mapa novo já abre, uma vez, quando a história chega
+  const abriuPeloLink = useRef(false)
+  useEffect(() => {
+    if (abriuPeloLink.current || !discoM || !historia) return
+    const u = new URL(location.href)
+    if (u.searchParams.get("abrir") !== "mapa") return
+    abriuPeloLink.current = true
+    u.searchParams.delete("abrir"); history.replaceState(history.state, "", u)
+    const t = setTimeout(() => abrirCartoes("mapa"), 1200)
+    return () => clearTimeout(t)
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [discoM, historia])
+  // (16/11) o "marcar no mapa" do cartão: a marca no lugar da missão (a rota acende; chegando, começa)
+  const irPraMissao = (id: MissaoId) => {
+    const l = MISSOES13[id].lugar, m = MISSOES13[id]
+    if (l.chao) {
+      const c = CHAO_LUGARES[l.chao], pp = pistaPerto(M, `cartao:${l.chao}`, c.x, c.z, viaApagada)
+      if (pp.via >= 0) setMarca({ via: pp.via, u: pp.u, nome: `${m.quem} · ${c.nome.toLowerCase()}`, cor: m.cor, wx: c.x, wz: c.z })
+      return
+    }
+    const p = pontoDoAlvo(M, l)
+    if (p && p.via !== undefined && p.u !== undefined) setMarca({ via: p.via, u: p.u, nome: m.quem, cor: m.cor })
+  }
   const [holoCelular, setHoloCelular] = useState(() => typeof window !== "undefined" && window.matchMedia("(max-width: 600px), (max-height: 480px)").matches)
   useEffect(() => {
     const mq = window.matchMedia("(max-width: 600px), (max-height: 480px)")
@@ -1658,7 +1696,7 @@ export function Corrida({ alohanNoMapa = false, onVisitar, save, nivel, destino:
       if (fase === "subir") { if (!j.voo && !avisou) { avisou = true; onHistoriaRef.current?.("subiu") } return }
       // as dunas: no começo novo, chegar no subúrbio (no chão, embaixo das pistas)
       if (novoComeco) {
-        if (j.wx !== undefined && Math.hypot(j.wx - SUBURBIO.x, j.wz! - SUBURBIO.z) < SUBURBIO.r && !avisou) { avisou = true; onHistoriaRef.current?.("cidade"); return }
+        if (j.wx !== undefined && foraDoSuburbio(j.wx, j.wz!) === 0 && !avisou) { avisou = true; onHistoriaRef.current?.("cidade"); return }
       } else if (!j.voo) { if (!avisou) { avisou = true; onHistoriaRef.current?.("cidade") } return }
       const r = alemDaCidade(j.wx ?? 0, j.wz ?? 0) // (ruas-faixa) a distância à borda de cada rumo
       if (t > 2) diz("inicio")
@@ -3156,6 +3194,7 @@ export function Corrida({ alohanNoMapa = false, onVisitar, save, nivel, destino:
             </>
           )}
           <HoloAnel missao={missaoHolo} checklist={checklistHolo} agora={nexoAgora} onMissoes={() => setPedeMapa((n) => n + 1)} api={anelApi} />
+          {historia && !drone && <HoloFeira n={episodiosAbertos(historia).length} onAbrir={() => abrirCartoes("feira")} />}
         </>
       )}
       {discoM && ajuda && <HoloAjuda ativa onSair={sairAjuda} />}
@@ -3273,8 +3312,16 @@ export function Corrida({ alohanNoMapa = false, onVisitar, save, nivel, destino:
         </div>
       )}
       {!andandoAlgo && (
-        <Mapa M={M} apagada={viaApagada} aberta={viaAberta} foco={viaFoco} pose={jogo} missao={lugarDaMissao} marca={marca} onMarcar={setMarca} onAberto={(a) => { jogo.current.noMapa = a; document.documentElement.classList.toggle("cn-mapa-aberto", a) }} viagens={aneis.viagens} onViajar={viajar} onToqueMini={() => !!(discoM && oculos && anelApi.current?.toque())} pedido={pedeMapa} missoes={discoM ? mapaMissoes : null} painel={discoM ? mapaPainel : null} onIcone={onMapaIcone} fase={historia?.fase ?? null} alvoChao={alvoChao} corridaRua={corridaNoMapa} trancaPorta={trancaPortaMapa}
-          onDrone={droneOk ? (via) => { if (via === "mini" && DRONE.alvo) ligarDrone(false); else { ligarDrone(true); setDronePainel(via === "pedido" && !!(discoM && mapaPainel)) } return true } : undefined} />
+        <Mapa M={M} apagada={viaApagada} aberta={viaAberta} foco={viaFoco} pose={jogo} missao={lugarDaMissao} marca={marca} onMarcar={setMarca} onAberto={(a) => { jogo.current.noMapa = a; document.documentElement.classList.toggle("cn-mapa-aberto", a) }} viagens={aneis.viagens} onViajar={viajar} onToqueMini={() => !!(discoM && oculos && anelApi.current?.toque())} pedido={pedeMapa} onIlustrado={discoM && historia ? () => abrirCartoes("mapa") : undefined} missoes={discoM ? mapaMissoes : null} painel={discoM ? mapaPainel : null} onIcone={onMapaIcone} fase={historia?.fase ?? null} alvoChao={alvoChao} corridaRua={corridaNoMapa} trancaPorta={trancaPortaMapa}
+          onDrone={discoM && historia ? () => { if (cartoesAba === "mapa") { setCartoesAba(null); jogo.current.noMapa = false } else abrirCartoes("mapa"); return true } : droneOk ? (via) => { if (via === "mini" && DRONE.alvo) ligarDrone(false); else { ligarDrone(true); setDronePainel(via === "pedido" && !!(discoM && mapaPainel)) } return true } : undefined} />
+      )}
+      {discoM && historia && cartoesAba === "mapa" && (
+        <MapaNovo M={discoM} historia={historia} pose={jogo as unknown as React.RefObject<{ via: number; u: number; wx?: number; wz?: number; livreOk?: boolean; voo?: boolean }>}
+          missao={missaoNoMapa} onIr={irPraMissao} onFechar={() => { setCartoesAba(null); setMissaoNoMapa(null); jogo.current.noMapa = false }} />
+      )}
+      {discoM && historia && cartoesAba === "feira" && (
+        <MapaCartoes M={discoM} historia={historia} pose={jogo as unknown as React.RefObject<{ via: number; u: number; wx?: number; wz?: number; livreOk?: boolean; voo?: boolean }>} apagada={viaApagada} aba={cartoesAba}
+          onIr={(id) => { irPraMissao(id); setMissaoNoMapa(id); abrirCartoes("mapa") }} onFechar={() => { setCartoesAba(null); jogo.current.noMapa = false }} />
       )}
       {drone && (
         <div className="l-drone" aria-label="a vista do drone">
@@ -3318,6 +3365,11 @@ export function Corrida({ alohanNoMapa = false, onVisitar, save, nivel, destino:
             <button type="button" data-info="drone-mover" aria-label="mover o mapa" className={voar ? "is-on" : ""} onClick={() => setVoar((v) => !v)}>
               <svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M8 13V5.5a1.5 1.5 0 0 1 3 0V12M11 11.5v-8a1.5 1.5 0 0 1 3 0V12M14 11.5V5a1.5 1.5 0 0 1 3 0v7M17 8.5a1.5 1.5 0 0 1 3 0V15a7 7 0 0 1-7 7h-1.5a7 7 0 0 1-5.6-2.8L3.3 15.4a1.6 1.6 0 0 1 2.5-2L8 15.5" /></svg>
             </button>
+            {discoM && historia && (
+              <button type="button" data-info="feira" aria-label="o mapa ilustrado e os cartões das missões" onClick={() => abrirCartoes("mapa")}>
+                <svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M3 6l6-3 6 3 6-3v15l-6 3-6-3-6 3z M9 3v15 M15 6v15" /></svg>
+              </button>
+            )}
             {discoM && mapaPainel && (
               <button type="button" data-info="drone-missoes" aria-label="as missões" className={dronePainel ? "is-on" : ""} onClick={() => setDronePainel((v) => !v)}>
                 <svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round"><path d="M5 6h14M5 12h14M5 18h9" /></svg>
@@ -3996,7 +4048,6 @@ function CenaBase({
   const reduz = useMemo(() => typeof window !== "undefined" && window.matchMedia("(prefers-reduced-motion: reduce)").matches, [])
   // (disco) a faixa de cada pista (a pista é o toca-discos) e qual está tocando
   // (14/11) o deserto toca os instrumentais do vol. 1 (as 9), em fila
-  const desertoLista = useMemo(() => PISTAS.map((p) => faixaContinua(p)), [])
   const faixasDisco = useMemo<(PistaFaixa | null)[]>(() => ("disco" in M ? (M as MundoDisco).pistas.map((p) => PISTAS.find((x) => x.faixa === p.nome) ?? null) : []), [M])
   const pistaTocando = useRef(-1)
   const memRadio = useRef<MemoriaRadio>({ resto: 0 })
@@ -4009,7 +4060,7 @@ function CenaBase({
   // (leveza A) o chão (9 km de dunas) também fica no módulo: remontar não refaz
   const relevoNovo = useMemo(() => guardado("relevo", M, "", () => ("disco" in M ? geoChaoDisco() : "ligacoes" in M ? geoRelevoRede(M as MundoRede) : null)), [M])
   // (T39) a areia com cara de areia (areia.ts): as ondulações, o grão, as manchas e o brilho
-  const areiaMats = useMemo(() => ("disco" in M ? { chao: materialAreia({ vertexColors: true, mascara: true }), longe: materialAreia({ color: "#8c6640" }) } : null), [M])
+  const areiaMats = useMemo(() => ("disco" in M ? { chao: materialAreia({ vertexColors: true, mascara: true }) } : null), [M])
   useEffect(() => () => soltar(areiaMats), [areiaMats]) // (leveza A) dispose ao trocar/desmontar
   // (T39) onde cabe um robô caído (fora das pistas e dos lugares)
   const livreCaidos = useMemo(() => ("disco" in M ? (x: number, z: number) => M.livre(x, z, 4) : null), [M])
@@ -4461,6 +4512,8 @@ function CenaBase({
     // (ruínas, 05/11) os prédios e o entulho das ruínas do subúrbio também batem
     // (a pé, de patins, de moto: o mesmo bater/grudar dos prédios; sem a cerca do campo)
     if ("disco" in M) colisores.push(...ruinasNoMundo(M as MundoDisco).colisores)
+    // (19/11) as casas do anel do subúrbio (casasAnel.ts): a Kombi não atravessa
+    if ("disco" in M) { const Md = M as MundoDisco; for (const c of casasDoAnel(Md, ruinasNoMundo(Md).colisores).colisores) colisores.push(c) }
     return { predios, arcos, fitas, pilares, pilaresQ, postes, luzes, luzMat, reflexos, outdoors, aviacao, aviacaoMat, colisores, postesQ, placas }
   }), [M, circuitos, tex, distI, centrosLugares])
   useLayoutEffect(() => { apagarPostes(cidade, viaApagada) }, [cidade, viaApagada])
@@ -4962,8 +5015,8 @@ function CenaBase({
         vec3 sodio = vec3(1.0, 0.46, 0.18);
         c += tinta * exp(-hp * 9.0) * 0.55 + sodio * exp(-hp * 16.0) * 0.16 * noite;
         // estrelas (só lá em cima)
-        vec2 g = floor(d.xz / (hp + 0.15) * 260.0);
-        float est = step(0.9965, hash(g)) * smoothstep(0.2, 0.5, h);
+        vec2 g = floor(d.xz / (abs(h) + 0.15) * 260.0);
+        float est = step(0.9965, hash(g)) * smoothstep(0.2, 0.5, abs(h)); // (19/11) a ilha flutua: estrelas embaixo também
         c += vec3(0.75, 0.8, 1.0) * est * noite * (0.5 + 0.5 * sin(tempo * 3.0 + hash(g) * 40.0));
         // lua + halo
         float m = max(dot(d, lua), 0.0);
@@ -5794,10 +5847,12 @@ function CenaBase({
         }
         j.wx = j.wx! + Math.sin(j.rumo) * j.v * dt
         j.wz = j.wz! + Math.cos(j.rumo) * j.v * dt
-        // (B15) o deserto é "infinito", mas o chão desenhado acaba a 4,5 km:
-        // a 3,9 km o vento empurra de volta, devagar (nunca chega na borda)
-        const rr = Math.hypot(j.wx, j.wz)
-        if (rr > 3900) { const k = (rr - 3900) / rr; j.wx -= j.wx * k; j.wz -= j.wz * k; j.v *= 1 - 0.8 * dt }
+        // (19/11) a ilha acaba (historia.ts, ILHA): perto da beira o vento empurra de volta,
+        // devagar (a Kombi nunca cai do disco). Na chegada da casa a Kombi vem do céu: livre
+        if (!j.chegadaCasa) {
+          const ex = j.wx - ILHA.x, ez = j.wz - ILHA.z, rr = Math.hypot(ex, ez), lim = ILHA.r - ILHA.beira * 1.6
+          if (rr > lim) { const k = (rr - lim) / rr; j.wx -= ex * k; j.wz -= ez * k; j.v *= 1 - 0.8 * dt }
+        }
         // (09/11, bíblia §13) a Kombi não desce pros túneis: o gabarito da rampa segura ela
         if (!j.ar && !combRef.current.patins && !combRef.current.moto) {
           const passou = passouGabarito(j.wx, j.wz)
@@ -6641,18 +6696,11 @@ function CenaBase({
       // (vida no subúrbio) a posição de verdade pra gente abrir caminho (VidaSuburbio.tsx); só perto dele
       if (j.voo && j.wx !== undefined && Math.hypot(j.wx - SUBURBIO.x, j.wz! - SUBURBIO.z) < SUBURBIO.r + 300) { VIDA_JOGADOR.x = j.wx; VIDA_JOGADOR.z = j.wz!; VIDA_JOGADOR.ate = state.clock.elapsedTime + 0.5 }
     }
-    // (14/11, o dono) no deserto: os instrumentais do vol. 1, um atrás do outro
-    // (antes a faixa saía e ficava o disco antigo). Fora da pista, no chão do deserto, também
-    const infD = faixasDisco.length ? (M as MundoDisco).info[j.via] : null
-    const trilhaDeserto = semPista || (zonaSomAgora() === "deserto" && !(infD && infD.pista >= 0))
-    if (faixasDisco.length && trilhaDeserto) {
-      pistaTocando.current = -1
-      pistaSom.tocarDeserto(desertoLista)
-      pistaSom.estado(!!(j.ar || combRef.current.patins), fonteRef.current !== "off", false)
-    }
+    // (música contínua, 03/11) no deserto não tem pista: a faixa some em fade
+    if (faixasDisco.length && semPista) { if (pistaSom.src) pistaSom.sair(2); pistaTocando.current = -1 }
     // (música contínua, 03/11; bíblia §3, 08/11) entrou numa pista, o instrumental
-    // dela; nas torres continua o que estava. Com a completa da missão soando
-    // (page.tsx → pistaSom.tocarDaMissao) a troca de pista não mexe nela. Nada aqui
+    // dela; nas torres continua o que estava. Na pista da missão aceita, a completa
+    // (pistaSom.tocarFaixa); com ela soando, a troca de pista não mexe nela. Nada aqui
     // pausa nem muda o ritmo (turbo, pulo, missão): no ar só abafa
     else if (faixasDisco.length) {
       const inf = (M as MundoDisco).info[j.via]
@@ -6660,17 +6708,23 @@ function CenaBase({
       const k = naPista ? inf.pista : pistaTocando.current
       if (naPista) pistaEscura.current = !!viaApagada?.[j.via]
       const fx = k >= 0 ? faixasDisco[k] : null
-      if (fx && (k !== pistaTocando.current || !pistaSom.faixa)) {
+      // (18/11, o dono) antes da primeira missão a pista é silêncio: o disco da Kombi e a rádio seguem
+      const temMusica = !!fx && pistaSom.temMusica(fx.id)
+      if (fx && (k !== pistaTocando.current || (!pistaSom.faixa && temMusica))) {
         pistaTocando.current = k
-        // (14/11, o dono) uma fonte por vez: a trilha do lugar não derruba o disco nem a
-        // rádio (eles é que calam ela, no estado abaixo). Na cidade: o instrumental, a prévia, e acaba
-        pistaSom.tocarFaixa({ ...faixaContinua(fx), forma: "cidade", previa: `/audio/previews/${fx.id}.mp3` })
+        if (temMusica) {
+          if (fonteRef.current !== "radio") player.pausar()
+          discoPainel.parar()
+        }
+        pistaSom.tocarFaixa(faixaContinua(fx))
         // (rádios, 05/11) com a Rádio Cidade Neon ligada, a faixa da rua é a próxima dela
         pedirFaixaDaRua(fx.id)
       }
+      // (18/11, o dono) no ar a música da pista para; no chão volta do mesmo ponto
+      pistaSom.pausarNoAr(!!j.ar)
       // a completa da missão não é a música da pista: fora dela (no chão) ou numa pista apagada ela soa limpa
       const daMissao = pistaSom.daMissao
-      pistaSom.estado(!!(j.ar || (j.voo && !daMissao) || combRef.current.patins), fonteRef.current !== "off", pistaEscura.current && !daMissao)
+      pistaSom.estado(!!(j.ar || (j.voo && !daMissao) || combRef.current.patins), fonteRef.current === "radio", pistaEscura.current && !daMissao)
     }
     // ── câmera: amortecida, abre com a velocidade, inclina com a curva ──
     const dePatins = !!combRef.current.patins
@@ -7360,6 +7414,8 @@ function CenaBase({
       {"ligacoes" in M ? <Seguro nome="flores"><FloresAsfalto M={M} {...floresAsf} /></Seguro> : <Perto nome="flores" raio={500}><Seguro nome="flores"><Flores M={M} regadas={regadas} /></Seguro></Perto>}
       {PARQUE_CONF.ligado && <Perto nome="parque" raio={700} pontos={pertoDe.parque}><Seguro nome="parque"><Parque M={M} passeio={passeio} /></Seguro></Perto>}
       {"disco" in M && <Perto nome="ruínas" raio={SUBURBIO.r + 700} pontos={pertoDe.ruinas}><Seguro nome="ruínas"><Suspense fallback={null}><RuinasSuburbio M={M as MundoDisco} hora={horaCeuRef} /></Suspense></Seguro><Seguro nome="corrida de rua"><CorridaRuaCena chao={(M as MundoDisco).chaoEm} jogo={jogo as unknown as React.RefObject<{ wx?: number; wz?: number; rumo?: number; v: number; vx?: number; voo?: boolean; tempo: number }>} comb={combRef} /></Seguro></Perto>}
+      {/* (19/11) o anel do subúrbio em volta da cratera, cheio de casinhas como no mapa ilustrado */}
+      {"disco" in M && <Seguro nome="casas do anel"><CasasAnel M={M as MundoDisco} /></Seguro>}
       <Perto nome="subúrbio" raio={centroSub.r + 700} pontos={pertoDe.suburbio}><Seguro nome="subúrbio"><Suspense fallback={null}><Suburbio cx={centroSub.x} cz={centroSub.z} raioChao={centroSub.r} /></Suspense></Seguro></Perto>
       <Estatico>
       <primitive object={cidade.postes} />
@@ -7453,8 +7509,9 @@ function CenaBase({
       {/* o mapa novo: o relevo do v5 debaixo das ruas */}
       {/* (disco, B15) o chão tem uma luz própria fraquinha: de noite, embaixo das pistas, ele lia como um buraco preto */}
       {relevoNovo && ("disco" in M && areiaMats ? <mesh geometry={relevoNovo} material={areiaMats.chao} /> : <mesh geometry={relevoNovo}><meshStandardMaterial vertexColors roughness={0.95} emissive={"disco" in M ? "#3a2614" : "#000000"} emissiveIntensity={0.55} /></mesh>)}
-      {/* (disco, B15) depois dos 9 km de dunas, a areia continua lisa até o horizonte (sem borda vazada) */}
-      {"disco" in M && areiaMats && <mesh rotation-x={-Math.PI / 2} position={[0, -15, 0]} material={areiaMats.longe}><planeGeometry args={[60000, 60000]} /></mesh>}
+      {/* (19/11, o dono: "aquele mapa flutuante é o do jogo") o disco é uma ilha no céu: a areia acaba na
+          beira e embaixo pendura o cone com os túneis por fora (sai o chão liso até o horizonte) */}
+      {"disco" in M && <Seguro nome="ilha"><Ilha /></Seguro>}
       {lixo && <><primitive object={lixo.carros} /><primitive object={lixo.pneus} /></>}
       <primitive object={orbs.m} />
       {"disco" in M && <GotasDeserto jogo={jogo} aoPegar={() => evs.current?.anel()} />}

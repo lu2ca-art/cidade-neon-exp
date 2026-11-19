@@ -22,7 +22,7 @@ import { mergeGeometries } from "three/examples/jsm/utils/BufferGeometryUtils.js
 import { BOCA, GABARITO_S, QUADRA, geoBoca } from "../estrada/chao"
 import { materialAreia } from "../estrada/areia"
 import { AGUAS_CHAO, PECAS_CHAO, chaoAtivos, ehAgua, ehPeca, ouvirChaoAtivos, type PecaChao } from "./achados"
-import { CHAO_ABERTOS, CHAO_FIXOS, CHAO_LUGARES, GIRO_BAR, SUBURBIO, type LugarChao } from "./historia"
+import { CHAO_ABERTOS, CHAO_FIXOS, CHAO_LUGARES, GIRO_BAR, SUBURBIO, giroPraCratera, type LugarChao } from "./historia"
 import { URL_CIDADE, matsCidade } from "../estrada/Lugares"
 
 // (09/11, ep. 5) a feira: só baixa quando chega perto (o <Perto> já tem Suspense)
@@ -502,7 +502,7 @@ function pouso(id: Aberto, chao: (x: number, z: number) => number) {
   const l = CHAO_LUGARES[id]
   let y = Infinity
   for (const [a, b] of [[0, 0], [1, 1], [1, -1], [-1, 1], [-1, -1]]) y = Math.min(y, chao(l.x + a * 7, l.z + b * 7))
-  return { x: l.x, y, z: l.z, rot: Math.atan2(SUBURBIO.x - l.x, SUBURBIO.z - l.z) }
+  return { x: l.x, y, z: l.z, rot: giroPraCratera(l.x, l.z) }
 }
 // leva uma peça do lugar (local) pro mundo: gira em y e desloca
 function noMundo(q: Peca3, x: number, y: number, z: number, rot: number): Peca3 {
