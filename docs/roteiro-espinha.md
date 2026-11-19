@@ -167,9 +167,8 @@ narrativa, ela é pega pelo Núcleo: game over, começa de novo.
 - **A ronda:** uma tabela fixa de pontos do subúrbio por hora do dia simulado. Dá pra decorar
   o horário (e o mapa pode mostrar onde eles foram vistos por último).
 - **O relógio pausa** com a aba fechada ou o jogo pausado. Só conta o tempo jogando.
-- **"Começa de novo"** pode ser de duas formas (decisão do LU2CA):
-  - do zero: perde tudo;
-  - do último capítulo: perde o que fez desde a última missão concluída.
+- **[cânone, 19/11] O game over volta pro último capítulo, com a água roubada.** O Núcleo leva
+  a Água$ que você tinha; o progresso da história até o último capítulo concluído fica.
 
 ---
 
