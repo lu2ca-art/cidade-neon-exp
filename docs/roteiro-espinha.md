@@ -34,7 +34,15 @@ Legenda: **[cânone]** = ditado pelo LU2CA · **[proposta]** = sugestão da equi
 - **Todos quiseram um pouco da água**, inclusive as máquinas, que já eram mais inteligentes que
   os humanos havia dois séculos, desde que o Criador saiu.
 
+- **A água vem das raízes (18/11).** O Criador descobriu que as raízes soltavam essa água: a seiva.
+- **Os túneis:** lá embaixo o mundo é insano. A galera bebe dessa água e está ficando
+  "eletricona". É um bio-natural-cyber: gente que chupa energia da seiva da raiz.
+
 **O que isso amarra [proposta]**
+- A planta do Criador que a Ella guarda (ep. 7) é a semente de tudo: a primeira raiz do looppool.
+- O final (a floresta crescendo sobre as veias de neon) é a raiz voltando a ser só raiz.
+- Os túneis (ep. 6, corrida) ficam mais perto das raízes. A luz lá embaixo vem do corpo das
+  pessoas, não das lâmpadas: veias que brilham na pele, olhos acesos, faísca no toque.
 - A Água$ é literalmente energia, por isso paga missão e o mecânico.
 - As gotas iridescentes são água carregada de informação.
 - O loop dos copos (ep. 1) e o copo que nunca esvazia (ep. 3) são o looppool em pequeno.
