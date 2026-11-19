@@ -27,10 +27,9 @@ const gancho = (page: Page, f: "chegou" | "fimPeca", arg?: string) =>
     return m[f!](arg ?? undefined) !== false
   }, [f, arg] as const, { timeout: 20_000 })
 async function porta(page: Page, nome: string, porta: string) {
-  const r = page.locator(".l-recompensa")
-  await expect(r).toBeVisible({ timeout: 20_000 })
+  // (19/11) a tela de recompensa saiu (limpeza da main, 61c6af9): a porta abre no save
+  await expect.poll(async () => (await save(page)).disco.portas ?? [], { timeout: 30_000 }).toContain(porta)
   await page.screenshot({ path: `${PASTA}/${nome}-porta.png` })
-  expect((await save(page)).disco.portas).toContain(porta)
 }
 
 test.beforeAll(() => mkdirSync(PASTA, { recursive: true }))
