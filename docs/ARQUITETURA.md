@@ -2,19 +2,19 @@
 
 Gerado por `node scripts/gerar-mapa.mjs` (`bun run mapa`). Não editar à mão. Cobre `app/`, `components/`, `lib/` e `hooks/`, só imports estáticos e dinâmicos com string.
 
-339 arquivos, 68786 linhas, 5 ciclos de importação, 53 arquivos que ninguém importa.
+338 arquivos, 68529 linhas, 5 ciclos de importação, 52 arquivos que ninguém importa.
 
 ## Áreas
 `usa` = outras áreas que esta importa. Sala que usa outra sala é acoplamento: mexer numa quebra a outra.
 
 | área | arquivos | linhas | usa |
 |---|---|---|---|
-| app/linha | 86 | 21641 | app/casa-de-shows, app/fliperama, app/galeria, app/ginasio, app/oficina, app/parque, app/teste, components, lib |
-| components | 78 | 12504 | app/providers, hooks, lib |
+| app/linha | 86 | 21727 | app/casa-de-shows, app/fliperama, app/galeria, app/ginasio, app/oficina, app/parque, app/teste, components, lib |
+| components | 77 | 12156 | app/providers, hooks, lib |
 | app/batida | 56 | 7263 | app/providers |
 | app/neon-tiles | 10 | 3873 | app/providers, lib |
 | app/drive | 1 | 2529 | app/n3xo, app/providers, components, lib |
-| app (raiz) | 5 | 2221 | app/providers, components, lib |
+| app (raiz) | 5 | 2226 | app/providers, components, lib |
 | app/nectar | 7 | 1300 | app/providers, lib |
 | lib | 12 | 1221 | app/n3xo |
 | app/fliperama | 10 | 1185 | app/linha, app/neon-tiles |
@@ -54,7 +54,7 @@ Gerado por `node scripts/gerar-mapa.mjs` (`bun run mapa`). Não editar à mão. 
 ## Módulos mais importados (mexer aqui afeta muita coisa)
 | arquivo | importado por |
 |---|---|
-| lib/utils.ts | 51 |
+| lib/utils.ts | 50 |
 | app/batida/lib/types.ts | 30 |
 | app/linha/data.ts | 25 |
 | app/linha/som.ts | 20 |
@@ -78,9 +78,9 @@ Gerado por `node scripts/gerar-mapa.mjs` (`bun run mapa`). Não editar à mão. 
 ## Maiores arquivos (candidatos a dividir)
 | arquivo | linhas |
 |---|---|
-| app/linha/estrada/Corrida.tsx | 4496 |
+| app/linha/estrada/Corrida.tsx | 4582 |
 | app/drive/page.tsx | 2529 |
-| app/page.tsx | 2023 |
+| app/page.tsx | 2025 |
 | components/DriveCockpit/CyberpunkCity.tsx | 1374 |
 | app/linha/page.tsx | 1250 |
 | components/DriveCockpit/CockpitScene.tsx | 1216 |
@@ -90,7 +90,7 @@ Gerado por `node scripts/gerar-mapa.mjs` (`bun run mapa`). Não editar à mão. 
 | app/linha/chat.tsx | 935 |
 | app/linha/som.ts | 745 |
 | app/batida/lib/synths.ts | 737 |
-| components/ui/sidebar.tsx | 727 |
+| components/ui/sidebar.tsx | 726 |
 | app/kombi-editor/page.tsx | 698 |
 | app/batida/estudio/Estudio.tsx | 596 |
 
@@ -120,7 +120,6 @@ Confira antes de apagar: pode ser carregado por caminho dinâmico.
 - components/ui/calendar.tsx (214 linhas)
 - components/ui/card.tsx (93 linhas)
 - components/ui/carousel.tsx (242 linhas)
-- components/ui/chart.tsx (354 linhas)
 - components/ui/checkbox.tsx (33 linhas)
 - components/ui/collapsible.tsx (34 linhas)
 - components/ui/command.tsx (185 linhas)
@@ -144,7 +143,7 @@ Confira antes de apagar: pode ser carregado por caminho dinâmico.
 - components/ui/resizable.tsx (57 linhas)
 - components/ui/scroll-area.tsx (59 linhas)
 - components/ui/select.tsx (186 linhas)
-- components/ui/sidebar.tsx (727 linhas)
+- components/ui/sidebar.tsx (726 linhas)
 - components/ui/slider.tsx (64 linhas)
 - components/ui/sonner.tsx (26 linhas)
 - components/ui/spinner.tsx (17 linhas)
