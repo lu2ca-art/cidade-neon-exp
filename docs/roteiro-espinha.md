@@ -37,6 +37,11 @@ Legenda: **[cânone]** = ditado pelo LU2CA · **[proposta]** = sugestão da equi
 - **A água vem das raízes (18/11).** O Criador descobriu que as raízes soltavam essa água: a seiva.
 - **Os túneis:** lá embaixo o mundo é insano. A galera bebe dessa água e está ficando
   "eletricona". É um bio-natural-cyber: gente que chupa energia da seiva da raiz.
+- **Quem sabe o quê:**
+  - Os robôs usam essa água porque sabem o valor dela.
+  - O povo não sabia do poder das raízes, das plantas, da natureza.
+  - Quem bebe dessa água sabe que dá pra mudar o mundo, que existe solução, e vai atrás. **Os
+    túneis são a revolução.**
 
 **O que isso amarra [proposta]**
 - A planta do Criador que a Ella guarda (ep. 7) é a semente de tudo: a primeira raiz do looppool.
