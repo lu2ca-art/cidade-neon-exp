@@ -43,7 +43,8 @@ export function TorreCentral({ c, janelas }: { c: CentralDisco; janelas: THREE.T
     // as faixas das linhas: um arco de neon no prédio, na altura do anel, virado
     // pra saída de cada linha (o ângulo do Q; no three, θ = π/2 − ang)
     const arco = 0.34
-    const faixas = mergeGeometries(c.andares.map((a) => comCor(new THREE.CylinderGeometry(c.nucleo + 0.6, c.nucleo + 0.6, 2.2, 10, 1, true, Math.PI / 2 - a.ang - arco / 2, arco).translate(0, yAnel + 1.2, 0), new THREE.Color(a.cor))), false)
+    // (19/11) a torre central do vinil não tem alças (sem andares): sem faixas, uma malha vazia (o merge de nada quebrava o jogo)
+    const faixas = !c.andares.length ? new THREE.BufferGeometry() : mergeGeometries(c.andares.map((a) => comCor(new THREE.CylinderGeometry(c.nucleo + 0.6, c.nucleo + 0.6, 2.2, 10, 1, true, Math.PI / 2 - a.ang - arco / 2, arco).translate(0, yAnel + 1.2, 0), new THREE.Color(a.cor))), false)
     // os pilares do anel (do deserto até embaixo do asfalto)
     const pils: THREE.BufferGeometry[] = []
     for (let k = 0; k < N_PILARES; k++) {
