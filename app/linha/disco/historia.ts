@@ -49,6 +49,9 @@ export interface HistoriaDisco {
   pecas?: string[]
   // (21/10, a feira) a missão que ele pegou (a linha); sem ela, a feira oferece as acesas
   missao?: string
+  // (18/11, o dono) a última música de missão (aceita ou largada): a pista dela.
+  // A Rádio Cidade Neon Crypto e as pistas tocam o instrumental dela, em loop
+  ultimaFaixa?: string
   // o show que está pra acontecer: (T02) não é mais o fim da missão. É o Guitar
   // Driver aberto agora: "rua:<faixa>" (a oportunidade na rua) ou
   // "missao:<id>" (a peça de uma missão que é tocar ao vivo, a do LU2CA) ou

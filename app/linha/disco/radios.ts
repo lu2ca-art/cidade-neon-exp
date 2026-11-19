@@ -34,20 +34,19 @@ export interface VinhetaRadio { de: string; texto: string; audio: string | null;
 
 export const ESTACOES_RADIO: Record<EstacaoRadio, { freq: FreqId; nome: string; cor: string }> = {
   xenom: { freq: "suburbio", nome: "RÁDIO XENOM", cor: "#ff2d78" },
-  cidade: { freq: "linha", nome: "RÁDIO CIDADE NEON", cor: "#2fe8ff" },
+  cidade: { freq: "linha", nome: "RÁDIO CIDADE NEON CRYPTO", cor: "#2fe8ff" },
 }
 export const estacaoDaZona = (z: ZonaSom): EstacaoRadio => (z === "cidade" ? "cidade" : "xenom")
 export const estacaoDaFreq = (f: FreqId | null | undefined): EstacaoRadio | null =>
   f === "suburbio" ? "xenom" : f === "linha" ? "cidade" : null
 
 // ── o repertório ──
-// Cidade Neon: o vol. 1, na ordem do álbum (PISTAS), a completa se a voz já saiu
-export function faixasDaEstacao(e: EstacaoRadio, agora = Date.now()): FaixaRadio[] {
+// (18/11, o dono) Cidade Neon Crypto: o instrumental da última música de missão
+// (aceita ou largada), em loop. Antes da primeira missão, fora do ar
+export function faixasDaEstacao(e: EstacaoRadio, _agora = Date.now()): FaixaRadio[] {
   if (e === "cidade") {
-    return PISTAS.map((p) => {
-      const src = faixaDaPista(p, agora)
-      return { titulo: src === p.inst ? `${p.faixa} · inst` : p.faixa, src, pista: p.id }
-    }).filter((f) => !!f.src)
+    const p = PISTAS.find((x) => x.id === contexto.h?.ultimaFaixa)
+    return p?.inst ? [{ titulo: `${p.faixa} · inst`, src: p.inst, pista: p.id }] : []
   }
   // Xenom: tudo que já existe no jogo e não é do vol. 1
   const sub = FREQUENCIAS.find((f) => f.id === "suburbio")?.faixas ?? []

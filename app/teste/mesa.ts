@@ -26,11 +26,11 @@ export interface Cartao {
 export const MESA: Cartao[] = [
   {
     parte: "carreira.meio",
-    nome: "A música da missão: aceitar toca o instrumental, a pista dela toca com voz. E a rádio do deserto com sinal ruim",
+    nome: "A lógica das músicas: a Rádio Crypto nas pistas, a música da missão na pista dela, silêncio no ar",
     data: "2026-11-18",
-    tarefa: "música da missão",
-    olhar: "Abra o mapa pelo holo e aceite uma missão: começa o instrumental da música dela, onde você estiver. Ande por outras pistas: cada uma toca o instrumental dela. Entre na pista da missão: aí a música toca de verdade, com voz, do início, e nada corta até ela acabar. Pelo botão de baixo você vai pro deserto: ligue a rádio e ouça o sinal ruim, com mais chiado e o som indo e voltando.",
-    perguntas: ["Aceitar e ouvir o instrumental: é isso?", "Quando a música com voz acaba, volta o instrumental da pista. Tudo bem?", "O sinal ruim do deserto está forte demais ou de menos?", "Saindo da pista da missão no meio da música com voz, ela continua até o fim. Quer assim, ou volta pro instrumental da pista nova?"],
+    tarefa: "lógica das músicas",
+    olhar: "Aceite uma missão pelo holo. Nas pistas toca a Rádio Cidade Neon Crypto: o instrumental da música dessa missão, em loop. Entre na pista da missão: a música do álbum, com voz, entra no mesmo ponto; saindo dela, volta o instrumental. Pule: no ar a música para e volta do mesmo ponto quando cai no chão. Largue a missão: o instrumental dela continua sendo o da Crypto. Pelo botão de baixo, no deserto: ligue a rádio, a Xenom e a Crypto com sinal ruim. Nos túneis a rádio não pega.",
+    perguntas: ["A troca de voz pra instrumental, no mesmo ponto, ao sair da pista da missão ficou boa?", "O sinal ruim do deserto está forte demais ou de menos?", "No ar, o MP3 e o toca-discos seguem tocando: confere?"],
     mais: [{ parte: "elevador.deserto", nome: "no deserto (ligue a rádio)" }],
   },
 

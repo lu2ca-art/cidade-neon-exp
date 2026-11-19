@@ -6635,14 +6635,20 @@ function CenaBase({
       const k = naPista ? inf.pista : pistaTocando.current
       if (naPista) pistaEscura.current = !!viaApagada?.[j.via]
       const fx = k >= 0 ? faixasDisco[k] : null
-      if (fx && (k !== pistaTocando.current || !pistaSom.faixa)) {
+      // (18/11, o dono) antes da primeira missão a pista é silêncio: o disco da Kombi e a rádio seguem
+      const temMusica = !!fx && pistaSom.temMusica(fx.id)
+      if (fx && (k !== pistaTocando.current || (!pistaSom.faixa && temMusica))) {
         pistaTocando.current = k
-        if (fonteRef.current !== "radio") player.pausar()
-        discoPainel.parar()
+        if (temMusica) {
+          if (fonteRef.current !== "radio") player.pausar()
+          discoPainel.parar()
+        }
         pistaSom.tocarFaixa(faixaContinua(fx))
         // (rádios, 05/11) com a Rádio Cidade Neon ligada, a faixa da rua é a próxima dela
         pedirFaixaDaRua(fx.id)
       }
+      // (18/11, o dono) no ar a música da pista para; no chão volta do mesmo ponto
+      pistaSom.pausarNoAr(!!j.ar)
       // a completa da missão não é a música da pista: fora dela (no chão) ou numa pista apagada ela soa limpa
       const daMissao = pistaSom.daMissao
       pistaSom.estado(!!(j.ar || (j.voo && !daMissao) || combRef.current.patins), fonteRef.current === "radio", pistaEscura.current && !daMissao)

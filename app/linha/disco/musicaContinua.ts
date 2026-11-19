@@ -2,22 +2,18 @@
 // dura o tamanho da faixa"; 08/11, bíblia §3: a música é atrelada à missão).
 // Cada pista é uma faixa do vol. 1:
 //
-// 1. andando numa rua → o INSTRUMENTAL da faixa daquela pista, em loop
-// 2. aceitou uma missão com faixa (EPISODIOS) → o INSTRUMENTAL da faixa da
-//    missão, em loop, onde quer que ele esteja (o deserto não cala ele).
-//    Andando na PISTA da missão → a COMPLETA, com voz, do início. Dali nada a
-//    interrompe: nem a troca de pista, nem as peças e cenas, nem turbo ou celular
-//    (18/11, o dono: "aceita a missão, o instrumental começa; quando ativa a
-//    missão daquela pista, andar por ela faz a música tocar de fato, com voz")
-// 3. a completa da missão terminou → o instrumental dela, em loop, até trocar
-//    de pista (aí vale o 1)
-// 4. missão sem faixa (LIVRES, o final) → segue o 1
-// 5. a música não depende de velocidade nem distância (turbo não muda nada)
-// 6. rádio ligada manda no som: a completa da missão espera a rádio sair
-// 7. faixa sem instrumental → a regra antiga: na rua a completa uma vez, depois
-//    ela mesma mais baixa no lugar do instrumental
-// 8. comprou o álbum → a completa sempre, em loop; missão/peça/cena no meio
-//    troca pro instrumental no mesmo ponto
+// (18/11, o dono: "essa é a lógica das músicas") — vale por cima das regras antigas:
+// 1. NAS PISTAS toca a RÁDIO CIDADE NEON CRYPTO (limpa): o instrumental, em loop,
+//    da ÚLTIMA música de missão (a aceita; largou, ela continua sendo a última).
+//    Antes da primeira missão: silêncio (e o disco de vinil da Kombi)
+// 2. na PISTA DA MISSÃO aceita: a música do álbum, com voz (a completa). Nas
+//    outras pistas, o instrumental dela. A mesma música troca de versão no mesmo ponto
+// 3. NO AR a música da pista para; no chão volta do mesmo ponto. O MP3 (patins,
+//    jetpack), o toca-discos da Kombi e o FR3Q_ (a mídia baixada) tocam em qualquer lugar
+// 4. FORA DAS PISTAS (o chão, o deserto) a pista não toca. No deserto, a rádio com
+//    SINAL RUIM: a Xenom e a Crypto. Mais os discos, os instrumentos, as batidas
+// 5. NOS TÚNEIS a rádio não pega: só a mídia física (o MP3, os discos)
+// 6. comprou o álbum → a completa sempre, em loop (a regra antiga, hoje ninguém)
 //
 // Aqui é só regra e memória (sem áudio): quem toca é o PistaSom (som.ts).
 // Ver docs/musica-continua.md.

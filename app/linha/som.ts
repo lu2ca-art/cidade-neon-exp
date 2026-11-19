@@ -615,7 +615,7 @@ const RADIO_ANTIGA = {
   ruimFalha: 0.32, // quanto o sinal cai (0 = firme)
 }
 let ra: { c: AudioContext; src: AudioNode; seco: GainNode; filtro: BiquadFilterNode; molhado: GainNode; chiadoG: GainNode; falha: GainNode; chiado: AudioBufferSourceNode | null; ligado: boolean; solto: ReturnType<typeof setTimeout> | null } | null = null
-let radioAntigaQuer: boolean | "ruim" = false
+let radioAntigaQuer: boolean | "ruim" | "mudo" = false
 let bufChiado: AudioBuffer | null = null // o ruído do chiado: feito uma vez
 function montarRadioAntiga(c: AudioContext, src: AudioNode, dst: AudioNode) {
   const seco = c.createGain()
@@ -647,7 +647,8 @@ function montarRadioAntiga(c: AudioContext, src: AudioNode, dst: AudioNode) {
 }
 function aplicarRadioAntiga() {
   if (!ra) return
-  const r = ra, t = r.c.currentTime, on = !!radioAntigaQuer, ruim = radioAntigaQuer === "ruim"
+  const mudo = radioAntigaQuer === "mudo"
+  const r = ra, t = r.c.currentTime, on = !!radioAntigaQuer && !mudo, ruim = radioAntigaQuer === "ruim"
   r.filtro.frequency.setTargetAtTime(ruim ? RADIO_ANTIGA.ruimCentro : RADIO_ANTIGA.centro, t, RADIO_ANTIGA.fade)
   r.filtro.Q.setTargetAtTime(ruim ? RADIO_ANTIGA.ruimQ : RADIO_ANTIGA.q, t, RADIO_ANTIGA.fade)
   r.falha.gain.setTargetAtTime(ruim ? RADIO_ANTIGA.ruimFalha : 0, t, RADIO_ANTIGA.fade)
@@ -656,7 +657,7 @@ function aplicarRadioAntiga() {
     if (r.solto) { clearTimeout(r.solto); r.solto = null }
     try { r.src.connect(r.filtro) } catch {}
   }
-  r.seco.gain.setTargetAtTime(on ? 0 : 1, t, RADIO_ANTIGA.fade)
+  r.seco.gain.setTargetAtTime(on || mudo ? 0 : 1, t, RADIO_ANTIGA.fade)
   r.molhado.gain.setTargetAtTime(on ? RADIO_ANTIGA.ganho : 0, t, RADIO_ANTIGA.fade)
   // o chiado: só com a rádio no ar (um loop de 2 s de ruído, no relógio do áudio)
   const chia = on && player.tocando
@@ -677,10 +678,10 @@ function aplicarRadioAntiga() {
     r.solto = setTimeout(() => { r.solto = null; if (!radioAntigaQuer && r.ligado) { r.ligado = false; try { r.src.disconnect(r.filtro) } catch {} } }, RADIO_ANTIGA.fade * 5000)
   }
 }
-/** no subúrbio e nos túneis (true) a rádio soa como rádio antigo; no deserto
- *  ("ruim") como rádio antigo com sinal ruim; na cidade (false), limpa.
+/** no subúrbio (true) a rádio soa como rádio antigo; no deserto ("ruim") como
+ *  rádio antigo com sinal ruim; nos túneis ("mudo") não pega; na cidade (false), limpa.
  *  Barato: só mexe no grafo quando muda (pode chamar a cada quadro) */
-export function radioAntiga(sim: boolean | "ruim") {
+export function radioAntiga(sim: boolean | "ruim" | "mudo") {
   if (sim === radioAntigaQuer) return
   radioAntigaQuer = sim
   aplicarRadioAntiga()
@@ -1123,14 +1124,18 @@ class PistaSom {
   daMissao = false
   // aceitou com a rádio mandando no som: a música da missão espera a rádio sair
   private pendente: { f: FaixaContinua; missao: string } | null = null
-  // (18/11, o dono) a faixa da missão aceita: aceitar começa o INSTRUMENTAL dela;
-  // a completa (com voz) só toca andando na pista dela
+  // (18/11, o dono) A LÓGICA DAS MÚSICAS NAS PISTAS (disco/musicaContinua.ts):
+  // nas pistas toca a RÁDIO CIDADE NEON CRYPTO = o instrumental, em loop, da
+  // última música de missão (aceita ou largada). Antes da primeira: silêncio.
+  // Na pista da missão aceita: a completa, com voz (a do álbum). No ar: pausa.
   private faixaMissao: FaixaContinua | null = null
   private missaoId: string | null = null
-  // o instrumental da missão está soando fora da pista dela (o deserto não cala ele)
-  private instDaMissao = false
+  private crypto: FaixaContinua | null = null
   // a pista onde ele está agora (null = fora das pistas)
   private naPista: string | null = null
+  // no ar a música da pista para e volta do mesmo ponto ao pousar
+  private pausaAr = false
+  private pausadaNoAr = false
   private emMissao = 0
   private aplicarAgendado = false
   private segurando = false
@@ -1227,8 +1232,8 @@ class PistaSom {
     const src = papel === "completa" ? f.completa : f.inst
     const vol = this.volDe(papel)
     // (revisão 05/11) fazendo música: troca o deck parado, sem tocar; volta junto (voltarDaMusica)
-    const calado = musicaPausada
-    if (calado) { this.pausadaPraMusica = true; fade = 0 }
+    const calado = musicaPausada || this.pausaAr
+    if (calado) { if (musicaPausada) this.pausadaPraMusica = true; if (this.pausaAr) this.pausadaNoAr = true; fade = 0 }
     const cur = this.ativo >= 0 ? this.decks[this.ativo] : null
     this.modo = papel
     // mesmo arquivo (a faixa sem voz ainda: a completa É o instrumental): sem troca
@@ -1271,57 +1276,98 @@ class PistaSom {
     if (ocioso.src !== src) { ocioso.el.preload = "auto"; ocioso.el.src = src; ocioso.src = src }
   }
 
-  /** entrou numa pista: a faixa dela do início (a mesma faixa: segue tocando).
-   *  A pista da missão aceita: a completa, com voz (18/11, o dono) */
-  tocarFaixa(f: FaixaContinua, fade = CROSSFADE) {
+  /** entrou numa pista (18/11, o dono): a pista da missão toca a completa, com
+   *  voz; as outras, a Crypto (o instrumental da última música de missão). Sem
+   *  nenhuma missão ainda: silêncio. A mesma música troca de versão no mesmo ponto */
+  tocarFaixa(f: FaixaContinua, _fade = CROSSFADE) {
     this.naPista = f.id
-    if (this.daMissao) return
-    if (this.faixaMissao && this.faixaMissao.id === f.id) return this.comecarCompleta(this.faixaMissao)
-    if (this.faixa && this.faixa.id === f.id && this.tocando) return
-    this.instDaMissao = false
-    this.faixa = f
-    definirFaixaRua(f.id)
-    definirTom(f.tom)
-    this.completaViva = comecaPelaCompleta(f)
-    const papel: Papel = this.completaViva && this.emMissao === 0 ? "completa" : "inst"
-    this.tocar(papel, 0, fade, papel === "inst" ? !this.completaViva : albumComprado())
+    this.aplicarPista()
   }
-  /** (18/11, o dono) aceitou a missão: começa o INSTRUMENTAL da faixa dela, onde
-   *  quer que ele esteja. Já na pista dela: a completa, com voz. Depois, andar na
-   *  pista da missão é o que faz a música tocar de verdade (tocarFaixa) */
+  /** a última música de missão mudou (o save): é ela que a Crypto toca */
+  definirCrypto(f: FaixaContinua | null) {
+    if ((f?.id ?? null) === (this.crypto?.id ?? null)) return
+    this.crypto = f
+    if (this.naPista) this.aplicarPista()
+  }
+  /** a missão aceita agora (o save; sem tocar nada): a pista dela vai tocar a completa */
+  definirMissao(f: FaixaContinua | null, missao: string | null) {
+    this.faixaMissao = f
+    this.missaoId = f ? missao : null
+  }
+  private aplicarPista() {
+    const fm = this.faixaMissao
+    if (fm && this.naPista === fm.id) return this.comecarCompleta(fm)
+    if (this.crypto) return this.tocarCrypto(this.crypto)
+    this.calar(1.5)
+  }
+  /** aceitou a missão: ela vira a última música (a Crypto passa a tocar o
+   *  instrumental dela) e, se ele já está na pista dela, a completa começa */
   tocarDaMissao(f: FaixaContinua, missao: string) {
     this.pendente = null
     this.faixaMissao = f
     this.missaoId = missao
+    this.crypto = f
     if (fonteSom.get() === "radio") { this.pendente = { f, missao }; return }
     this.iniciarDaMissao(f)
   }
-  private iniciarDaMissao(f: FaixaContinua) {
+  private iniciarDaMissao(_f: FaixaContinua) {
+    // fora das pistas não muda nada (o deserto segue com a rádio, os discos)
+    if (!this.naPista) return
     // a mesma precedência de entrar numa pista: o disco e a rádio parada saem
     player.pausar()
     disco.parar()
-    if (this.naPista === f.id) return this.comecarCompleta(f)
-    if (this.daMissao) return // uma completa de missão anterior ainda soando: termina e cai no instrumental
-    const cur = this.ativo >= 0 ? this.decks[this.ativo] : null
-    this.faixa = f
-    definirFaixaRua(f.id)
-    definirTom(f.tom)
-    this.completaViva = false
-    this.instDaMissao = true
-    if (cur && cur.src === f.inst && !cur.el.paused) { this.modo = "inst"; cur.el.loop = true; return }
-    this.tocar("inst", 0, CROSSFADE, true)
+    this.aplicarPista()
   }
-  /** na pista da missão: a completa, do início. Nada a interrompe (nem a troca de pista) */
+  /** essa pista tem música agora? (antes da primeira missão, não: o disco da Kombi segue) */
+  temMusica(pista: string) {
+    return !!this.crypto || this.faixaMissao?.id === pista
+  }
+  /** na pista da missão: a completa (a do álbum). Se o instrumental dela está
+   *  soando, a voz entra no mesmo ponto */
   private comecarCompleta(f: FaixaContinua) {
     const cur = this.ativo >= 0 ? this.decks[this.ativo] : null
+    if (cur && this.faixa?.id === f.id && cur.src === f.completa && (!cur.el.paused || this.pausadaNoAr)) { this.daMissao = true; return }
+    const desde = cur && this.faixa?.id === f.id && cur.src === f.inst ? cur.el.currentTime : 0
     this.faixa = f
     definirFaixaRua(f.id)
     definirTom(f.tom)
     this.completaViva = true
     this.daMissao = true
-    this.instDaMissao = false
-    if (cur && cur.src === f.completa && !cur.el.paused) { this.modo = "completa"; cur.el.loop = false; return }
-    this.tocar("completa", 0, CROSSFADE, false)
+    this.tocar("completa", desde, CROSSFADE, false)
+  }
+  /** a Crypto: o instrumental da última música de missão, em loop */
+  private tocarCrypto(c: FaixaContinua) {
+    const cur = this.ativo >= 0 ? this.decks[this.ativo] : null
+    this.daMissao = false
+    if (cur && this.faixa?.id === c.id && cur.src === c.inst && (!cur.el.paused || this.pausadaNoAr)) { cur.el.loop = true; this.modo = "inst"; return }
+    const desde = cur && this.faixa?.id === c.id && cur.src === c.completa ? cur.el.currentTime : 0
+    this.faixa = c
+    definirFaixaRua(c.id)
+    definirTom(c.tom)
+    this.completaViva = false
+    this.tocar("inst", desde, CROSSFADE, true)
+  }
+  /** silêncio nas pistas (antes da primeira missão): some em fade, sem esquecer a pista */
+  private calar(fadeSeg: number) {
+    this.daMissao = false
+    if (!this.faixa || this.ativo < 0) return
+    const d = this.decks[this.ativo]
+    this.faixa = null
+    definirFaixaRua(null)
+    this.rampa(d, 0, fadeSeg)
+    if (d.parada) clearTimeout(d.parada)
+    d.parada = setTimeout(() => { d.parada = null; if (!this.faixa) d.el.pause() }, fadeSeg * 1000 + 80)
+  }
+  /** no ar (true): a música da pista para; no chão volta do mesmo ponto.
+   *  O MP3, o toca-discos e o FR3Q_ são outros canais: seguem tocando */
+  pausarNoAr(sim: boolean) {
+    if (sim === this.pausaAr) return
+    this.pausaAr = sim
+    const e = this.el
+    if (sim) { if (this.faixa && e && !e.paused) { e.pause(); this.pausadaNoAr = true } return }
+    if (!this.pausadaNoAr) return
+    this.pausadaNoAr = false
+    if (this.faixa && e && e.paused && !musicaPausada) tocarSemErro(e)
   }
   /** desligou o som (o disco no lugar da rádio segue mandando): a completa que esperava começa agora */
   soltarPendente() {
@@ -1372,7 +1418,16 @@ class PistaSom {
       return this.tocar(papel, 0, CROSSFADE, papel === "completa")
     }
     this.completaViva = false
+    // (18/11, o dono) ainda na pista da missão: a música do álbum de novo; fora dela, a Crypto
+    if (this.faixaMissao && this.naPista === this.faixaMissao.id) return this.comecarCompletaDoInicio(this.faixaMissao)
+    if (this.crypto) return this.tocarCrypto(this.crypto)
     this.tocar("inst", 0, CROSSFADE, true)
+  }
+  private comecarCompletaDoInicio(f: FaixaContinua) {
+    this.faixa = f
+    this.completaViva = true
+    this.daMissao = true
+    this.tocar("completa", 0, CROSSFADE, false)
   }
 
   /** a cada quadro (barato: só manda alvo novo quando muda). Não pausa nem muda
@@ -1409,11 +1464,10 @@ class PistaSom {
     this.segurando = sim
     this.aplicarMestre(false)
   }
-  /** saiu da cidade (o deserto): some em fade e para. O instrumental da missão
-   *  aceita fica (18/11, o dono): ele acompanha até a pista dela */
+  /** saiu das pistas (o chão, o deserto): some em fade e para. Lá fora tocam a
+   *  rádio, os discos, o MP3 e o FR3Q_ (18/11, o dono) */
   sair(fadeSeg = 2) {
     this.naPista = null
-    if (this.instDaMissao && this.faixaMissao) return
     this.daMissao = false
     this.pendente = null
     if (!this.faixa || this.ativo < 0) return
@@ -1428,8 +1482,8 @@ class PistaSom {
   parar() {
     this.faixa = null
     this.daMissao = false
-    this.instDaMissao = false
     this.naPista = null
+    this.pausadaNoAr = false
     this.pendente = null
     definirFaixaRua(null)
     for (const d of this.decks) { if (d.parada) { clearTimeout(d.parada); d.parada = null } d.el.pause() }

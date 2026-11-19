@@ -106,7 +106,7 @@ import { MARCOS, episodioDaMissao, proximaDaSequencia, quemAbre, rotuloDoEpisodi
 import { avisoSemAgua, faltaProBolso, nomesDosSacos } from "./disco/feira"
 import { pararBeat } from "./disco/beatDoCaminho"
 import { EscolhaEsporte, type EsporteId } from "./disco/EscolhaEsporte"
-import { faixaDaMissao } from "./disco/pistasLiberadas"
+import { faixaContinua, faixaDaMissao } from "./disco/pistasLiberadas"
 import { IDS13, ehMissao13, MISSOES13, alvo13, checklist13, concluir, contarEvento, disponiveis, emTeste, feita13, instrumentosGanhos, ordemDe, kombiNoConserto, portaAberta, normalizarMissao, ofertas13, pecaAgora13, pecaFeita, sincronizar, trancado, type CenaId, type MissaoId, type Oferta13, type PortaId, type Recompensa13 } from "./disco/portas"
 import { FinalTela } from "./disco/FinalTela"
 import { capturaAntesDoShow, capturados, definirFinalFeito, definirLotado, seguirFinal, FINAL_VIVO, type MomentoFinal } from "./disco/final"
@@ -1155,7 +1155,7 @@ export default function LinhaPage() {
     // (18/11, o dono) aceitou: começa o instrumental da música da missão; a completa toca andando na pista dela (sem faixa: segue o instrumental da pista)
     const faixa = faixaDaMissao(id)
     if (faixa) pistaSom.tocarDaMissao(faixa, id)
-    setSave((s) => comHistoria(s, (h) => ({ ...h, missao: id })))
+    setSave((s) => comHistoria(s, (h) => ({ ...h, missao: id, ...(faixa ? { ultimaFaixa: faixa.id } : {}) })))
     setLargadas((l) => l.filter((x) => x !== id))
     track("mission_step", { mission_id: `disco-${id}`, step: "pegou", perfil: save.perfil ?? "?", fio_pos: -1 })
   }
@@ -1719,6 +1719,9 @@ export default function LinhaPage() {
   }
   // a completa que esperava a rádio não começa se a missão já saiu (feita ou largada)
   useEffect(() => { pistaSom.esquecerPendente(missaoCarreira) }, [missaoCarreira])
+  // (18/11, o dono) as pistas: a missão aceita (a pista dela toca com voz) e a Crypto (a última música de missão)
+  useEffect(() => { pistaSom.definirMissao(missaoCarreira && ehMissao13(missaoCarreira) ? faixaDaMissao(missaoCarreira) : null, missaoCarreira ?? null) }, [missaoCarreira])
+  useEffect(() => { const p = PISTAS.find((x) => x.id === hist.ultimaFaixa); pistaSom.definirCrypto(p ? faixaContinua(p) : null) }, [hist.ultimaFaixa])
   // a faixa da pista vive na página (não na estrada, que desmonta numa sala): sai da página, para
   useEffect(() => () => pistaSom.parar(), [])
   // (só baixa o som da missão se ele vai tocar: sem faixa de pista, no deserto)
