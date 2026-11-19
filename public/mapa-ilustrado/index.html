@@ -72,6 +72,7 @@ button:focus-visible,input:focus-visible,summary:focus-visible{outline:2px solid
 .notas li{min-width:0;border-top:1px solid var(--linha);padding-top:8px}
 .notas b{color:var(--texto);font-weight:600}
 @media (prefers-reduced-motion:reduce){.chip,.rot3d{transition:none}}
+.wrap>header,.regua,.missao,.notas{display:none!important}.wrap{max-width:none!important;padding:0!important;gap:0!important;height:100vh;height:100dvh}.palco{height:100%}.cena{height:100%!important;min-height:0!important;border:0!important;border-radius:0!important}body{overflow:hidden}
 </style>
 
 <div class="wrap">
@@ -693,7 +694,7 @@ ps.addEventListener('click',()=>{playing=!playing;ps.setAttribute('aria-pressed'
 
 camera.position.set(...FOCO.ilha.p);controls.target.set(...FOCO.ilha.t);
 resize();textoMissao();
-{const ep=HASH.get('missao');if(ep&&M[ep]){selMissao(ep);const l=Object.keys(M[ep].pontos)[0];if(l)abrir(l)}else abrir('flores')}
+{const ep=HASH.get('missao');if(ep&&M[ep])selMissao(ep)}
 if(EMB){const x=document.createElement('button');x.type='button';x.textContent='×';x.setAttribute('aria-label','fechar o mapa');x.style.cssText='position:fixed;top:10px;right:12px;z-index:50;width:40px;height:40px;border-radius:50%;border:1px solid #fff4;background:#0b0a12cc;color:#fff;font-size:24px;line-height:1;cursor:pointer';x.addEventListener('click',()=>avisa({tipo:'fechar'}));document.body.append(x);addEventListener('keydown',e=>{if(e.key==='Escape'||e.key==='m'||e.key==='M')avisa({tipo:'fechar'})})}
 requestAnimationFrame(frame);
 })();
