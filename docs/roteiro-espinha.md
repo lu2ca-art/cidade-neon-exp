@@ -116,7 +116,24 @@ Serve pra adicionar emoção e sorte.
 |---|---|---|
 | túneis | de pé, transformada | as raízes sobem pelos prédios, o neon apaga e vira floresta acesa |
 | subúrbio | em chamas | a natureza nasce das cinzas |
-| cidade | de pé, igual | a floresta cresce em volta, do lado de fora do muro. A cidade não viu nada |
+| ~~cidade~~ | | ~~(substituído, ver abaixo)~~ |
+
+**[cânone] O terceiro final é o game over.** O Núcleo domina e você é hackeado e capturado.
+Começa de novo.
+
+**[cânone] Moscou, perdeu.** Se a pessoa ficar 10 minutos sem fazer nada no sentido da
+narrativa, ela é pega pelo Núcleo: game over, começa de novo.
+
+**[proposta] Como isso funciona no jogo**
+- **"Fazer algo na narrativa"** = completar uma peça de missão. Rodar pelo mapa, ouvir rádio
+  ou ficar no estúdio não conta.
+- **O relógio não aparece.** O que aparece é a cidade fechando o cerco: as veias de neon
+  crescem na borda da tela, o carro do Núcleo passa mais perto. Nos últimos 2 minutos, a
+  música fica abafada e o holo falha.
+- **O relógio pausa** com a aba fechada ou o jogo pausado. Só conta o tempo jogando.
+- **"Começa de novo"** pode ser de duas formas (decisão do LU2CA):
+  - do zero: perde tudo;
+  - do último capítulo: perde o que fez desde a última missão concluída.
 
 ---
 
