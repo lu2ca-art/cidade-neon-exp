@@ -83,31 +83,43 @@ export function montarLinha9(M: MundoDisco): Linha9 {
     const v = M.vias[via], i = inverte ? v.n - 1 : 0
     return { x: v.px[i], y: v.py[i] + C.altura, z: v.pz[i] }
   }
-  // as duas ruas mais curtas de cada torre da ponta, com a ida sempre a partir do centro
-  const grupos = [1, 2, 3].map((t) => {
+  // (19/11, o disco de vinil) as pistas viraram voltas em torno da cratera: a linha não anda
+  // mais por cima delas. É uma estrela: da central, uma reta alta até cada torre da ponta
+  // (por cima de todas as faixas), a volta em torno dela e a reta de volta, paralela
+  void rua
+  const ALTO = 80 // m: acima da faixa mais alta (as pistas vão até ~65 m)
+  const reta = (a: { x: number; z: number }, b: { x: number; z: number }, ya: number, yb: number, lado: number, torre: number) => {
+    const dx = b.x - a.x, dz = b.z - a.z, L = Math.hypot(dx, dz), tx = dx / L, tz = dz / L, ox = -tz * lado, oz = tx * lado
+    const n = Math.ceil(L / C.passo), sobe = 400
+    let rua9 = -1
+    for (let k = 0; k <= n; k++) {
+      const s = (k / n) * L, x = a.x + tx * s + ox, z = a.z + tz * s + oz
+      const ea = Math.min(1, s / sobe), eb = Math.min(1, (L - s) / sobe)
+      const y = Math.min(ya + (ALTO - ya) * ea * ea * (3 - 2 * ea), yb + (ALTO - yb) * eb * eb * (3 - 2 * eb))
+      if (k % Math.round(C.cadaPilar / C.passo) === 0) pil.push({ i: xs.length, x, z, topo: y - 0.8, rx: x, rz: z })
+      // a estação de rua: no meio da reta, em cima da pista que passa ali embaixo
+      if (rua9 < 0 && s > L * 0.45) { const p = M.pousar(x, z, ALTO + 50, tx, tz, 30); if (p) { rua9 = xs.length; marcas.push({ i: xs.length, tipo: "rua", torre, via: p.via, u: p.u }) } }
+      por(x, y, z)
+    }
+  }
+  const Y_CENTRO = centro.topo + C.altura
+  for (let t = 1; t <= 3; t++) {
     const T = M.torres[t]
-    const dist = (x: number, z: number, a: { x: number; z: number }) => Math.hypot(x - a.x, z - a.z)
-    return M.pistas
-      .map((p) => {
-        const v = M.vias[p.ida]
-        return { via: p.ida, L: v.L, fimNaPonta: dist(v.px[v.n - 1], v.pz[v.n - 1], T) < dist(v.px[0], v.pz[0], T), perto: Math.min(dist(v.px[0], v.pz[0], T), dist(v.px[v.n - 1], v.pz[v.n - 1], T)) }
-      })
-      .filter((q) => q.perto < 320)
-      .sort((a, b) => a.L - b.L)
-      .slice(0, 2)
-      .map((q) => ({ ...q, torre: t }))
-  }).filter((g) => g.length === 2)
-
-  grupos.forEach((g, ig) => {
-    const [a, b] = g, t = a.torre, T = M.torres[t]
+    if (!T) continue
+    const yT = T.topo + C.altura
+    // sai da borda da central, no rumo da torre (a ida pela direita, a volta pela esquerda)
+    const ang = Math.atan2(T.z - centro.z, T.x - centro.x), rc = centro.raio + 30, rt = T.raio + 30
+    const ca = { x: centro.x + Math.cos(ang) * rc, z: centro.z + Math.sin(ang) * rc }, ta = { x: T.x - Math.cos(ang) * rt, z: T.z - Math.sin(ang) * rt }
+    if (xs.length) arco(centro.x, centro.z, { x: ca.x - Math.sin(ang) * 7, y: Y_CENTRO, z: ca.z + Math.cos(ang) * 7 })
     marcas.push({ i: xs.length, tipo: "centro", torre: 0, via: M.aneis[0].vias[0], u: 4 })
-    rua(a.via, !a.fimNaPonta, t)
-    marcas.push({ i: xs.length + 4, tipo: "torre", torre: t, via: M.aneis[t].vias[0], u: 4 })
-    arco(T.x, T.z, pontoDe(b.via, b.fimNaPonta))
-    rua(b.via, b.fimNaPonta, 0)
-    const prox = grupos[(ig + 1) % grupos.length][0]
-    arco(centro.x, centro.z, pontoDe(prox.via, !prox.fimNaPonta))
-  })
+    reta(ca, ta, Y_CENTRO, yT, 7, t)
+    marcas.push({ i: xs.length, tipo: "torre", torre: t, via: M.aneis[t].vias[0], u: 4 })
+    arco(T.x, T.z, { x: ta.x + Math.sin(ang) * 7, y: yT, z: ta.z - Math.cos(ang) * 7 })
+    reta(ta, ca, yT, Y_CENTRO, 7, 0)
+  }
+  // fecha o laço: da última reta até o começo da primeira, em volta da central
+  { const T = M.torres[1], ang = Math.atan2(T.z - centro.z, T.x - centro.x), rc = centro.raio + 30
+    arco(centro.x, centro.z, { x: centro.x + Math.cos(ang) * rc - Math.sin(ang) * 7, y: Y_CENTRO, z: centro.z + Math.sin(ang) * rc + Math.cos(ang) * 7 }) }
 
   // o asfalto ondula; o trilho não: suaviza a altura (duas passadas, ±10 amostras, em laço)
   const N = xs.length

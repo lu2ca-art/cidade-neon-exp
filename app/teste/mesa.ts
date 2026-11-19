@@ -25,12 +25,22 @@ export interface Cartao {
 
 export const MESA: Cartao[] = [
   {
+    parte: "livre",
+    nome: "O mundo virou o mapa novo: as pistas são voltas de vinil em volta da cratera",
+    data: "2026-11-19",
+    tarefa: "mundo vinil",
+    olhar: "As 9 pistas agora são voltas inteiras em torno da cratera, na forma do mapa novo (a faixa 1 na borda, a 9 perto do meio). As duas pontas de cada volta chegam na torre do grupo dela, e as 3 torres ficam em cima dos buracos dos túneis. A torre central fica no meio da cratera. No chão, o subúrbio é o anel em volta da cratera, aberto como no mapa e cheio de casinhas, com os lugares nos pontos do mapa. A Linha 9 virou uma estrela: da central até cada torre, por cima das pistas.",
+    perguntas: ["Dirigindo, as voltas têm o jeito de cada música (umas retas e rápidas, outras tortas e com sobe e desce)?", "O jogo ficou pesado? (as pistas somam o dobro de asfalto)", "Passar de uma pista pra outra (na torre, voando ou pela Linha 9) ficou claro?", "O anel de casinhas ficou bom ou precisa de mais vida?"],
+    mais: [{ parte: "mapa.novo", nome: "o mapa novo, pra comparar" }, { parte: "brecho", nome: "no anel do subúrbio" }, { parte: "metro", nome: "a Linha 9" }],
+  },
+
+  {
     parte: "brecho",
     nome: "O subúrbio em anel: os lugares na beira da cratera, como no mapa novo",
     data: "2026-11-19",
     tarefa: "subúrbio em anel",
     olhar: "O subúrbio virou o anel em volta da cratera (o lixão grande do meio). Os 12 lugares (bar, oficina, palco, quadra, túneis, ginásio, galeria, discos, batida, flores, brechó, feira) estão nos pontos do mapa novo, com a porta virada pra cratera. Este link nasce no brechó; abra o mapa grande e vá de lugar em lugar. O bairro antigo dos prédios ficou onde estava, dentro do anel.",
-    perguntas: ["Os lugares ficaram bem onde estão, ou algum ficou num canto ruim (morro, embaixo de pista)?", "O anel está muito vazio entre um lugar e outro? (o próximo passo seria encher ele de casas, como no mapa)", "A rádio, a zona e o veículo trocam certo ao entrar e sair do anel?"],
+    perguntas: ["Os lugares ficaram bem onde estão, ou algum ficou num canto ruim (morro, embaixo de pista)?", "A rádio, a zona e o veículo trocam certo ao entrar e sair do anel?"],
     mais: [{ parte: "bar", nome: "no bar" }, { parte: "oficina", nome: "na oficina" }, { parte: "mapa.novo", nome: "o mapa novo, pra comparar" }],
   },
 

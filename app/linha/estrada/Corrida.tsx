@@ -122,6 +122,8 @@ import { Seguro } from "./Seguro"
 import { Suburbio } from "./Suburbio"
 import { RuinasSuburbio } from "./RuinasSuburbio"
 import { ruinasNoMundo } from "./ruinas"
+import { casasDoAnel } from "./casasAnel"
+import { CasasAnel } from "./DesenhoCasasAnel"
 import { KombiHerbal } from "./KombiHerbal"
 import { Capa } from "../capa"
 import { discosDaKombi } from "../discos"
@@ -4461,6 +4463,8 @@ function CenaBase({
     // (ruínas, 05/11) os prédios e o entulho das ruínas do subúrbio também batem
     // (a pé, de patins, de moto: o mesmo bater/grudar dos prédios; sem a cerca do campo)
     if ("disco" in M) colisores.push(...ruinasNoMundo(M as MundoDisco).colisores)
+    // (19/11) as casas do anel do subúrbio (casasAnel.ts): a Kombi não atravessa
+    if ("disco" in M) { const Md = M as MundoDisco; for (const c of casasDoAnel(Md, ruinasNoMundo(Md).colisores).colisores) colisores.push(c) }
     return { predios, arcos, fitas, pilares, pilaresQ, postes, luzes, luzMat, reflexos, outdoors, aviacao, aviacaoMat, colisores, postesQ, placas }
   }), [M, circuitos, tex, distI, centrosLugares])
   useLayoutEffect(() => { apagarPostes(cidade, viaApagada) }, [cidade, viaApagada])
@@ -7357,6 +7361,8 @@ function CenaBase({
       {"ligacoes" in M ? <Seguro nome="flores"><FloresAsfalto M={M} {...floresAsf} /></Seguro> : <Perto nome="flores" raio={500}><Seguro nome="flores"><Flores M={M} regadas={regadas} /></Seguro></Perto>}
       {PARQUE_CONF.ligado && <Perto nome="parque" raio={700} pontos={pertoDe.parque}><Seguro nome="parque"><Parque M={M} passeio={passeio} /></Seguro></Perto>}
       {"disco" in M && <Perto nome="ruínas" raio={SUBURBIO.r + 700} pontos={pertoDe.ruinas}><Seguro nome="ruínas"><Suspense fallback={null}><RuinasSuburbio M={M as MundoDisco} hora={horaCeuRef} /></Suspense></Seguro><Seguro nome="corrida de rua"><CorridaRuaCena chao={(M as MundoDisco).chaoEm} jogo={jogo as unknown as React.RefObject<{ wx?: number; wz?: number; rumo?: number; v: number; vx?: number; voo?: boolean; tempo: number }>} comb={combRef} /></Seguro></Perto>}
+      {/* (19/11) o anel do subúrbio em volta da cratera, cheio de casinhas como no mapa ilustrado */}
+      {"disco" in M && <Seguro nome="casas do anel"><CasasAnel M={M as MundoDisco} /></Seguro>}
       <Perto nome="subúrbio" raio={centroSub.r + 700} pontos={pertoDe.suburbio}><Seguro nome="subúrbio"><Suspense fallback={null}><Suburbio cx={centroSub.x} cz={centroSub.z} raioChao={centroSub.r} /></Suspense></Seguro></Perto>
       <Estatico>
       <primitive object={cidade.postes} />

@@ -19,13 +19,13 @@ export const INSTRUMENTOS_MUNDO: Record<InstrumentoId, PontoXZ> = {
   ocarina: { x: -1180, z: -1360 },
   caxixi: { x: -1320, z: -620 },
   berimbau: { x: -1590, z: -370 },
-  handpan: { x: -300, z: -905 }, // no lixão, a leste do subúrbio
+  handpan: { x: -435, z: -1083 }, // no lixão, a leste do subúrbio
   // no subúrbio
-  "tambor-agua": { x: -603, z: -737 }, // perto da goteira
-  udu: { x: -236, z: -1283 }, // atrás da quadra
-  kalimba: { x: -262, z: 184 }, // atrás dos discos
-  "flauta-bambu": { x: 1163, z: -481 }, // atrás das flores
-  djembe: { x: 1369, z: 23 }, // atrás da galeria
+  "tambor-agua": { x: -805, z: -878 }, // perto da goteira
+  udu: { x: -352, z: -1540 }, // atrás da quadra
+  kalimba: { x: -388, z: 241 }, // atrás dos discos
+  "flauta-bambu": { x: 1353, z: -567 }, // atrás das flores
+  djembe: { x: 1598, z: 46 }, // atrás da galeria
 }
 
 // tudo que dá pra afinar fica aqui

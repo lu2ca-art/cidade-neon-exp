@@ -10,7 +10,7 @@
 //     carros despencados meio enterrados e pneus)
 
 import * as THREE from "three"
-import { CASA, CHAO_LUGARES, CRATERA, QUEDA, SAIDA_CASA } from "../disco/historia"
+import { CASA, CHAO_LUGARES, CRATERA, ES_DISCO, QUEDA, SAIDA_CASA } from "../disco/historia"
 import { cresceuNoRumo } from "./raioCidade"
 
 export const CHAO = -12
@@ -115,7 +115,9 @@ export function alturaExata(x: number, z: number) {
   return hCasa + (h - hCasa) * suave(PLANO_R, PLANO_T, dc)
 }
 // o lixão (0–1): manchas dentro da cidade
-export function zonaLixo(x: number, z: number) {
+// (19/11) o disco abre ×1.22 a partir da cratera (historia.ts, ES_DISCO): o lixão abre junto
+export function zonaLixo(x0: number, z0: number) {
+  const x = CRATERA.x + (x0 - CRATERA.x) / ES_DISCO, z = CRATERA.z + (z0 - CRATERA.z) / ES_DISCO
   const r = Math.hypot(x, z)
   return suave(0.5, 0.6, fbm(x / 600 + 20, z / 600 - 8)) * (1 - suave(1000, 1300, r))
 }

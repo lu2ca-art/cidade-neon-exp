@@ -398,15 +398,17 @@ export const SUBURBIO = { x: -740, z: -680, r: 260 }
 // rumo = atan2(z - cz, x - cx)), a mesma do mapa ilustrado. O anel vai da beira até
 // `larg` m pra fora. SUBURBIO (acima) agora é só o bairro antigo (o modelo dos 101
 // prédios, a gente na rua, a corrida de rua), que fica dentro do anel.
+// (19/11) o disco abre ×1.22 a partir da cratera (como no mapa): a beira e a largura do anel também
+export const ES_DISCO = 1.22
 export const CRATERA = {
-  x: 315, z: -94, larg: 850,
+  x: 315, z: -94, larg: 850 * ES_DISCO,
   rim: [720,765,780,240,240,255,525,555,600,690,780,870,945,975,975,990,1035,1065,1050,1005,945,915,930,1095,1110,855,765,705,660,600,510,465,435,420,405,420,435,450,480,525,600,795,810,825,870,930,960,990,990,1005,990,945,915,885,855,855,885,915,900,885,885,855,825,810,795,780,765,780,780,750,720,705],
 }
 // a beira da cratera no rumo `a` (m do centro)
 export function beiraCratera(a: number) {
   const f = ((((a % (2 * Math.PI)) + 2 * Math.PI) % (2 * Math.PI)) / (2 * Math.PI)) * 72
   const i = Math.floor(f) % 72, u = f - Math.floor(f), R = CRATERA.rim
-  return R[i] * (1 - u) + R[(i + 1) % 72] * u
+  return (R[i] * (1 - u) + R[(i + 1) % 72] * u) * ES_DISCO
 }
 // quantos metros fora do anel (0 dentro; dentro da cratera também conta como fora)
 export function foraDoSuburbio(x: number, z: number) {
@@ -419,32 +421,33 @@ export const giroPraCratera = (x: number, z: number) => Math.atan2(CRATERA.x - x
 export const CHAO_LUGARES = {
   // (09/11, bíblia §13) o bar fica bem na porta: na beira do subúrbio do lado do
   // deserto, no caminho de quem vem da casa da D-Bee (GIRO_BAR, abaixo)
-  // (18/11) os lugares do anel: os pontos do mapa ilustrado; o bar, o palco, os túneis, o ginásio
-  // e a batida andaram até 70 m pra sair de cima de pista/torre (M.livre) e da rua da corrida
-  bar: { x: -488, z: -694, nome: "O COPO", cor: "#ff6a35" },
-  oficina: { x: 200, z: 1068, nome: "OFICINA", cor: "#ff9000" },
-  palco: { x: 931, z: -965, nome: "PALCO", cor: "#e0ff4f" },
+  // (19/11) os lugares do anel: os pontos do mapa ilustrado (abertos ×1.22 da cratera, como o
+  // disco); os que caíam em pista/torre (M.livre) ou na rua da corrida andaram até 95 m
+  // (a peças do lixão abriram junto; o pé da torre 1, o destino do final, foi com a torre)
+  bar: { x: -640, z: -826, nome: "O COPO", cor: "#ff6a35" },
+  oficina: { x: 215, z: 1393, nome: "OFICINA", cor: "#ff9000" },
+  palco: { x: 1067, z: -1157, nome: "PALCO", cor: "#e0ff4f" },
   // (09/11, o dono) o último show é no centro do deserto: o trecho mais plano entre a
   // casa da D-Bee e a borda do mapa, longe das pistas e dos morros (disco/final.ts)
   palcoDeserto: { x: -2950, z: -1150, nome: "PALCO", cor: "#e0ff4f" },
   // (09/11) o destino do GPS depois do show, quando a pessoa dirige até as torres: o pé
   // da torre 1, a mais perto do deserto. Vale chegar em qualquer torre (estrada/FinalPovo.tsx)
-  torresFinal: { x: -620, z: -390, nome: "TORRE", cor: "#ff6a35" },
+  torresFinal: { x: -1341, z: 315, nome: "TORRE", cor: "#ff6a35" },
   // (T02) as missões do subúrbio: a quadra do Alohan e a entrada dos túneis (RASCUNHO de onde ficam)
   // (T57) a quadra é um lugar de verdade (o piso, as cestas, o alambrado) e os
   // túneis, uma boca no chão: o ponto é a porta, no fundo da rampa (estrada/chao.ts, BOCA)
-  quadra: { x: -214, z: -1263, nome: "QUADRA", cor: "#ff6a35" },
-  tuneis: { x: -485, z: -173, nome: "TÚNEIS", cor: "#9b8cff" },
+  quadra: { x: -330, z: -1520, nome: "QUADRA", cor: "#ff6a35" },
+  tuneis: { x: -650, z: -180, nome: "TÚNEIS", cor: "#9b8cff" },
   // (T09) os achados da missão da oficina: o painel solar velho no lixão (a mancha
   // de lixo a leste do subúrbio) e a goteira embaixo de uma pista. Só aparecem
   // (e só vão pro mapa) quando é a vez deles. RASCUNHO de onde ficam
   // (T57) a reciclagem no deserto: o painel e mais três peças espalhadas no lixão
   // (pega passando, de Kombi ou de patins; disco/achados.ts)
-  painel: { x: -360, z: -690, nome: "PAINEL", cor: "#4fc3ff" },
-  lavadora: { x: -208, z: -754, nome: "MÁQUINA DE LAVAR", cor: "#c9d3e6" },
-  ventilador: { x: -278, z: -523, nome: "VENTILADOR", cor: "#4fc3ff" },
-  radio: { x: -410, z: -366, nome: "RÁDIO", cor: "#ff6a35" },
-  goteira: { x: -620, z: -730, nome: "GOTEIRA", cor: "#4fc3ff" },
+  painel: { x: -508, z: -821, nome: "PAINEL", cor: "#4fc3ff" },
+  lavadora: { x: -323, z: -899, nome: "MÁQUINA DE LAVAR", cor: "#c9d3e6" },
+  ventilador: { x: -408, z: -617, nome: "VENTILADOR", cor: "#4fc3ff" },
+  radio: { x: -569, z: -426, nome: "RÁDIO", cor: "#ff6a35" },
+  goteira: { x: -826, z: -870, nome: "GOTEIRA", cor: "#4fc3ff" },
   // (T47, lote D) a porta da torre do elevador de terror (lugares.ts "elevador",
   // soChao): só o gatilho de chegada, sem fachada nem ponto no mapa até chegar o
   // vídeo da torre. RASCUNHO de onde fica: na beira oeste do subúrbio
@@ -457,14 +460,14 @@ export const CHAO_LUGARES = {
   // lugares que faltavam no chão: cada um abre a experiência que já existe
   // (disco/abertos.ts). Longe uns dos outros (90 m ou mais), fora da rua da
   // corrida (40 m ou mais) e das pistas (conferido com M.livre). docs/suburbio-lugares.md
-  ginasio: { x: 395, z: -1090, nome: "GINÁSIO", cor: "#ff9000" },
-  galeria: { x: 1357, z: 9, nome: "GALERIA", cor: "#3d7bff" },
-  discos: { x: -260, z: 166, nome: "DISCOS", cor: "#ffc857" },
-  batida: { x: -296, z: 787, nome: "BATIDA", cor: "#ff6b6b" },
-  flores: { x: 1180, z: -486, nome: "FLORES", cor: "#5dffa0" },
-  brecho: { x: 909, z: 332, nome: "BRECHÓ", cor: "#ff3fb0" },
+  ginasio: { x: 413, z: -1309, nome: "GINÁSIO", cor: "#ff9000" },
+  galeria: { x: 1586, z: 32, nome: "GALERIA", cor: "#3d7bff" },
+  discos: { x: -386, z: 223, nome: "DISCOS", cor: "#ffc857" },
+  batida: { x: -383, z: 899, nome: "BATIDA", cor: "#ff6b6b" },
+  flores: { x: 1370, z: -572, nome: "FLORES", cor: "#5dffa0" },
+  brecho: { x: 1005, z: 418, nome: "BRECHÓ", cor: "#ff3fb0" },
   // (09/11, ep. 5) a feira do Tony Gordo: a rua das barracas, entre o bar e a oficina (disco/FeiraRua.tsx)
-  feira: { x: 832, z: 1049, nome: "FEIRA", cor: "#ff3fb0" },
+  feira: { x: 882, z: 1230, nome: "FEIRA", cor: "#ff3fb0" },
 } as const
 export type LugarChao = keyof typeof CHAO_LUGARES
 // (09/11) a porta do bar vira pro deserto (quem chega vem de lá), e não pro centro da cidade
