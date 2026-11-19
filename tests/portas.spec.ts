@@ -13,7 +13,7 @@ const luz = (objetos: string[]) => luzDasPistas(pistasFeitas(objetos as never))
 
 test("as 13 portas da tabela", () => {
   expect(IDS13).toHaveLength(13)
-  expect(IDS13.filter((id) => MISSOES13[id].onde === "suburbio")).toEqual(["dbee", "oficina", "quadra", "tuneis"])
+  expect(IDS13.filter((id) => MISSOES13[id].onde === "suburbio")).toEqual(["dbee", "oficina", "quadra", "tuneis", "mubarak"]) // (09/11) o Mubarak desceu pro subúrbio
   // cada faixa do Vol.1 é liberada uma vez só no Guitar Driver (a Nectar já vem aberta)
   const faixas = IDS13.map((id) => MISSOES13[id].recompensa.guitar).filter(Boolean)
   expect(new Set(faixas).size).toBe(faixas.length)
@@ -25,22 +25,23 @@ test("arte e jogo na ordem da missão → porta, com a peça em breve pulando", 
   let h: HistoriaDisco = { ...CARREIRA, missao: "drew" }
   expect(passoAgora(h, "drew")).toBe("jogo")
   expect(checklist13(h, "drew").map((x) => x.estado)).toEqual(["agora", "depois", "depois"])
-  expect(checklist13(h, "drew").map((x) => x.nome.split(" · ")[0])).toEqual(["o jogo", "a arte", "a porta"])
+  expect(checklist13(h, "drew").map((x) => x.nome.split(" · ")[0])).toEqual(["o jogo", "a arte", "a recompensa"])
   expect(alvo13(h, "drew")).toEqual({ lugar: "casa-drewboy" })
   expect(kombiNoConserto(h)).toBe(true)
   h = concluir(h, "drew", "jogo")
   expect(passoAgora(h, "drew")).toBe("arte")
   h = concluir(h, "drew", "arte")
   expect(passoAgora(h, "drew")).toBe("porta")
-  expect(trancado(h, "ginasio")).toBe("abre na missão do Drew")
+  // (09/11) o ginásio é do ep. 3 (o Alohan); a porta do Drew não abre lugar
+  expect(trancado(h, "ginasio")).toBe("abre no ep. 3 · Copo Americano (Alohan)")
+  expect(MISSOES13.drew.abre).toEqual([])
   h = abrirPorta(h, "drew")
   expect(feita13(h, "drew")).toBe(true)
   expect(passoAgora(h, "drew")).toBeNull()
   expect(h.missao).toBeUndefined()
-  expect(h.portas).toContain("ginasio")
-  expect(trancado(h, "ginasio")).toBeNull()
   expect(kombiNoConserto(h)).toBe(false)
-  expect(musicasDoGuitar(h)).toEqual(expect.arrayContaining(["nectar", "sexta"]))
+  // (09/11) a porta não libera mais faixa no Guitar Driver (os nove são os donos das músicas)
+  expect(musicasDoGuitar(h)).toContain("nectar")
   // a peça "em breve" não trava: (hoje todas existem) com o grafite dos túneis
   // desligado, a arte deles vira "em breve" e a missão pula direto pro jogo
   const tuneis: HistoriaDisco = { ...CARREIRA, missao: "tuneis" }
@@ -68,7 +69,8 @@ test("(T22) a casa da Ella: o jogo e a arte na casa dela, depois a porta; (soNoT
   expect(passoAgora(h, "ella")).toBe("porta")
   h = abrirPorta(h, "ella")
   expect(h.portas).toContain("galeria")
-  expect(h.guitar).toContain("chuva")
+  // (09/11) a CHUVA não sai mais da Ella (o sinal do final toca ela); a Ella dá a flauta
+  expect(MISSOES13.ella.recompensa.instrumento).toBe("flauta-bambu")
   // a regra 5 continua valendo pra próxima casa nova: em soNoTeste, no mapa as
   // peças da casa ficam "em breve" (a porta direto); com o link de teste (teste13), joga
   const antes = [...CONFIG13.soNoTeste]
@@ -86,10 +88,10 @@ test("(T25) o Tony: o jogo antes da arte; (T24) o parque abre pra missão da Niz
   expect(checklist13(h, "tony").map((x) => x.nome.split(" · ")[0])).toEqual(["o jogo", "a arte", "a porta"])
   h = concluir(h, "tony", "jogo")
   expect(passoAgora(h, "tony")).toBe("arte")
-  expect(trancado(CARREIRA, "parque")).toBe("abre na missão da Nizzy")
+  expect(trancado(CARREIRA, "parque")).toBe("abre no ep. 8 · Rollercoaster (Notti)") // (08/11) a tranca diz o episódio
   expect(trancado({ ...CARREIRA, missao: "nizzy" }, "parque")).toBeNull()
   expect(trancado({ fase: "livre", holo: true }, "loja-discos")).toBeNull()
-  expect(trancado(CARREIRA, "loja-discos")).toBe("abre na missão do Mubarak")
+  expect(trancado(CARREIRA, "loja-discos")).toBe("abre no ep. 4 · Ojalá (Nizzy)")
 })
 
 test("a peça na rua conta eventos e não precisa de lugar", () => {
@@ -125,7 +127,8 @@ test("a feira segue a sequência dos episódios: ep. 2, depois o 3, o 4 e o 5 ju
 test("save antigo: a faixa feita conta e a missão pegada era a faixa", () => {
   expect(normalizarMissao("sexta")).toBe("drew")
   expect(normalizarMissao("chuva")).toBe("ella")
-  expect(feita13(sincronizar(CARREIRA, ["copo"]), "mubarak")).toBe(true)
+  // (09/11) o Mubarak desceu pro subúrbio; a faixa feita conta pras missões da cidade (a Sexta = o Drew)
+  expect(feita13(sincronizar(CARREIRA, ["sexta"]), "drew")).toBe(true)
   // a recompensa diz o que ainda não existe: (T63) as corridas nos túneis já estão no jogo;
   // (05/11) a moto também (sai da Kombi e volta pra ela, liberada nesta porta)
   const r = recompensaDe("tuneis")
