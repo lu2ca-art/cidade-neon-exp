@@ -142,6 +142,21 @@ narrativa, ela é pega pelo Núcleo: game over, começa de novo.
 - **São poucos drones, mas rodam como um relógio:** cada hora estão num lugar. Se você estiver
   lá: corre ou já era.
 
+**[cânone] A ronda na missão (18/11)**
+- Ser visto na ronda **não é game over**. Game over é só o hack.
+- **Se a ronda está no quadrante da sua missão**, aparece um sim ou não:
+  - **pelos túneis:** você não é visto;
+  - **no modo crazy, por cima:** se a ronda vier atrás, você foge até eles vazarem.
+- **A fuga:** ganhar 1 quadrante de horário de distância da ronda no mapa, ou seja, fazer
+  eles mudarem de quadrante. Aí você pode voltar pra missão.
+
+**[proposta] Como encaixa**
+- **O mapa em quadrantes.** A ronda ocupa um quadrante por faixa de horário do dia simulado.
+- **A escolha conta no peso dos finais:** túneis somam pros túneis, o modo crazy soma pro
+  subúrbio.
+- **Na fuga**, o quadrante da ronda pisca no mapa. A pessoa sai dele e aguenta até o relógio da
+  ronda virar; quando os drones mudam de quadrante, a missão volta.
+
 **[proposta] Como isso funciona no jogo**
 - **"Avançar na narrativa"** = completar uma peça de missão.
 - **O hack em etapas, a partir do relógio de 10 min (escondido):**
