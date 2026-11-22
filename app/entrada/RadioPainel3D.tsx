@@ -104,23 +104,38 @@ function Botao({ x, larg, icone, cor, base, onAperta }: { x: number; larg: numbe
   )
 }
 
-function Knob({ x, girando, onAperta }: { x: number; girando: boolean; onAperta?: () => void }) {
-  const k = useRef<THREE.Mesh>(null)
-  useFrame((_, dt) => { if (k.current && girando) k.current.rotation.z -= dt * 0.6 })
+// o knob gira em torno do próprio eixo (o que aponta pra quem olha), como um botão de
+// volume de verdade: vai até o ângulo e para. As ranhuras e a marquinha mostram o giro
+function Knob({ x, angulo, onAperta }: { x: number; angulo: number; onAperta?: () => void }) {
+  const giro = useRef<THREE.Group>(null)
+  useFrame((_, dt) => { if (giro.current) giro.current.rotation.z += (angulo - giro.current.rotation.z) * Math.min(1, dt * 6) })
+  const ranhuras = useMemo(() => Array.from({ length: 18 }, (_, i) => (i / 18) * Math.PI * 2), [])
   return (
     <group position={[x, 0, RADIO_P / 2 + 0.012]}>
-      <mesh ref={k} rotation-x={Math.PI / 2}
+      <group ref={giro}
         onPointerDown={onAperta ? (e) => { e.stopPropagation(); onAperta() } : undefined}
         onPointerOver={onAperta ? () => { document.body.style.cursor = "pointer" } : undefined}
         onPointerOut={onAperta ? () => { document.body.style.cursor = "" } : undefined}>
-        <cylinderGeometry args={[0.022, 0.024, 0.024, 28]} />
-        <meshStandardMaterial color="#c9c3d6" metalness={0.95} roughness={0.22} />
-      </mesh>
-      {/* a marquinha do knob */}
-      <mesh position={[0, 0.014, 0.0125]}><boxGeometry args={[0.003, 0.012, 0.001]} /><meshBasicMaterial color={girando ? "#2fe8ff" : "#444"} toneMapped={false} /></mesh>
+        <mesh rotation-x={Math.PI / 2}>
+          <cylinderGeometry args={[0.022, 0.024, 0.024, 36]} />
+          <meshStandardMaterial color="#c9c3d6" metalness={0.95} roughness={0.22} />
+        </mesh>
+        {/* as ranhuras da borda (o dedo pega aqui) */}
+        {ranhuras.map((a) => (
+          <mesh key={a} position={[Math.cos(a) * 0.0235, Math.sin(a) * 0.0235, 0]} rotation-z={a}>
+            <boxGeometry args={[0.0025, 0.0018, 0.022]} />
+            <meshStandardMaterial color="#8d8799" metalness={0.9} roughness={0.35} />
+          </mesh>
+        ))}
+        {/* a marquinha: aponta pra onde o knob está */}
+        <mesh position={[0, 0.014, 0.0125]}><boxGeometry args={[0.0032, 0.011, 0.001]} /><meshBasicMaterial color="#2fe8ff" toneMapped={false} /></mesh>
+      </group>
     </group>
   )
 }
+
+// cada faixa numa posição do dial (o knob da sintonia vai até ela)
+const sintonia = (titulo: string) => { let h = 0; for (const c of titulo) h = (h * 31 + c.charCodeAt(0)) % 997; return 2.2 - (h / 997) * 4.4 }
 
 export function RadioPainel3D(p: RadioPainelProps) {
   const canvas = useMemo(() => { const c = document.createElement("canvas"); c.width = LCD_W; c.height = LCD_H; return c }, [])
@@ -165,8 +180,9 @@ export function RadioPainel3D(p: RadioPainelProps) {
         <meshStandardMaterial color="#ffffff" transparent opacity={0.06} metalness={1} roughness={0.05} depthWrite={false} />
       </mesh>
       {bts.map((b) => { const x = cursor + b.larg / 2; cursor += b.larg + gap; return <Botao key={b.icone + b.base} x={x} larg={b.larg} icone={b.icone} cor={b.cor} base={b.base} onAperta={b.acao} /> })}
-      <Knob x={-RADIO_L / 2 + 0.034} girando={p.tocando} onAperta={p.onLigar} />
-      <Knob x={RADIO_L / 2 - 0.034} girando={p.tocando} />
+      {/* o da esquerda liga (e o volume sobe); o da direita sintoniza (gira a cada faixa) */}
+      <Knob x={-RADIO_L / 2 + 0.034} angulo={p.tocando ? -0.6 : 2.3} onAperta={p.onLigar} />
+      <Knob x={RADIO_L / 2 - 0.034} angulo={sintonia(p.titulo)} />
       {/* a luz da tela no painel */}
       <pointLight ref={luz} position={[0, 0.02, 0.12]} color="#2fe8ff" intensity={0.35} distance={0.9} decay={2} />
     </group>
