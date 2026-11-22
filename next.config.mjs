@@ -43,9 +43,9 @@ const nextConfig = {
   // descontinuada. O código dela fica no repo, mas "/" leva pra /linha
   // (query junto: ?dev=1, utm_*). Os apps antigos que "voltam pra home"
   // caem aqui também — a janela da Linha fecha quando vê /linha.
-  async redirects() {
-    return [{ source: "/", destination: "/linha", permanent: false }]
-  },
+  // (22/11, o dono) "/" virou a rádio com a senha da cidade (app/page.tsx). A v1 mora
+  // em app/_v1 (pasta privada, sem rota). Dentro de uma janela do jogo, a rádio manda
+  // direto pro /linha (a janela fecha quando vê /linha, como antes)
   async rewrites() {
     return [
       { source: "/ingest/static/:path*", destination: "https://eu-assets.i.posthog.com/static/:path*" },

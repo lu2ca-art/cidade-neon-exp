@@ -1,0 +1,87 @@
+/* A página inicial (app/page.tsx): a rádio e a senha da cidade.
+   Proporções em razão áurea (1 : 1.618): o disco, os espaços e a coluna. */
+.en-pagina {
+  --neon: #ff3fb0; --ciano: #2fe8ff; --ouro: #ffc857; --fundo: #07060c;
+  --e1: 8px; --e2: 13px; --e3: 21px; --e4: 34px; --e5: 55px;
+  min-height: 100dvh; display: grid; place-items: center; padding: var(--e4) 16px;
+  background:
+    radial-gradient(ellipse 80% 50% at 50% 0%, rgba(255, 63, 176, 0.16), transparent 70%),
+    radial-gradient(ellipse 70% 45% at 50% 100%, rgba(47, 232, 255, 0.10), transparent 70%),
+    var(--fundo);
+  color: #f2eefc; font-family: var(--font-geist-sans), system-ui, sans-serif;
+}
+.en-coluna { width: min(100%, 420px); display: grid; gap: var(--e5); }
+
+.en-topo { display: grid; justify-items: center; gap: var(--e1); text-align: center; }
+.en-topo b { font: 800 13px var(--font-geist-mono), monospace; letter-spacing: 0.42em; padding-left: 0.42em; color: var(--neon); text-shadow: 0 0 18px rgba(255, 63, 176, 0.55); }
+.en-topo span { font: 12px var(--font-geist-mono), monospace; letter-spacing: 0.12em; opacity: 0.55; }
+
+/* ── a rádio ── */
+.en-radio { display: grid; justify-items: center; gap: var(--e3); text-align: center; }
+.en-disco { position: relative; width: min(62vw, 260px); aspect-ratio: 1; border: 0; padding: 0; border-radius: 50%; background: none; cursor: pointer; -webkit-tap-highlight-color: transparent; }
+.en-disco-vinil {
+  position: absolute; inset: 0; border-radius: 50%;
+  background:
+    radial-gradient(circle, var(--neon) 0 17%, #120a18 17.5% 19%, transparent 19.5%),
+    repeating-radial-gradient(circle, #15121c 0 2px, #0c0a12 2px 4px),
+    #0c0a12;
+  box-shadow: 0 0 0 1px rgba(255, 255, 255, 0.06), 0 0 55px rgba(255, 63, 176, 0.18), inset 0 0 34px rgba(0, 0, 0, 0.8);
+  animation: en-gira 3.4s linear infinite; animation-play-state: paused;
+}
+.en-disco-vinil::after { content: ""; position: absolute; inset: 0; border-radius: 50%; background: conic-gradient(from 30deg, transparent 0 20%, rgba(255, 255, 255, 0.07) 25%, transparent 32% 70%, rgba(47, 232, 255, 0.06) 75%, transparent 82%); }
+.is-tocando .en-disco-vinil { animation-play-state: running; }
+.en-disco-botao { position: absolute; left: 50%; top: 50%; width: 21%; aspect-ratio: 1; transform: translate(-50%, -50%); display: grid; place-items: center; border-radius: 50%; background: #0b0910; color: #fff; box-shadow: 0 0 0 2px rgba(255, 255, 255, 0.85); transition: transform 0.2s; }
+.en-disco:hover .en-disco-botao, .en-disco:focus-visible .en-disco-botao { transform: translate(-50%, -50%) scale(1.08); }
+.en-disco:focus-visible { outline: 2px solid var(--ciano); outline-offset: 6px; }
+@keyframes en-gira { to { transform: rotate(360deg); } }
+
+.en-agora { display: grid; gap: var(--e1); }
+.en-agora small { font: 11px var(--font-geist-mono), monospace; letter-spacing: 0.18em; text-transform: uppercase; color: var(--ciano); opacity: 0.85; }
+.en-agora b { font: 900 clamp(28px, 8vw, 42px)/1.05 var(--font-geist-sans), system-ui, sans-serif; letter-spacing: -0.02em; }
+.en-agora span { font-size: 13px; opacity: 0.6; }
+
+.en-ctrl { display: flex; flex-wrap: wrap; justify-content: center; gap: var(--e2); }
+.en-ctrl button { min-height: 44px; padding: 0 var(--e3); border-radius: 999px; border: 1px solid rgba(255, 255, 255, 0.18); background: rgba(255, 255, 255, 0.04); color: #fff; font: 600 13px var(--font-geist-sans), system-ui, sans-serif; cursor: pointer; transition: background 0.2s, border-color 0.2s; }
+.en-ctrl button:hover, .en-ctrl button:focus-visible { background: rgba(255, 255, 255, 0.1); outline: none; }
+.en-ctrl .en-salvar { color: #ff8ad8; border-color: rgba(255, 63, 176, 0.5); }
+
+.en-ondas { display: flex; align-items: flex-end; gap: 3px; height: 21px; opacity: 0.25; transition: opacity 0.4s; }
+.en-ondas i { width: 3px; height: 30%; border-radius: 2px; background: var(--ciano); }
+.is-tocando .en-ondas { opacity: 0.8; }
+.is-tocando .en-ondas i { animation: en-onda 0.9s ease-in-out infinite alternate; }
+@keyframes en-onda { from { height: 18%; } to { height: 100%; } }
+
+/* ── a senha ── */
+.en-senha { display: grid; gap: var(--e2); padding-top: var(--e4); border-top: 1px solid rgba(255, 255, 255, 0.08); text-align: center; }
+.en-senha-titulo { margin: 0; font-size: 15px; line-height: 1.5; opacity: 0.85; }
+.en-senha-campo { display: grid; grid-template-columns: 1fr; gap: var(--e1); }
+.en-senha-campo input { min-height: 52px; padding: 0 var(--e3); border-radius: 14px; border: 1px solid rgba(255, 200, 87, 0.4); background: rgba(255, 200, 87, 0.05); color: #fff; font: 600 17px var(--font-geist-mono), monospace; letter-spacing: 0.08em; text-align: center; outline: none; transition: border-color 0.2s, box-shadow 0.2s; }
+.en-senha-campo input:focus { border-color: var(--ouro); box-shadow: 0 0 0 3px rgba(255, 200, 87, 0.18); }
+.en-senha-campo button { min-height: 52px; border-radius: 14px; border: 0; background: var(--ouro); color: #120d02; font: 800 15px var(--font-geist-sans), system-ui, sans-serif; letter-spacing: 0.02em; cursor: pointer; transition: filter 0.2s, opacity 0.2s; }
+.en-senha-campo button:hover:not(:disabled) { filter: brightness(1.08); }
+.en-senha-campo button:disabled { opacity: 0.45; cursor: not-allowed; }
+.en-senha.is-errou .en-senha-campo input { border-color: #ff4e6a; animation: en-treme 0.35s; }
+@keyframes en-treme { 25% { transform: translateX(-6px); } 75% { transform: translateX(6px); } }
+.en-senha-aviso { margin: 0; min-height: 1.4em; font-size: 13px; color: #ff8a9c; }
+.en-senha-dica { margin: 0; font: 12px var(--font-geist-mono), monospace; opacity: 0.6; }
+.en-senha-dica a { color: var(--ciano); }
+
+@media (min-width: 560px) { .en-senha-campo { grid-template-columns: 1.618fr 1fr; } }
+@media (prefers-reduced-motion: reduce) { .en-disco-vinil, .is-tocando .en-ondas i, .en-senha.is-errou .en-senha-campo input { animation: none; } }
+
+/* no celular: o disco menor e os espaços um degrau abaixo, pra senha aparecer cedo;
+   e uma folga embaixo (o aviso de cookies fica fixo ali e não pode cobrir o botão) */
+@media (max-width: 559px) {
+  .en-pagina { padding: var(--e3) 16px calc(170px + env(safe-area-inset-bottom)); align-items: start; }
+  .en-coluna { gap: var(--e4); }
+  .en-radio { gap: var(--e2); }
+  .en-disco { width: min(50vw, 200px); }
+  .en-senha { padding-top: var(--e3); }
+}
+
+/* no computador: a coluna cabe o campo e o botão na razão áurea, e a folga do aviso de cookies */
+@media (min-width: 560px) {
+  .en-pagina { padding-bottom: calc(var(--e5) + 90px); }
+  .en-coluna { width: min(100%, 470px); }
+  .en-senha-campo button { padding: 0 var(--e2); white-space: nowrap; }
+}
