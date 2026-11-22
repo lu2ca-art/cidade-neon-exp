@@ -2047,6 +2047,19 @@ export default function LinhaPage() {
     }
   }
 
+  // (22/11, o dono) a Kombi da página inicial deu a partida: o hiperlapso cai direto no
+  // jogo (?entrar=1), sem a tela de entrada. Some da URL pra não repetir no recarregar
+  const entrarRef = useRef(entrar)
+  useEffect(() => { entrarRef.current = entrar })
+  useEffect(() => {
+    if (!pronto || tela.t !== "entrada") return
+    const u = new URL(location.href)
+    if (u.searchParams.get("entrar") !== "1") return
+    u.searchParams.delete("entrar")
+    history.replaceState(history.state, "", u.pathname + u.search + u.hash)
+    entrarRef.current()
+  }, [pronto, tela.t])
+
   // (disco) o buraco de minhoca acabou: a Kombi cai no deserto, perto da casa
   const fimMinhoca = () => {
     setMinhoca(false)

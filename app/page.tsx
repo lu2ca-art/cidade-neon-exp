@@ -14,6 +14,7 @@ import { PISTAS } from "./linha/estrada/pistas"
 import { faixaLancada, linkDaFaixa, salvarFaixa } from "./linha/disco/linksFaixas"
 import { voltaSegura } from "@/lib/entrada"
 import type { EstadoKombi } from "./entrada/KombiEntrada"
+import { HIPER } from "./entrada/hiper"
 import "./entrada.css"
 
 const KombiEntrada = dynamic(() => import("./entrada/KombiEntrada").then((m) => m.KombiEntrada), { ssr: false })
@@ -50,25 +51,30 @@ function Entrada() {
 
   const estado = useRef<EstadoKombi>({ partida: false, tocando: false })
   const radio = useRadio()
-  const ancora = useRef<HTMLDivElement | null>(null)
   const [partiu, setPartiu] = useState(false)
   const darPartida = () => {
     estado.current.partida = true
     setPartiu(true)
     roncarMotor()
-    setTimeout(() => window.location.assign(volta), 2600)
+    // direto pro jogo (?entrar=1: sem a tela de entrada do /linha)
+    const u = new URL(volta, window.location.origin)
+    u.searchParams.set("entrar", "1")
+    setTimeout(() => window.location.assign(u.pathname + u.search), HIPER.troca * 1000)
   }
   return (
     <main className={`en-pagina ${partiu ? "is-partida" : ""}`}>
-      <KombiEntrada estado={estado} radio={ancora} />
-      <div ref={ancora} className="en-radio-ancora"><RadioPainel r={radio} /></div>
+      <KombiEntrada estado={estado} radio={{
+        titulo: radio.faixa?.faixa ?? "", tocando: radio.tocando, temLink: !!(radio.faixa && linkDaFaixa(radio.faixa.id)),
+        onLigar: radio.alternar, onProxima: radio.proxima, onAnterior: radio.anterior, onSalvar: () => { if (radio.faixa) salvarFaixa(radio.faixa.id, "entrada") },
+      }} />
+      <RadioAcessivel r={radio} />
       <audio ref={radio.audio} preload="none" onEnded={radio.proxima} />
       <header className="en-topo" aria-hidden={partiu}>
         <b>CIDADE NEON</b>
         <span>arrasta pra olhar em volta</span>
       </header>
       <Senha onCerta={darPartida} partiu={partiu} />
-      <div className="en-escuro" aria-hidden="true" />
+      <div className="en-clarao" aria-hidden="true" />
     </main>
   )
 }
@@ -95,23 +101,17 @@ function useRadio() {
 }
 type Radio = ReturnType<typeof useRadio>
 
-function RadioPainel({ r }: { r: Radio }) {
+// pra teclado e leitor de tela: os mesmos comandos do rádio do painel (invisíveis)
+function RadioAcessivel({ r }: { r: Radio }) {
   const f = r.faixa
   if (!f) return null
-  const link = linkDaFaixa(f.id)
-  const parar = (e: React.PointerEvent) => e.stopPropagation()
   return (
-    <div className={`en-radio ${r.tocando ? "is-tocando" : ""}`} onPointerDown={parar}>
-      <div className="en-radio-lcd" aria-live="polite">
-        <small>{r.tocando ? "222 FM · no ar" : "222 FM · desligado"}</small>
-        <b><span>{f.faixa} · LU2CA</span></b>
-      </div>
-      <div className="en-radio-bts">
-        <button type="button" onClick={r.anterior} aria-label="faixa anterior">⏮</button>
-        <button type="button" className="en-radio-liga" onClick={r.alternar} aria-label={r.tocando ? "desligar a rádio" : "ligar a rádio"}>{r.tocando ? "❚❚" : "▶"}</button>
-        <button type="button" onClick={r.proxima} aria-label="próxima faixa">⏭</button>
-        {link && <button type="button" className="en-radio-salvar" onClick={() => salvarFaixa(f.id, "entrada")} aria-label={`ouvir ${f.faixa} no seu app de música`}>♥</button>}
-      </div>
+    <div className="en-sr" aria-label="rádio do painel">
+      <p aria-live="polite">{r.tocando ? `tocando ${f.faixa}, LU2CA` : `rádio desligada. ${f.faixa}`}</p>
+      <button type="button" onClick={r.anterior}>faixa anterior</button>
+      <button type="button" onClick={r.alternar}>{r.tocando ? "desligar a rádio" : "ligar a rádio"}</button>
+      <button type="button" onClick={r.proxima}>próxima faixa</button>
+      {linkDaFaixa(f.id) && <button type="button" onClick={() => salvarFaixa(f.id, "entrada")}>ouvir {f.faixa} no seu app de música</button>}
     </div>
   )
 }
