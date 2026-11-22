@@ -1,87 +1,63 @@
-/* A página inicial (app/page.tsx): a rádio e a senha da cidade.
-   Proporções em razão áurea (1 : 1.618): o disco, os espaços e a coluna. */
+/* A página inicial (app/page.tsx): dentro da Kombi. A cena 3D ocupa a tela inteira;
+   por cima, só o mínimo: o nome lá em cima e a partida (a senha) embaixo. O rádio é
+   do painel (um display preso na cena, app/entrada/KombiEntrada.tsx). */
 .en-pagina {
-  --neon: #ff3fb0; --ciano: #2fe8ff; --ouro: #ffc857; --fundo: #07060c;
+  --neon: #ff3fb0; --ciano: #2fe8ff; --ouro: #ffc857;
   --e1: 8px; --e2: 13px; --e3: 21px; --e4: 34px; --e5: 55px;
-  min-height: 100dvh; display: grid; place-items: center; padding: var(--e4) 16px;
-  background:
-    radial-gradient(ellipse 80% 50% at 50% 0%, rgba(255, 63, 176, 0.16), transparent 70%),
-    radial-gradient(ellipse 70% 45% at 50% 100%, rgba(47, 232, 255, 0.10), transparent 70%),
-    var(--fundo);
-  color: #f2eefc; font-family: var(--font-geist-sans), system-ui, sans-serif;
+  position: fixed; inset: 0; overflow: hidden; background: #05040b; color: #f2eefc;
+  font-family: var(--font-geist-sans), system-ui, sans-serif; touch-action: none;
 }
-.en-coluna { width: min(100%, 420px); display: grid; gap: var(--e5); }
+.en-canvas { position: absolute !important; inset: 0; cursor: grab; }
+.en-canvas:active { cursor: grabbing; }
 
-.en-topo { display: grid; justify-items: center; gap: var(--e1); text-align: center; }
-.en-topo b { font: 800 13px var(--font-geist-mono), monospace; letter-spacing: 0.42em; padding-left: 0.42em; color: var(--neon); text-shadow: 0 0 18px rgba(255, 63, 176, 0.55); }
-.en-topo span { font: 12px var(--font-geist-mono), monospace; letter-spacing: 0.12em; opacity: 0.55; }
+.en-topo { position: absolute; z-index: 30; left: 0; right: 0; top: calc(var(--e3) + env(safe-area-inset-top)); display: grid; justify-items: center; gap: 6px; text-align: center; pointer-events: none; transition: opacity 0.8s; }
+.en-topo b { font: 800 13px var(--font-geist-mono), monospace; letter-spacing: 0.42em; padding-left: 0.42em; color: var(--neon); text-shadow: 0 0 18px rgba(255, 63, 176, 0.6); }
+.en-topo span { font: 11px var(--font-geist-mono), monospace; letter-spacing: 0.12em; opacity: 0.45; }
+.is-partida .en-topo { opacity: 0; }
 
-/* ── a rádio ── */
-.en-radio { display: grid; justify-items: center; gap: var(--e3); text-align: center; }
-.en-disco { position: relative; width: min(62vw, 260px); aspect-ratio: 1; border: 0; padding: 0; border-radius: 50%; background: none; cursor: pointer; -webkit-tap-highlight-color: transparent; }
-.en-disco-vinil {
-  position: absolute; inset: 0; border-radius: 50%;
-  background:
-    radial-gradient(circle, var(--neon) 0 17%, #120a18 17.5% 19%, transparent 19.5%),
-    repeating-radial-gradient(circle, #15121c 0 2px, #0c0a12 2px 4px),
-    #0c0a12;
-  box-shadow: 0 0 0 1px rgba(255, 255, 255, 0.06), 0 0 55px rgba(255, 63, 176, 0.18), inset 0 0 34px rgba(0, 0, 0, 0.8);
-  animation: en-gira 3.4s linear infinite; animation-play-state: paused;
-}
-.en-disco-vinil::after { content: ""; position: absolute; inset: 0; border-radius: 50%; background: conic-gradient(from 30deg, transparent 0 20%, rgba(255, 255, 255, 0.07) 25%, transparent 32% 70%, rgba(47, 232, 255, 0.06) 75%, transparent 82%); }
-.is-tocando .en-disco-vinil { animation-play-state: running; }
-.en-disco-botao { position: absolute; left: 50%; top: 50%; width: 21%; aspect-ratio: 1; transform: translate(-50%, -50%); display: grid; place-items: center; border-radius: 50%; background: #0b0910; color: #fff; box-shadow: 0 0 0 2px rgba(255, 255, 255, 0.85); transition: transform 0.2s; }
-.en-disco:hover .en-disco-botao, .en-disco:focus-visible .en-disco-botao { transform: translate(-50%, -50%) scale(1.08); }
-.en-disco:focus-visible { outline: 2px solid var(--ciano); outline-offset: 6px; }
-@keyframes en-gira { to { transform: rotate(360deg); } }
+/* ── o rádio do painel: um toca-fitas de LCD, preso na cena ── */
+.en-radio { width: 300px; display: grid; gap: 10px; padding: 12px; border-radius: 10px; background: linear-gradient(180deg, #1b1622, #0e0b13); border: 1px solid rgba(255, 255, 255, 0.12); box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.08), 0 6px 18px rgba(0, 0, 0, 0.6); user-select: none; }
+.en-radio-lcd { display: grid; gap: 3px; padding: 8px 10px; border-radius: 6px; background: #071a1c; box-shadow: inset 0 0 12px rgba(0, 0, 0, 0.9); overflow: hidden; }
+.en-radio-lcd small { font: 700 10px var(--font-geist-mono), monospace; letter-spacing: 0.16em; color: rgba(47, 232, 255, 0.55); text-transform: uppercase; }
+.en-radio-lcd b { display: block; overflow: hidden; white-space: nowrap; font: 800 19px var(--font-geist-mono), monospace; letter-spacing: 0.04em; color: #7df9ff; text-shadow: 0 0 8px rgba(47, 232, 255, 0.8); }
+.en-radio-lcd b span { display: inline-block; padding-left: 100%; animation: en-letreiro 11s linear infinite; animation-play-state: paused; }
+.en-radio:not(.is-tocando) .en-radio-lcd b { opacity: 0.55; text-shadow: none; }
+.en-radio:not(.is-tocando) .en-radio-lcd b span { padding-left: 0; }
+.is-tocando .en-radio-lcd b span { animation-play-state: running; }
+@keyframes en-letreiro { to { transform: translateX(-100%); } }
+.en-radio-bts { display: grid; grid-template-columns: 1fr 1.618fr 1fr 1fr; gap: 6px; }
+.en-radio-bts button { height: 40px; border-radius: 6px; border: 1px solid rgba(255, 255, 255, 0.14); background: linear-gradient(180deg, #2a2432, #17131d); color: #e8e2f4; font-size: 15px; cursor: pointer; box-shadow: 0 2px 0 #050407; transition: transform 0.08s, box-shadow 0.08s; }
+.en-radio-bts button:active { transform: translateY(2px); box-shadow: none; }
+.en-radio-bts .en-radio-liga { color: #0b0910; background: linear-gradient(180deg, #ffd98a, var(--ouro)); border-color: transparent; font-weight: 900; }
+.en-radio-bts .en-radio-salvar { color: #ff8ad8; }
 
-.en-agora { display: grid; gap: var(--e1); }
-.en-agora small { font: 11px var(--font-geist-mono), monospace; letter-spacing: 0.18em; text-transform: uppercase; color: var(--ciano); opacity: 0.85; }
-.en-agora b { font: 900 clamp(28px, 8vw, 42px)/1.05 var(--font-geist-sans), system-ui, sans-serif; letter-spacing: -0.02em; }
-.en-agora span { font-size: 13px; opacity: 0.6; }
-
-.en-ctrl { display: flex; flex-wrap: wrap; justify-content: center; gap: var(--e2); }
-.en-ctrl button { min-height: 44px; padding: 0 var(--e3); border-radius: 999px; border: 1px solid rgba(255, 255, 255, 0.18); background: rgba(255, 255, 255, 0.04); color: #fff; font: 600 13px var(--font-geist-sans), system-ui, sans-serif; cursor: pointer; transition: background 0.2s, border-color 0.2s; }
-.en-ctrl button:hover, .en-ctrl button:focus-visible { background: rgba(255, 255, 255, 0.1); outline: none; }
-.en-ctrl .en-salvar { color: #ff8ad8; border-color: rgba(255, 63, 176, 0.5); }
-
-.en-ondas { display: flex; align-items: flex-end; gap: 3px; height: 21px; opacity: 0.25; transition: opacity 0.4s; }
-.en-ondas i { width: 3px; height: 30%; border-radius: 2px; background: var(--ciano); }
-.is-tocando .en-ondas { opacity: 0.8; }
-.is-tocando .en-ondas i { animation: en-onda 0.9s ease-in-out infinite alternate; }
-@keyframes en-onda { from { height: 18%; } to { height: 100%; } }
-
-/* ── a senha ── */
-.en-senha { display: grid; gap: var(--e2); padding-top: var(--e4); border-top: 1px solid rgba(255, 255, 255, 0.08); text-align: center; }
-.en-senha-titulo { margin: 0; font-size: 15px; line-height: 1.5; opacity: 0.85; }
-.en-senha-campo { display: grid; grid-template-columns: 1fr; gap: var(--e1); }
-.en-senha-campo input { min-height: 52px; padding: 0 var(--e3); border-radius: 14px; border: 1px solid rgba(255, 200, 87, 0.4); background: rgba(255, 200, 87, 0.05); color: #fff; font: 600 17px var(--font-geist-mono), monospace; letter-spacing: 0.08em; text-align: center; outline: none; transition: border-color 0.2s, box-shadow 0.2s; }
+/* ── a partida (a senha), embaixo ── */
+.en-senha { position: absolute; z-index: 30; left: 50%; bottom: calc(var(--e3) + env(safe-area-inset-bottom)); transform: translateX(-50%); width: min(calc(100% - 32px), 470px); display: grid; gap: var(--e1); padding: var(--e2) var(--e2) var(--e1); border-radius: 18px; background: rgba(8, 6, 14, 0.72); border: 1px solid rgba(255, 200, 87, 0.22); backdrop-filter: blur(10px); -webkit-backdrop-filter: blur(10px); text-align: center; }
+.en-senha-titulo { margin: 0; font-size: 13px; line-height: 1.45; opacity: 0.85; }
+.en-senha-campo { display: grid; grid-template-columns: 1.618fr 1fr; gap: var(--e1); }
+.en-senha-campo input { min-width: 0; min-height: 48px; padding: 0 var(--e2); border-radius: 12px; border: 1px solid rgba(255, 200, 87, 0.4); background: rgba(255, 200, 87, 0.05); color: #fff; font: 600 16px var(--font-geist-mono), monospace; letter-spacing: 0.08em; text-align: center; outline: none; transition: border-color 0.2s, box-shadow 0.2s; }
 .en-senha-campo input:focus { border-color: var(--ouro); box-shadow: 0 0 0 3px rgba(255, 200, 87, 0.18); }
-.en-senha-campo button { min-height: 52px; border-radius: 14px; border: 0; background: var(--ouro); color: #120d02; font: 800 15px var(--font-geist-sans), system-ui, sans-serif; letter-spacing: 0.02em; cursor: pointer; transition: filter 0.2s, opacity 0.2s; }
+.en-senha-campo button { min-height: 48px; padding: 0 var(--e2); border-radius: 12px; border: 0; background: var(--ouro); color: #120d02; font: 800 14px var(--font-geist-sans), system-ui, sans-serif; white-space: nowrap; cursor: pointer; transition: filter 0.2s, opacity 0.2s; }
 .en-senha-campo button:hover:not(:disabled) { filter: brightness(1.08); }
-.en-senha-campo button:disabled { opacity: 0.45; cursor: not-allowed; }
+.en-senha-campo button:disabled { opacity: 0.5; cursor: not-allowed; }
 .en-senha.is-errou .en-senha-campo input { border-color: #ff4e6a; animation: en-treme 0.35s; }
 @keyframes en-treme { 25% { transform: translateX(-6px); } 75% { transform: translateX(6px); } }
-.en-senha-aviso { margin: 0; min-height: 1.4em; font-size: 13px; color: #ff8a9c; }
-.en-senha-dica { margin: 0; font: 12px var(--font-geist-mono), monospace; opacity: 0.6; }
+.en-senha-aviso { margin: 0; min-height: 1.3em; font-size: 12px; color: #ff8a9c; }
+.en-senha-dica { margin: 0; font: 11px var(--font-geist-mono), monospace; opacity: 0.6; }
 .en-senha-dica a { color: var(--ciano); }
 
-@media (min-width: 560px) { .en-senha-campo { grid-template-columns: 1.618fr 1fr; } }
-@media (prefers-reduced-motion: reduce) { .en-disco-vinil, .is-tocando .en-ondas i, .en-senha.is-errou .en-senha-campo input { animation: none; } }
+/* a partida: a tela escurece enquanto a Kombi sai pra cidade */
+.en-escuro { position: absolute; inset: 0; z-index: 40; background: #05040b; opacity: 0; pointer-events: none; transition: opacity 1.4s ease-in 1.1s; }
+.is-partida .en-escuro { opacity: 1; }
 
-/* no celular: o disco menor e os espaços um degrau abaixo, pra senha aparecer cedo;
-   e uma folga embaixo (o aviso de cookies fica fixo ali e não pode cobrir o botão) */
-@media (max-width: 559px) {
-  .en-pagina { padding: var(--e3) 16px calc(170px + env(safe-area-inset-bottom)); align-items: start; }
-  .en-coluna { gap: var(--e4); }
-  .en-radio { gap: var(--e2); }
-  .en-disco { width: min(50vw, 200px); }
-  .en-senha { padding-top: var(--e3); }
+/* no celular: a partida compacta (uma frase, o campo e o botão numa linha) */
+@media (max-width: 560px) {
+  .en-senha { padding: var(--e1) var(--e1) 6px; gap: 6px; border-radius: 14px; }
+  .en-senha-titulo { font-size: 12px; }
+  .en-senha-campo input, .en-senha-campo button { min-height: 44px; }
+  .en-senha-campo button { font-size: 13px; }
 }
+@media (prefers-reduced-motion: reduce) { .en-radio-lcd b span, .en-senha.is-errou .en-senha-campo input { animation: none; padding-left: 0; } }
 
-/* no computador: a coluna cabe o campo e o botão na razão áurea, e a folga do aviso de cookies */
-@media (min-width: 560px) {
-  .en-pagina { padding-bottom: calc(var(--e5) + 90px); }
-  .en-coluna { width: min(100%, 470px); }
-  .en-senha-campo button { padding: 0 var(--e2); white-space: nowrap; }
-}
+/* o display do rádio vai pro painel (KombiEntrada AncoraRadio põe o transform a cada quadro) */
+.en-radio-ancora { position: absolute; z-index: 20; left: 0; top: 0; visibility: hidden; will-change: transform; }
