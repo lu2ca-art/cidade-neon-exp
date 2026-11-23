@@ -36,13 +36,13 @@ Gerado por `node scripts/gerar-dependencias.mjs`. Não editar à mão: a explica
 | @radix-ui/react-toggle | 1.2.1 | prod | primitivo de UI acessível (base do shadcn) | 1 |
 | @radix-ui/react-toggle-group | 1.2.1 | prod | primitivo de UI acessível (base do shadcn) | 1 |
 | @radix-ui/react-tooltip | 1.4.1 | prod | primitivo de UI acessível (base do shadcn) | 1 |
-| @react-three/drei | ^10.7.9 | prod | peças prontas pro R3F (câmeras, GLB, controles) | 21 |
-| @react-three/fiber | ^9.8.2 | prod | Three.js declarativo dentro do React | 50 |
+| @react-three/drei | ^10.7.9 | prod | peças prontas pro R3F (câmeras, GLB, controles) | 51 |
+| @react-three/fiber | ^9.8.2 | prod | Three.js declarativo dentro do React | 102 |
 | @react-three/postprocessing | ^3.2.2 | prod | efeitos de tela no 3D (bloom etc.) | 1 |
 | @react-three/rapier | ^2.2.0 | prod | física 3D | 4 |
 | @sentry/browser | ^11.12.0 | prod | captura de erros em produção | 1 |
 | @vercel/analytics | latest | prod | métricas de visitas da Vercel | 1 |
-| @vercel/blob | ^2.9.0 | prod | armazenamento de arquivos na Vercel | 1 |
+| @vercel/blob | ^2.9.0 | prod | armazenamento de arquivos na Vercel | 2 |
 | autoprefixer | ^10.6.2 | prod | prefixos CSS | 0 |
 | class-variance-authority | ^0.7.1 | prod | variantes de componentes (shadcn) | 13 |
 | clsx | ^2.1.1 | prod | junta classes CSS | 1 |
@@ -52,19 +52,19 @@ Gerado por `node scripts/gerar-dependencias.mjs`. Não editar à mão: a explica
 | framer-motion | ^14.14.0 | prod | animações de interface | 1 |
 | input-otp | 1.5.0 | prod | campo de código (shadcn) | 1 |
 | lucide-react | ^1.62.0 | prod | ícones | 23 |
-| next | 16.4.6 | prod | framework web (rotas, build, deploy na Vercel) | 54 |
+| next | 16.4.6 | prod | framework web (rotas, build, deploy na Vercel) | 62 |
 | next-themes | ^0.4.6 | prod | tema claro/escuro | 2 |
 | posthog-js | ^1.448.0 | prod | analytics do jogo (PostHog EU) | 4 |
 | postprocessing | ^6.39.6 | prod | base dos efeitos de tela | 1 |
-| react | 19.3.1 | prod | interface | 199 |
+| react | 19.3.1 | prod | interface | 322 |
 | react-day-picker | 9.8.0 | prod | calendário (shadcn) | 1 |
-| react-dom | 19.3.1 | prod | interface no navegador | 0 |
+| react-dom | 19.3.1 | prod | interface no navegador | 2 |
 | react-hook-form | ^7.92.0 | prod | formulários | 1 |
 | react-resizable-panels | ^2.1.7 | prod | painéis redimensionáveis (shadcn) | 1 |
 | sonner | ^1.7.4 | prod | avisos (toasts) | 1 |
 | tailwind-merge | ^2.5.5 | prod | resolve conflito de classes Tailwind | 1 |
 | tailwindcss-animate | ^1.0.7 | prod | animações utilitárias do Tailwind | 0 |
-| three | ^0.187.0 | prod | motor 3D (renderiza o jogo) | 62 |
+| three | ^0.187.0 | prod | motor 3D (renderiza o jogo) | 143 |
 | vaul | ^1.1.2 | prod | gaveta de baixo pra cima (shadcn) | 1 |
 | zod | 4.6.7 | prod | validação de dados | 0 |
 
