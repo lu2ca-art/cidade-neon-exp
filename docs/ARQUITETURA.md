@@ -2,30 +2,31 @@
 
 Gerado por `node scripts/gerar-mapa.mjs` (`bun run mapa`). Não editar à mão. Cobre `app/`, `components/`, `lib/` e `hooks/`, só imports estáticos e dinâmicos com string.
 
-338 arquivos, 68529 linhas, 5 ciclos de importação, 52 arquivos que ninguém importa.
+599 arquivos, 122127 linhas, 6 ciclos de importação, 53 arquivos que ninguém importa.
 
 ## Áreas
 `usa` = outras áreas que esta importa. Sala que usa outra sala é acoplamento: mexer numa quebra a outra.
 
 | área | arquivos | linhas | usa |
 |---|---|---|---|
-| app/linha | 86 | 21727 | app/casa-de-shows, app/fliperama, app/galeria, app/ginasio, app/oficina, app/parque, app/teste, components, lib |
-| components | 77 | 12156 | app/providers, hooks, lib |
-| app/batida | 56 | 7263 | app/providers |
-| app/neon-tiles | 10 | 3873 | app/providers, lib |
+| app/linha | 339 | 73595 | app/batida, app/casa-de-shows, app/fliperama, app/galeria, app/ginasio, app/neon-tiles, app/parque, app/teste, components, lib |
+| components | 77 | 12172 | app/providers, hooks, lib |
+| app/batida | 56 | 7420 | app/linha, app/providers |
+| app/neon-tiles | 10 | 3899 | app/linha, app/providers, lib |
 | app/drive | 1 | 2529 | app/n3xo, app/providers, components, lib |
 | app (raiz) | 5 | 2226 | app/providers, components, lib |
-| app/nectar | 7 | 1300 | app/providers, lib |
-| lib | 12 | 1221 | app/n3xo |
-| app/fliperama | 10 | 1185 | app/linha, app/neon-tiles |
+| app/teste | 16 | 1680 | app/linha |
+| lib | 13 | 1380 | app/n3xo |
+| app/nectar | 7 | 1301 | app/linha, app/providers, lib |
+| app/fliperama | 10 | 1199 | app/linha, app/neon-tiles, lib |
 | app/JRJblGyz9mEDxMLP | 2 | 1144 | — |
 | app/providers | 3 | 1133 | lib |
-| app/parque | 6 | 984 | app/linha, app/neon-tiles |
+| app/parque | 6 | 988 | app/linha, app/neon-tiles, lib |
 | app/drive-v2 | 1 | 968 | app/providers, components, hooks, lib |
-| app/cidade | 6 | 930 | app/linha |
+| app/cidade | 6 | 931 | app/linha |
+| app/ginasio | 6 | 907 | app/linha, app/neon-tiles, lib |
+| app/galeria | 6 | 899 | app/linha, app/neon-tiles |
 | app/n3xo | 3 | 892 | app/providers |
-| app/galeria | 6 | 887 | app/linha, app/neon-tiles |
-| app/ginasio | 5 | 870 | app/linha, app/neon-tiles |
 | app/tiktok | 2 | 868 | app/providers |
 | app/kombi-editor | 1 | 698 | — |
 | hooks | 4 | 656 | app/providers, components, lib |
@@ -33,16 +34,14 @@ Gerado por `node scripts/gerar-mapa.mjs` (`bun run mapa`). Não editar à mão. 
 | app/cockpit-editor | 1 | 520 | — |
 | app/sintonizador | 1 | 425 | app/providers, lib |
 | app/ligacao | 1 | 363 | — |
-| app/teste | 9 | 363 | app/linha |
 | app/hacker | 1 | 360 | app/providers |
+| app/api | 4 | 346 | — |
 | app/radio | 1 | 321 | — |
 | app/feel-good | 1 | 315 | app/providers |
 | app/youtube | 1 | 315 | app/providers |
 | app/museu | 1 | 255 | — |
-| app/api | 2 | 193 | — |
 | app/final | 1 | 191 | app/providers |
-| app/casa-de-shows | 2 | 175 | app/linha |
-| app/oficina | 3 | 168 | app/linha, app/neon-tiles |
+| app/casa-de-shows | 2 | 176 | app/linha |
 | app/van-preview | 1 | 150 | — |
 | app/spotify | 2 | 127 | app/providers, lib |
 | app/drive-cockpit | 1 | 91 | components, lib |
@@ -54,57 +53,59 @@ Gerado por `node scripts/gerar-mapa.mjs` (`bun run mapa`). Não editar à mão. 
 ## Módulos mais importados (mexer aqui afeta muita coisa)
 | arquivo | importado por |
 |---|---|
+| app/linha/disco/historia.ts | 68 |
+| app/linha/som.ts | 64 |
 | lib/utils.ts | 50 |
+| app/linha/disco/portas.ts | 38 |
+| app/linha/estrada/pistas.ts | 35 |
+| app/linha/estrada/Seguro.tsx | 33 |
+| app/linha/data.ts | 32 |
 | app/batida/lib/types.ts | 30 |
-| app/linha/data.ts | 25 |
-| app/linha/som.ts | 20 |
+| app/linha/estrada/mundo.ts | 26 |
+| app/linha/estrada/pista.ts | 26 |
+| app/linha/lugares.ts | 23 |
+| app/linha/interior/comum.tsx | 22 |
+| app/linha/estrada/mundoDisco.ts | 21 |
+| app/linha/disco/episodios.ts | 20 |
+| app/linha/estado.ts | 20 |
+| app/linha/radio.ts | 20 |
 | app/providers/GameFunnelProvider.tsx | 20 |
-| app/batida/lib/theory.ts | 16 |
-| app/linha/radio.ts | 16 |
-| lib/analytics.ts | 15 |
-| app/linha/estrada/mundo.ts | 14 |
-| app/linha/interior/comum.tsx | 13 |
-| app/linha/lugares.ts | 13 |
-| app/batida/lib/synths.ts | 12 |
-| app/linha/estrada/pista.ts | 12 |
-| app/linha/interior/motor.tsx | 12 |
-| app/linha/interior/bus.ts | 11 |
-| lib/radio-tiers.ts | 11 |
-| app/linha/paginas.ts | 10 |
-| app/linha/roteiros.ts | 10 |
-| app/linha/estado.ts | 9 |
-| app/linha/estrada/geo.ts | 9 |
+| app/linha/som-carro.ts | 19 |
+| app/linha/disco/instrumentos.ts | 18 |
+| lib/analytics.ts | 17 |
 
 ## Maiores arquivos (candidatos a dividir)
 | arquivo | linhas |
 |---|---|
-| app/linha/estrada/Corrida.tsx | 4582 |
+| app/linha/estrada/Corrida.tsx | 7651 |
+| app/linha/page.tsx | 3260 |
 | app/drive/page.tsx | 2529 |
 | app/page.tsx | 2025 |
+| app/linha/som.ts | 1535 |
 | components/DriveCockpit/CyberpunkCity.tsx | 1374 |
-| app/linha/page.tsx | 1250 |
 | components/DriveCockpit/CockpitScene.tsx | 1216 |
+| app/neon-tiles/cena.ts | 1151 |
 | app/JRJblGyz9mEDxMLP/content.ts | 1128 |
-| app/neon-tiles/cena.ts | 1123 |
+| app/linha/estrada/Holo.tsx | 1122 |
+| app/teste/mesa.ts | 1071 |
+| app/linha/estrada/mundoDisco.ts | 1040 |
 | app/drive-v2/page.tsx | 968 |
-| app/linha/chat.tsx | 935 |
-| app/linha/som.ts | 745 |
-| app/batida/lib/synths.ts | 737 |
-| components/ui/sidebar.tsx | 726 |
-| app/kombi-editor/page.tsx | 698 |
-| app/batida/estudio/Estudio.tsx | 596 |
+| app/linha/chat.tsx | 948 |
+| app/linha/interior/salas/GaleriaElla.tsx | 899 |
 
 ## Ciclos de importação
-- app/linha/som.ts ⇄ app/linha/tons.ts
-- app/linha/estado.ts ⇄ app/linha/ligacoes.ts ⇄ app/linha/missoes.ts ⇄ app/linha/os.tsx ⇄ app/linha/recursos.tsx ⇄ app/linha/roteiros.ts
-- app/linha/interior/Interior.tsx ⇄ app/linha/interior/registro.ts
+- app/linha/cenas.ts ⇄ app/linha/disco/abertos.ts ⇄ app/linha/disco/episodios.ts ⇄ app/linha/disco/historia.ts ⇄ app/linha/disco/instrumentos.ts ⇄ app/linha/disco/metro.ts ⇄ app/linha/disco/musicaContinua.ts ⇄ app/linha/disco/pecas/sons.ts ⇄ app/linha/disco/perseguicao.ts ⇄ app/linha/disco/portas.ts ⇄ app/linha/disco/radioAntiga.ts ⇄ app/linha/disco/sons.ts ⇄ app/linha/disco/sugestoesDbee.ts ⇄ app/linha/disco/tamborSom.ts ⇄ app/linha/disco/trilha.ts ⇄ app/linha/disco/tutorialConf.ts ⇄ app/linha/discos.ts ⇄ app/linha/economia-rascunho.ts ⇄ app/linha/economia.ts ⇄ app/linha/estado.ts ⇄ app/linha/estrada/atos.ts ⇄ app/linha/estrada/pistas.ts ⇄ app/linha/ligacoes.ts ⇄ app/linha/metro/Metro.tsx ⇄ app/linha/metro/som.ts ⇄ app/linha/missoes.ts ⇄ app/linha/os.tsx ⇄ app/linha/provas.tsx ⇄ app/linha/recursos.tsx ⇄ app/linha/roteiros.ts ⇄ app/linha/som.ts ⇄ app/linha/tons.ts
 - app/neon-tiles/dados.ts ⇄ app/neon-tiles/instrumentos.ts
+- app/linha/disco/pecas/Clipe.tsx ⇄ app/linha/disco/pecas/Cozinhar.tsx ⇄ app/linha/disco/pecas/Danca.tsx ⇄ app/linha/disco/pecas/DiscoAntigo.tsx ⇄ app/linha/disco/pecas/Maquina.tsx ⇄ app/linha/disco/pecas/Moda.tsx ⇄ app/linha/disco/pecas/Peca.tsx ⇄ app/linha/disco/pecas/SinucaMissao.tsx ⇄ app/linha/disco/pecas/Trilha8.tsx ⇄ app/linha/disco/pecas/Vinheta.tsx
+- app/linha/trincheiras/fisica.ts ⇄ app/linha/trincheiras/moto.ts
+- app/linha/interior/Interior.tsx ⇄ app/linha/interior/registro.ts
 - app/neon-tiles/menus.tsx ⇄ app/neon-tiles/page.tsx
 
 ## Arquivos que ninguém importa (código morto ou entrada por configuração)
 Confira antes de apagar: pode ser carregado por caminho dinâmico.
 
 - app/batida/components/InstrumentIcon.tsx (82 linhas)
+- app/linha/disco/missoes.ts (154 linhas)
 - components/ConfirmationOverlay.tsx (130 linhas)
 - components/DriveCockpit/SportsCar.tsx (204 linhas)
 - components/DriveCockpit/VoxelCity.tsx (233 linhas)
