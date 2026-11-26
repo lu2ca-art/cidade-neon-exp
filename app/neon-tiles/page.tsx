@@ -14,7 +14,7 @@ import { sendCarRadioMute, sendMinimizeConsole } from "@/app/providers/AudioBrid
 import { track } from "@/lib/analytics"
 import "./gd.css"
 import {
-  DESAFIOS, FAIXAS, MODELOS, PALCOS, SAVE_VAZIO, carregar, estrelasPor, gravar, palcoAberto, publicoDe,
+  DESAFIOS, FAIXAS, MODELOS, gdId, PALCOS, SAVE_VAZIO, carregar, estrelasPor, gravar, palcoAberto, publicoDe,
   type Faixa, type Feito, type Instrumento, type Palco, type Save, type SaveLinha,
 } from "./dados"
 import {
@@ -138,11 +138,11 @@ export default function GuitarDriver() {
     try {
       const inst = save.instrumento
       // o editor pode ter deixado uma versão das notas pra testar (só no aparelho)
-      const local = (() => { try { return localStorage.getItem(`gd-chart-${f.id}`) } catch { return null } })()
+      const local = (() => { try { return localStorage.getItem(`gd-chart-${gdId(f.id)}`) } catch { return null } })()
       const [chart, buf, parte] = await Promise.all([
-        local ? Promise.resolve(JSON.parse(local) as ChartGd) : fetch(`/gd/${f.id}.json`).then((r) => r.json() as Promise<ChartGd>),
-        carregarBuffer(urlCamada(f.id, `sem-${inst}`)),
-        carregarBuffer(urlCamada(f.id, inst)),
+        local ? Promise.resolve(JSON.parse(local) as ChartGd) : fetch(`/gd/${gdId(f.id)}.json`).then((r) => r.json() as Promise<ChartGd>),
+        carregarBuffer(urlCamada(gdId(f.id), `sem-${inst}`)),
+        carregarBuffer(urlCamada(gdId(f.id), inst)),
       ])
       const notas = notasDoChart(chart, inst, save.dificuldade)
       const frases = new Map<number, { total: number; acertos: number; falhou: boolean }>()

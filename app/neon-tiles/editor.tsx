@@ -9,7 +9,7 @@
 // jogo passa a usar essa versão; "baixar" gera o arquivo pra subir pro jogo.
 
 import { useCallback, useEffect, useRef, useState } from "react"
-import { DIFICULDADES, FAIXAS, faixaAberta, type Dificuldade, type Instrumento } from "./dados"
+import { DIFICULDADES, FAIXAS, ehAoVivo, faixaAberta, gdId, type Dificuldade, type Instrumento } from "./dados"
 import { COR_LANE, LANES } from "./cena"
 import type { ChartGd, NotaGd } from "./motor"
 import { ac, carregarBuffer, urlCamada } from "./som"
@@ -38,7 +38,7 @@ function paraArquivo(notas: NotaE[]): NotaGd[] {
 }
 
 export function Editor({ gdAudio, onVoltar }: { gdAudio: string; onVoltar: () => void }) {
-  const faixas = FAIXAS.filter((f) => faixaAberta(f))
+  const faixas = FAIXAS.filter((f) => faixaAberta(f) && ehAoVivo(f.id))
   const [faixaId, setFaixaId] = useState(faixas[0]?.id ?? "chuva")
   const [inst, setInst] = useState<Instrumento>("guitarra")
   const [dif, setDif] = useState<Dificuldade>("medio")
@@ -62,9 +62,9 @@ export function Editor({ gdAudio, onVoltar }: { gdAudio: string; onVoltar: () =>
     let vivo = true
     // eslint-disable-next-line react-hooks/set-state-in-effect
     setChart(null); setBufs(null); setMsg("carregando…")
-    const local = (() => { try { return localStorage.getItem(`gd-chart-${faixaId}`) } catch { return null } })()
-    const pc = local ? Promise.resolve(JSON.parse(local) as ChartGd) : fetch(`/gd/${faixaId}.json`).then((r) => r.json() as Promise<ChartGd>)
-    Promise.all([pc, carregarBuffer(urlCamada(faixaId, `sem-${inst}`)), carregarBuffer(urlCamada(faixaId, inst))])
+    const local = (() => { try { return localStorage.getItem(`gd-chart-${gdId(faixaId)}`) } catch { return null } })()
+    const pc = local ? Promise.resolve(JSON.parse(local) as ChartGd) : fetch(`/gd/${gdId(faixaId)}.json`).then((r) => r.json() as Promise<ChartGd>)
+    Promise.all([pc, carregarBuffer(urlCamada(gdId(faixaId), `sem-${inst}`)), carregarBuffer(urlCamada(gdId(faixaId), inst))])
       .then(([c, a, b]) => { if (!vivo) return; setChart(c); setBufs([a, b]); setMsg(local ? "versão editada (guardada neste aparelho)" : "") })
       .catch(() => vivo && setMsg("não deu pra carregar essa faixa"))
     return () => { vivo = false }
@@ -196,8 +196,8 @@ export function Editor({ gdAudio, onVoltar }: { gdAudio: string; onVoltar: () =>
   }
 
   const montar = (): ChartGd | null => (chart ? { ...chart, [inst]: { ...chart[inst], [dif]: paraArquivo(notas) } } : null)
-  const testar = () => { const c = montar(); if (!c) return; try { localStorage.setItem(`gd-chart-${faixaId}`, JSON.stringify(c)); setChart(c); setMudou(false); setMsg("guardado neste aparelho: o jogo já usa essa versão") } catch { setMsg("não deu pra guardar") } }
-  const original = () => { try { localStorage.removeItem(`gd-chart-${faixaId}`) } catch {} fetch(`/gd/${faixaId}.json`).then((r) => r.json()).then((c) => { setChart(c); setMsg("voltou pra versão do jogo") }) }
+  const testar = () => { const c = montar(); if (!c) return; try { localStorage.setItem(`gd-chart-${gdId(faixaId)}`, JSON.stringify(c)); setChart(c); setMudou(false); setMsg("guardado neste aparelho: o jogo já usa essa versão") } catch { setMsg("não deu pra guardar") } }
+  const original = () => { try { localStorage.removeItem(`gd-chart-${gdId(faixaId)}`) } catch {} fetch(`/gd/${gdId(faixaId)}.json`).then((r) => r.json()).then((c) => { setChart(c); setMsg("voltou pra versão do jogo") }) }
   const baixar = () => {
     const c = montar(); if (!c) return
     const url = URL.createObjectURL(new Blob([JSON.stringify(c)], { type: "application/json" }))

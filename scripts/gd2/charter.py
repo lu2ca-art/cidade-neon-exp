@@ -396,7 +396,12 @@ def main():
     ap.add_argument("--antigo", default=None, help="pasta com os charts antigos (pro antes/depois)")
     ap.add_argument("--relatorio", required=True)
     ap.add_argument("--so", default=None, help="só estas faixas (ids separados por vírgula)")
+    ap.add_argument("--bpm", default=None, help="troca o BPM (id=bpm,...): as versões ao vivo (26/11) não têm o BPM do estúdio")
     a = ap.parse_args()
+    if a.bpm:
+        for par in a.bpm.split(","):
+            k, v = par.split("=")
+            BPM[k] = float(v)
     ids = sorted(d for d in os.listdir(a.stems) if os.path.isdir(os.path.join(a.stems, d)) and d in BPM)
     if a.so:
         ids = [i for i in ids if i in a.so.split(",")]

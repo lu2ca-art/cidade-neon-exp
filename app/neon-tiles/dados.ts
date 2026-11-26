@@ -44,6 +44,11 @@ export const FAIXAS: Faixa[] = [
 export const AO_VIVO = ["chuva", "ontem", "dopamina", "ojala", "nectar"] as const
 export const ehAoVivo = (id: string) => (AO_VIVO as readonly string[]).includes(id)
 export const FAIXAS_GD = FAIXAS.filter((f) => ehAoVivo(f.id))
+// as que já têm as notas e as camadas DA VERSÃO AO VIVO (public/gd/<id>-vivo.json e
+// gd/v2/<id>-vivo/ no Blob). Entra aqui só depois da subida: até lá, a de estúdio
+export const VIVO_PRONTO: readonly string[] = []
+/** o nome das notas e das camadas de uma faixa (a ao vivo, quando pronta) */
+export const gdId = (id: string) => (VIVO_PRONTO.includes(id) ? `${id}-vivo` : id)
 
 export function faixaAberta(f: Faixa, agora = Date.now()) {
   return !f.abre || new Date(f.abre).getTime() <= agora

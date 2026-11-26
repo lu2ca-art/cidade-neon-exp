@@ -6,7 +6,7 @@
 
 import { useEffect, useMemo, useRef, useState } from "react"
 import {
-  ACABAMENTOS, DESAFIOS, DIFICULDADES, FAIXAS, FAIXAS_GD, MODELOS, PALCOS, faixaAberta, faixaConquistada, palcoAberto, publicoDe,
+  ACABAMENTOS, DESAFIOS, DIFICULDADES, FAIXAS, FAIXAS_GD, MODELOS, gdId, PALCOS, faixaAberta, faixaConquistada, palcoAberto, publicoDe,
   type Faixa, type Instrumento, type Modelo, type Palco, type Save, type SaveLinha,
 } from "./dados"
 import { svgInstrumento, type Acabamento } from "./instrumentos"
@@ -231,7 +231,7 @@ export function Preparo({ save, salvar, faixa, palco, batalha, erro, calibrado, 
   const [chart, setChart] = useState<ChartGd | null>(null)
   useEffect(() => {
     let vivo = true
-    fetch(`/gd/${faixa.id}.json`).then((r) => r.json()).then((c) => { if (vivo) setChart(c) }).catch(() => {})
+    fetch(`/gd/${gdId(faixa.id)}.json`).then((r) => r.json()).then((c) => { if (vivo) setChart(c) }).catch(() => {})
     return () => { vivo = false }
   }, [faixa.id])
   const modelo = MODELOS.find((m) => m.id === save.modelo[save.instrumento]) ?? MODELOS[0]
