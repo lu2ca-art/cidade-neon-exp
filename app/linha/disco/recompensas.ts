@@ -16,6 +16,7 @@
 // A tabela de quem dá o quê continua sendo a de portas.ts (MISSOES13[].recompensa),
 // pro dono ter um lugar só pra mudar. Aqui só se aplica, uma vez por missão.
 
+import { ehAoVivo } from "../../neon-tiles/dados"
 import type { Save } from "../estado"
 import { ganhar } from "../economia"
 import { PISTAS } from "../estrada/pistas"
@@ -39,7 +40,8 @@ export function aplicarRecompensa(s: Save, id: MissaoId, emCarreira = historiaDe
   // (08/11) fechou o episódio: a música dele abre no Guitar Driver e no MP3 (a tabela: disco/episodios.ts)
   const antes = historiaDe(s), depois = historiaDe(save)
   const ep = EPISODIOS.find((e) => !episodioFeito(antes, e) && episodioFeito(depois, e))
-  if (ep) r.guitar = r.batida = { faixa: ep.musica, nome: nomeDaMusica(ep) }
+  // (26/11) no Guitar Driver só as 5 ao vivo: as outras abrem só no B4TIDA e no MP3
+  if (ep) { const m = { faixa: ep.musica, nome: nomeDaMusica(ep) }; r.batida = m; if (ehAoVivo(ep.musica)) r.guitar = m as typeof r.guitar }
   return { save, recompensa: r }
 }
 

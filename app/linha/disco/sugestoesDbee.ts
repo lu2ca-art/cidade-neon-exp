@@ -193,7 +193,7 @@ export const SUGESTOES_DBEE: SugestaoDbee[] = [
   },
   {
     id: "radio-xenom",
-    sobre: "a Rádio Xenom (69.9): no subúrbio, com a rádio desligada",
+    sobre: "a 222FM (222.0): no subúrbio, com a rádio desligada",
     opcoes: (c) => um((c.zona === "suburbio" || c.zona === "tuneis") && !c.radioLigada && !feita(c, "radio-xenom") && {
       chave: "radio-xenom",
       texto: "liga a rádio: a Xenom fala de tudo que rola aqui embaixo",

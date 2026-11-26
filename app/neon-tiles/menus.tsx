@@ -6,7 +6,7 @@
 
 import { useEffect, useMemo, useRef, useState } from "react"
 import {
-  ACABAMENTOS, DESAFIOS, DIFICULDADES, FAIXAS, MODELOS, PALCOS, faixaAberta, faixaConquistada, palcoAberto, publicoDe,
+  ACABAMENTOS, DESAFIOS, DIFICULDADES, FAIXAS, FAIXAS_GD, MODELOS, PALCOS, faixaAberta, faixaConquistada, palcoAberto, publicoDe,
   type Faixa, type Instrumento, type Modelo, type Palco, type Save, type SaveLinha,
 } from "./dados"
 import { svgInstrumento, type Acabamento } from "./instrumentos"
@@ -182,7 +182,7 @@ export function Rapido({ save, linha, neon, onFaixa, onVoltar }: { save: Save; l
       <div className="gd-menu-corpo">
         <p className="gd-rotulo">as faixas chegam conforme você acorda as pessoas da cidade</p>
         <ul className="gd-setlist">
-          {FAIXAS.map((f, i) => {
+          {FAIXAS_GD.map((f, i) => {
             const aberta = faixaAberta(f) && faixaConquistada(f, linha)
             const melhor = Math.max(0, ...Object.entries(save.estrelas).filter(([k]) => k.split(":")[1] === f.id).map(([, v]) => v))
             return (

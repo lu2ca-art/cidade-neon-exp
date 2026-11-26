@@ -17,23 +17,29 @@
 //   Na cidade, entrar numa rua com a Cidade Neon ligada PEDE a faixa da rua: ela é a
 //   próxima da rádio (não corta a que está tocando)
 //
+// (25–26/11, o dono) a Rádio Xenom VIROU A 222FM (a 222.0): as músicas do LU2CA
+// sorteadas por categoria, cada uma com a sua chance (disco/r222.ts). O locutor
+// anuncia as prévias do álbum (o nome e que ela já está disponível) e segue com a
+// programação de antes. A Crypto da cidade foi pra 88.7.
+//
 // Desempenho: nada por quadro. A zona só chama quando muda; o resto roda na troca de música.
 
 import { PISTAS, faixaDaPista, type PistaId } from "../estrada/pistas"
 import type { EstacaoId } from "../data"
-import { ARQUIVO, FREQUENCIAS, VINIS, type FreqId } from "../radio"
+import { ARQUIVO, FREQUENCIAS, type FreqId } from "../radio"
 import { chiadoCurto, fonteSom, player } from "../som"
 import type { HistoriaDisco } from "./historia"
 import { MISSOES13, disponiveis, feita13, normalizarMissao, type MissaoId } from "./portas"
 import { aoMudarZona, type ZonaSom } from "./radioAntiga"
+import { repertorio222, sortearCategoria, type Categoria222 } from "./r222"
 import { LOCUTOR_XENOM, VINHETAS_XENOM, type VinhetaXenom } from "./vinhetasXenom"
 
 export type EstacaoRadio = "xenom" | "cidade"
-export interface FaixaRadio { titulo: string; src: string; pista?: PistaId }
+export interface FaixaRadio { titulo: string; src: string; pista?: PistaId; cat?: Categoria222 }
 export interface VinhetaRadio { de: string; texto: string; audio: string | null; cor: string }
 
 export const ESTACOES_RADIO: Record<EstacaoRadio, { freq: FreqId; nome: string; cor: string }> = {
-  xenom: { freq: "suburbio", nome: "RÁDIO XENOM", cor: "#ff2d78" },
+  xenom: { freq: "suburbio", nome: "222FM", cor: "#ff2d78" },
   cidade: { freq: "linha", nome: "RÁDIO CIDADE NEON CRYPTO", cor: "#2fe8ff" },
 }
 export const estacaoDaZona = (z: ZonaSom): EstacaoRadio => (z === "cidade" ? "cidade" : "xenom")
@@ -48,10 +54,9 @@ export function faixasDaEstacao(e: EstacaoRadio, _agora = Date.now()): FaixaRadi
     const p = PISTAS.find((x) => x.id === contexto.h?.ultimaFaixa)
     return p?.inst ? [{ titulo: `${p.faixa} · inst`, src: p.inst, pista: p.id }] : []
   }
-  // Xenom: (19/11, o dono: "na rádio subúrbio tá tocando volume 2 e isso não pode acontecer,
-  // definitivamente") só os vinis da loja (domínio público). Nada do vol. 2: as faixas da
-  // frequência do subúrbio e o ARQUIVO (Hollywood, Clichê...) saíram
-  return [...VINIS]
+  // 222FM (26/11): o repertório de todas as categorias (o sorteio é na proximaDaEstacao).
+  // Nada do vol. 2 inteiro (19/11): o vol. 2 só entra como snippet, quando houver
+  return Object.values(repertorio222(_agora)).flat()
 }
 
 // ── a frequência agora (uma pro jogo inteiro: estrada, túneis, salas) ──
@@ -136,7 +141,8 @@ function missoesAgora(): { ativa: MissaoId | null; disp: MissaoId[]; feitas: Mis
 }
 
 // ── a programação (a posição fica guardada: voltar continua de onde parou) ──
-interface Estado { ordem: Partial<Record<EstacaoRadio, string[]>>; i: Partial<Record<EstacaoRadio, number>>; n: number; ultima: string | null }
+// a chave da ordem: a estação, ou "222:<categoria>" (uma sacola por categoria)
+interface Estado { ordem: Record<string, string[]>; i: Record<string, number>; n: number; ultima: string | null }
 const CHAVE = "cn-radios"
 let est: Estado | null = null
 function ler(): Estado {
@@ -187,23 +193,48 @@ export function proximaDaEstacao(e: EstacaoRadio): ProximaRadio | null {
       return { faixa: f, vinheta: vinhetaCidade(f, s.n, true) }
     }
   }
-  let ordem = (s.ordem[e] ?? []).filter((x) => srcs.includes(x))
-  let i = s.i[e] ?? 0
-  if (ordem.length !== srcs.length) { ordem = e === "cidade" ? albumLeve(srcs) : embaralhar(srcs); i = 0 }
+  // 222FM: primeiro a categoria (pela chance), depois a próxima da sacola dela
+  let chave: string = e
+  let daVez = srcs
+  if (e === "xenom") {
+    const rep = repertorio222()
+    const cat = sortearCategoria(rep)
+    if (cat) { chave = `222:${cat}`; daVez = rep[cat].map((f) => f.src) }
+  }
+  const nova = () => (e === "cidade" ? albumLeve(daVez) : embaralhar(daVez))
+  let ordem = (s.ordem[chave] ?? []).filter((x) => daVez.includes(x))
+  let i = s.i[chave] ?? 0
+  if (ordem.length !== daVez.length) { ordem = nova(); i = 0 }
   // não repete a última (o pedido da rua, a virada do ciclo)
   for (let k = 0; k < 2; k++) {
-    if (i >= ordem.length) { ordem = e === "cidade" ? albumLeve(srcs) : embaralhar(srcs); i = 0 }
+    if (i >= ordem.length) { ordem = nova(); i = 0 }
     if (ordem[i] === s.ultima && ordem.length > 1) { i++; continue }
     break
   }
   if (i >= ordem.length) i = 0
   const src = ordem[i]
-  s.ordem[e] = ordem
-  s.i[e] = i + 1
+  s.ordem[chave] = ordem
+  s.i[chave] = i + 1
   s.ultima = src
   gravar()
   const faixa = achar(src)
-  return { faixa, vinheta: e === "xenom" ? vinhetaXenom(s.n) : vinhetaCidade(faixa, s.n, false) }
+  return { faixa, vinheta: e === "xenom" ? vinheta222(faixa, s.n) : vinhetaCidade(faixa, s.n, false) }
+}
+
+// (25/11, o dono) "na rádio o locutor vai anunciar isso, o nome da música e dizer
+// que ela já está disponível, junto da programação". Prévia do álbum: o anúncio.
+// O resto: a programação de antes (as missões, o subúrbio, os lugares)
+function vinheta222(f: FaixaRadio, n: number): VinhetaRadio {
+  if (f.cat === "previa") {
+    const nome = f.titulo
+    const falas = [
+      `222FM. ${nome}, do LU2CA. já tá disponível, ouve inteira na loja`,
+      `${nome}. a música inteira já saiu, tá na loja`,
+      `você tá ouvindo ${nome}, na 222FM. já disponível`,
+    ]
+    return { de: LOCUTOR_XENOM, texto: falas[n % falas.length], audio: null, cor: ESTACOES_RADIO.xenom.cor }
+  }
+  return vinhetaXenom(n)
 }
 
 /** a música tocando agora é desta estação? (pra não trocar à toa ao voltar) */

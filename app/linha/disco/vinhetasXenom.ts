@@ -37,7 +37,7 @@ export interface VinhetaXenom {
 }
 
 /** o nome que aparece no display enquanto o locutor fala */
-export const LOCUTOR_XENOM = "RÁDIO XENOM"
+export const LOCUTOR_XENOM = "222FM" // (26/11) a Xenom virou a 222FM
 
 const v = (id: string, texto: string, extra: Partial<VinhetaXenom> = {}): VinhetaXenom => ({ id, texto, audio: null, ...extra })
 

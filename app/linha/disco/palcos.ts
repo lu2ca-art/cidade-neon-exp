@@ -19,6 +19,7 @@
 //
 // Tudo que é número ou nome aqui é RASCUNHO pro dono ajustar.
 
+import { ehAoVivo } from "../../neon-tiles/dados"
 import { PISTAS, type PistaId } from "../estrada/pistas"
 import type { HistoriaDisco } from "./historia"
 import { musicasDoGuitar, portaAberta } from "./portas"
@@ -107,7 +108,7 @@ export const NIVEL_MAX = PALCOS_CARREIRA.length
 // as músicas do menu: as do palco, com as liberadas tocando
 export function menuDo(h: HistoriaDisco, p: PalcoCarreira): { faixa: PistaId; nome: string; livre: boolean; estrelas: number }[] {
   const livres = musicasDoGuitar(h)
-  return p.musicas.map((f) => ({ faixa: f, nome: PISTAS.find((x) => x.id === f)?.faixa ?? f, livre: livres.includes(f), estrelas: melhorDe(h, p.id, f) }))
+  return p.musicas.filter(ehAoVivo).map((f) => ({ faixa: f, nome: PISTAS.find((x) => x.id === f)?.faixa ?? f, livre: livres.includes(f), estrelas: melhorDe(h, p.id, f) }))
 }
 
 // ── o show de um palco: o id no save (hist.show) ──

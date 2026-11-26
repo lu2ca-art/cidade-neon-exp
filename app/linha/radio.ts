@@ -23,11 +23,12 @@ export const FREQUENCIAS: Frequencia[] = [
   {
     // (rádios, 05/11) no jogo novo a 222.0 é a Rádio Cidade Neon e a 69.9 a Rádio
     // Xenom, as duas livres desde o começo (disco/radios.ts; docs/radios.md)
-    id: "linha", freq: "222.0", nome: "RÁDIO CIDADE NEON", cor: "#2fe8ff", custo: 0,
+    // (26/11) a 222.0 virou a 222FM (a antiga Xenom); a da cidade foi pra 88.7
+    id: "linha", freq: "88.7", nome: "RÁDIO CIDADE NEON", cor: "#2fe8ff", custo: 0,
     faixas: [], // montada a partir dos objetos que a pessoa já tem (faixasDaLinha)
   },
   {
-    id: "suburbio", freq: TIER_META.suburbio.freq, nome: "RÁDIO XENOM", cor: TIER_META.suburbio.color, custo: 0,
+    id: "suburbio", freq: "222.0", nome: "222FM", cor: TIER_META.suburbio.color, custo: 0,
     faixas: [t("g*** m**", "gata-mia"), t("t***o", "tedio"), t("b*** b*** k", "boom-boom-k"), t("10 D3 10", "10de10")],
     link: TIER_META.suburbio.projectLink,
   },

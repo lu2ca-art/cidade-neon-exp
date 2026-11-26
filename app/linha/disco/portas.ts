@@ -22,6 +22,7 @@
 // As funções são puras (recebem a história do save e devolvem a nova): a
 // page.tsx só chama. T03, T09, T10, T15–T25 e T30 constroem em cima disto.
 
+import { ehAoVivo } from "../../neon-tiles/dados"
 import type { PistaId } from "../estrada/pistas"
 import { PISTAS } from "../estrada/pistas"
 import type { LugarId } from "../lugares"
@@ -495,7 +496,8 @@ export function ofertas13(h: HistoriaDisco, ids: MissaoId[]): Oferta13[] {
 export function musicasDoGuitar(h: HistoriaDisco): PistaId[] {
   // (08/11) as dos episódios feitos, mais as que o save já tinha (nunca tira o que ganhou)
   const tem = new Set<string>([...CONFIG13.musicasDoInicio, ...(h.guitar ?? []), ...musicasLiberadas(h)])
-  return PISTAS.map((x) => x.id).filter((x) => tem.has(x))
+  // (26/11) o Guitar Driver é só das 5 ao vivo (neon-tiles/dados.ts AO_VIVO)
+  return PISTAS.map((x) => x.id).filter((x) => tem.has(x) && ehAoVivo(x))
 }
 // quem libera cada música (pra mostrar o cadeado: "abre na missão de X")
 export function quemLibera(faixa: PistaId): MissaoId | null {

@@ -37,6 +37,14 @@ export const FAIXAS: Faixa[] = [
   { id: "rollercoaster", titulo: "ROLLERCOASTER", bpm: 104, t0: 0.024, gd: true, audio: "/audio/tracks/rollercoaster.mp3", cor: "#ff3fb0", acento: "#b38cff", abre: "2026-11-25T00:00:00-03:00" },
 ]
 
+// (26/11, o dono) o Guitar Driver é só das 5 que têm versão AO VIVO: CHUVA, SABE
+// ONTEM?, DOPAMINA, OJALÁ e NECTAR (as 5 fases obrigatórias). ROLLERCOASTER, SWAV,
+// SEXTA-FEIRA e COPO AMERICANO ficam na lista (o editor, os saves antigos) mas
+// não tocam aqui por enquanto (LU2CA/projetos/cidade-neon/radio/shows.md)
+export const AO_VIVO = ["chuva", "ontem", "dopamina", "ojala", "nectar"] as const
+export const ehAoVivo = (id: string) => (AO_VIVO as readonly string[]).includes(id)
+export const FAIXAS_GD = FAIXAS.filter((f) => ehAoVivo(f.id))
+
 export function faixaAberta(f: Faixa, agora = Date.now()) {
   return !f.abre || new Date(f.abre).getTime() <= agora
 }
@@ -80,16 +88,16 @@ const tut = (l: SaveLinha, i: string) => !!l.tutorial?.includes(i)
 // cidade, ele abre aqui, com um ângulo próprio (cenarios.ts)
 export const PALCOS: Palco[] = [
   { id: "casa-dbee", nome: "a casa da d-bee", lugar: "o deserto", setlist: ["ontem", "chuva", "ojala"], rival: null, cache: 30, capacidade: 6, cor: "#ff9a5c", fachada: "A CASA NO DESERTO", conhecer: "a abertura do jogo", abre: (l) => !!l.casa },
-  { id: "posto", nome: "o posto", lugar: "a beira da estrada", setlist: ["nectar", "copo"], rival: null, cache: 40, capacidade: 15, cor: "#ffd23a", fachada: "POSTO 24H", conhecer: "encher o tanque no posto", abre: (l) => tut(l, "posto") },
-  { id: "bar", nome: "o bar", lugar: "o centro", setlist: ["copo", "ontem"], rival: { nome: "a banda cover da esquina", habilidade: 0.68, faixa: "copo", ataquesPorMin: 2.5 }, cache: 60, capacidade: 40, cor: "#ff6a35", fachada: "O COPO · HOJE: LU2CA", conhecer: "resgatar o Mubarak no bar", abre: (l) => tut(l, "mubarak") || fez(l, "copo") },
-  { id: "casa-drewboy", nome: "a casa do drewboy", lugar: "o subúrbio", setlist: ["sexta", "chuva"], rival: { nome: "o vizinho do som alto", habilidade: 0.6, faixa: "sexta", ataquesPorMin: 2 }, cache: 50, capacidade: 12, cor: "#ff3fb0", fachada: "AP 222", conhecer: "levar o Mubarak até a casa do Drewboy", abre: (l) => tut(l, "drewboy") || fez(l, "sexta") },
+  { id: "posto", nome: "o posto", lugar: "a beira da estrada", setlist: ["nectar", "ojala"], rival: null, cache: 40, capacidade: 15, cor: "#ffd23a", fachada: "POSTO 24H", conhecer: "encher o tanque no posto", abre: (l) => tut(l, "posto") },
+  { id: "bar", nome: "o bar", lugar: "o centro", setlist: ["ontem", "nectar"], rival: { nome: "a banda cover da esquina", habilidade: 0.68, faixa: "ontem", ataquesPorMin: 2.5 }, cache: 60, capacidade: 40, cor: "#ff6a35", fachada: "O COPO · HOJE: LU2CA", conhecer: "resgatar o Mubarak no bar", abre: (l) => tut(l, "mubarak") || fez(l, "copo") },
+  { id: "casa-drewboy", nome: "a casa do drewboy", lugar: "o subúrbio", setlist: ["chuva", "dopamina"], rival: { nome: "o vizinho do som alto", habilidade: 0.6, faixa: "chuva", ataquesPorMin: 2 }, cache: 50, capacidade: 12, cor: "#ff3fb0", fachada: "AP 222", conhecer: "levar o Mubarak até a casa do Drewboy", abre: (l) => tut(l, "drewboy") || fez(l, "sexta") },
   { id: "escondido", nome: "a casa da ella", lugar: "o subúrbio", setlist: ["chuva", "nectar"], rival: null, cache: 50, capacidade: 10, cor: "#5dffa0", fachada: "· · ·", conhecer: "a missão da Ella", abre: (l) => fez(l, "chuva") },
-  { id: "balada", nome: "a balada", lugar: "o centro", setlist: ["sexta", "dopamina"], rival: { nome: "o DJ da casa", habilidade: 0.78, faixa: "dopamina", ataquesPorMin: 3 }, cache: 100, capacidade: 200, cor: "#b38cff", fachada: "SEXTA", conhecer: "a noite da balada com o Drewboy", abre: (l) => fez(l, "sexta") },
-  { id: "topo", nome: "o terraço", lugar: "o mirante", setlist: ["dopamina", "swav"], rival: null, cache: 90, capacidade: 60, cor: "#2fe8ff", fachada: "TERRAÇO", conhecer: "a missão da Notti", abre: (l) => fez(l, "dopamina") },
-  { id: "casa-shows", nome: "a casa de shows", lugar: "o túnel", setlist: ["ontem", "sexta", "copo"], rival: { nome: "a banda da casa", habilidade: 0.85, faixa: "ontem", ataquesPorMin: 3.5 }, cache: 150, capacidade: 300, cor: "#ffc857", fachada: "ONTEM", conhecer: "a missão do Alohan", abre: (l) => fez(l, "ontem") },
-  { id: "plataforma", nome: "o vagão da linha 9", lugar: "a estação 6", setlist: ["nectar", "rollercoaster"], rival: null, cache: 120, capacidade: 30, cor: "#e6f0ff", fachada: "LINHA 9 · 6", conhecer: "o episódio do Nectar", abre: (l) => fez(l, "nectar") },
-  { id: "beco", nome: "o beco", lugar: "o mirante", setlist: ["dopamina", "copo"], rival: null, cache: 80, capacidade: 25, cor: "#9b8cff", fachada: "", conhecer: "achar o beco cinza", abre: (l) => !!l.reliquias?.includes("relicario") },
-  { id: "arena", nome: "a arena neon", lugar: "o festival", setlist: ["rollercoaster", "sexta", "copo", "chuva"], rival: { nome: "o headliner", habilidade: 0.92, faixa: "sexta", ataquesPorMin: 4 }, cache: 600, capacidade: 2000, cor: "#ff3fb0", fachada: "FESTIVAL CIDADE NEON", conhecer: "a cidade inteira te conhecer (popularidade 80)", abre: (l) => (l.popularidade ?? 0) >= 80 },
+  { id: "balada", nome: "a balada", lugar: "o centro", setlist: ["dopamina", "ojala"], rival: { nome: "o DJ da casa", habilidade: 0.78, faixa: "dopamina", ataquesPorMin: 3 }, cache: 100, capacidade: 200, cor: "#b38cff", fachada: "SEXTA", conhecer: "a noite da balada com o Drewboy", abre: (l) => fez(l, "sexta") },
+  { id: "topo", nome: "o terraço", lugar: "o mirante", setlist: ["dopamina", "chuva"], rival: null, cache: 90, capacidade: 60, cor: "#2fe8ff", fachada: "TERRAÇO", conhecer: "a missão da Notti", abre: (l) => fez(l, "dopamina") },
+  { id: "casa-shows", nome: "a casa de shows", lugar: "o túnel", setlist: ["ontem", "ojala", "dopamina"], rival: { nome: "a banda da casa", habilidade: 0.85, faixa: "ontem", ataquesPorMin: 3.5 }, cache: 150, capacidade: 300, cor: "#ffc857", fachada: "ONTEM", conhecer: "a missão do Alohan", abre: (l) => fez(l, "ontem") },
+  { id: "plataforma", nome: "o vagão da linha 9", lugar: "a estação 6", setlist: ["nectar", "ontem"], rival: null, cache: 120, capacidade: 30, cor: "#e6f0ff", fachada: "LINHA 9 · 6", conhecer: "o episódio do Nectar", abre: (l) => fez(l, "nectar") },
+  { id: "beco", nome: "o beco", lugar: "o mirante", setlist: ["dopamina", "ojala"], rival: null, cache: 80, capacidade: 25, cor: "#9b8cff", fachada: "", conhecer: "achar o beco cinza", abre: (l) => !!l.reliquias?.includes("relicario") },
+  { id: "arena", nome: "a arena neon", lugar: "o festival", setlist: ["chuva", "ontem", "dopamina", "ojala", "nectar"], rival: { nome: "o headliner", habilidade: 0.92, faixa: "chuva", ataquesPorMin: 4 }, cache: 600, capacidade: 2000, cor: "#ff3fb0", fachada: "FESTIVAL CIDADE NEON", conhecer: "a cidade inteira te conhecer (popularidade 80)", abre: (l) => (l.popularidade ?? 0) >= 80 },
 ]
 
 // a plateia vem da popularidade: no começo, uma pessoa (a multidão de 1)

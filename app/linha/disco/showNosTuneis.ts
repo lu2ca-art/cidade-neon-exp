@@ -9,6 +9,7 @@
 // Quem desenha: trincheiras/PalcoTuneis.tsx (o 3D, só montado perto). Quem abre o
 // show: disco/ShowTuneis.tsx (o botão perto do palco). Função pura aqui, sem 3D.
 
+import { ehAoVivo } from "../../neon-tiles/dados"
 import { SALAO_METRO, CURVA } from "../trincheiras/mapa"
 import type { PistaId } from "../estrada/pistas"
 import { EPISODIOS, episodioFeito, rotuloDoEpisodio, type Episodio } from "./episodios"
@@ -69,7 +70,7 @@ export function travaTuneis(): string {
 /** as músicas do palco, com as que já tocam */
 export const menuTuneis = (h: HistoriaDisco) => {
   const livres = musicasDoGuitar(h)
-  return SHOW_TUNEIS_CFG.musicas.map((f) => ({ faixa: f, livre: livres.includes(f) }))
+  return SHOW_TUNEIS_CFG.musicas.filter(ehAoVivo).map((f) => ({ faixa: f, livre: livres.includes(f) }))
 }
 /** perto do palco (no chão do salão)? */
 export const pertoDoPalcoTuneis = (x: number, z: number) => Math.hypot(x - PALCO_TUNEIS.x, z - PALCO_TUNEIS.z) < SHOW_TUNEIS_CFG.perto

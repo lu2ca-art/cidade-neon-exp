@@ -737,7 +737,7 @@ export const MESA: Cartao[] = [
     parte: "bar",
     nome: "As duas rádios (Xenom e Cidade Neon)",
     data: "2026-11-05",
-    olhar: "Rádio Xenom (69.9) no subúrbio, túneis e deserto, com som de rádio antiga: toca o que não é do vol. 1 e, entre as músicas, o locutor (em legenda por enquanto) conta o que rola no subúrbio e puxa as missões. Rádio Cidade Neon (222.0) na cidade: só o vol. 1. A estação troca sozinha com a zona. Na cidade, entrar numa rua põe a faixa dela como a próxima.",
+    olhar: "(26/11) 222FM (222.0, a antiga Rádio Xenom) no subúrbio e deserto, com som de rádio antiga: as 9 do Cidade Neon sorteadas (instrumental 35, prévia de 22 s 25) e, antes da prévia, o locutor diz o nome e que já está disponível; entre as outras, o locutor (em legenda por enquanto) conta o que rola no subúrbio e puxa as missões. Rádio Cidade Neon (88.7) na cidade: só o vol. 1. A estação troca sozinha com a zona. Na cidade, entrar numa rua põe a faixa dela como a próxima.",
     perguntas: [
       "As vinhetas do locutor têm a voz certa? (são rascunho)",
       "A troca sozinha de estação ficou natural?",
