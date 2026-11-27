@@ -1,7 +1,7 @@
 /* KOMBEAT STUDIO (estrada/KombeatStudio.tsx). Saiu do linha.css em 27/11 pra a página
    inicial (dentro da Kombi) abrir o estúdio sem carregar o CSS inteiro do jogo. */
 @keyframes l-sobe { from { opacity: 0; transform: translateY(24px); } to { opacity: 1; transform: none; } }
-.l-kombeat { --cor: #ff6b6b; position: absolute; z-index: 74; left: 50%; bottom: calc(24px + env(safe-area-inset-bottom)); transform: translateX(-50%); width: min(92vw, 520px); display: grid; gap: 12px; padding: 14px 14px 12px; border-radius: 18px; background: rgba(9, 8, 16, 0.82); border: 1px solid color-mix(in srgb, var(--cor) 45%, transparent); backdrop-filter: blur(8px); -webkit-backdrop-filter: blur(8px); color: #fff; animation: l-sobe 0.3s both; }
+.l-kombeat { --cor: #ff6b6b; position: absolute; z-index: 74; left: 0; right: 0; margin-inline: auto; bottom: calc(24px + env(safe-area-inset-bottom)); width: min(92vw, 520px); display: grid; gap: 12px; padding: 14px 14px 12px; border-radius: 18px; background: rgba(9, 8, 16, 0.82); border: 1px solid color-mix(in srgb, var(--cor) 45%, transparent); backdrop-filter: blur(8px); -webkit-backdrop-filter: blur(8px); color: #fff; animation: l-sobe 0.3s both; }
 .l-kombeat header { display: flex; align-items: baseline; gap: 10px; min-width: 0; }
 .l-kombeat header b { font: 800 14px var(--font-geist-mono), monospace; letter-spacing: 0.16em; color: var(--cor); white-space: nowrap; }
 .l-kombeat header small { flex: 1; min-width: 0; font: 11px system-ui, sans-serif; opacity: 0.65; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }

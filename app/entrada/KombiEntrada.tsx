@@ -379,8 +379,8 @@ function Violao3D({ onTocar }: { onTocar: () => void }) {
   useFrame((st) => { if (brilho.current) brilho.current.opacity = (perto ? 0.5 : 0.18) + Math.sin(st.clock.elapsedTime * 2.4) * 0.08 })
   const madeira = "#c47a35", tampo = "#e0a65c", escuro = "#2a160b"
   return (
-    <group ref={g} position={[0.5, 0.88, -0.42]}>
-      <group rotation-x={-0.32} scale={0.8}
+    <group ref={g} position={[0.52, 0.86, -0.4]}>
+      <group rotation-x={-0.3} scale={0.6}
         onClick={(e) => { e.stopPropagation(); onTocar() }}
         onPointerOver={(e) => { e.stopPropagation(); setPerto(true); document.body.style.cursor = "pointer" }}
         onPointerOut={() => { setPerto(false); document.body.style.cursor = "" }}>
