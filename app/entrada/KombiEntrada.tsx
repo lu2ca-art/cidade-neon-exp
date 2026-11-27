@@ -48,7 +48,9 @@ const OLHO_FOCO = CENTRO_RADIO.clone().addScaledVector(PARA_OLHO, 0.4)
 
 // ── o olhar: arrasta pra olhar em volta; solta e, depois de um tempo, volta pra frente ──
 function Olhar({ estado, sairFoco }: { estado: React.RefObject<EstadoKombi>; sairFoco: () => void }) {
-  const { camera, gl, size } = useThree()
+  const { camera, gl, size, scene } = useThree()
+  // pros testes por dentro (só em dev): a cena, pra medir com raio
+  useEffect(() => { if (process.env.NODE_ENV !== "production") (window as unknown as { __cena: unknown }).__cena = { scene, camera, THREE } }, [scene, camera])
   // em pé (celular): a lente abre (o mesmo campo na horizontal) e o olhar desce pro painel
   const emPe = size.width < size.height
   const base = emPe ? -0.2 : -0.12
@@ -369,18 +371,21 @@ function Particulas({ estado }: { estado: React.RefObject<EstadoKombi> }) {
   )
 }
 
+const VIOLAO_POS: [number, number, number] = [0.44, 1.1, -0.36]
+const VIOLAO_ROT: [number, number, number] = [-0.22, 0, -0.26]
 // ── o violão no banco do carona: tocar nele abre o braço com as notas ──
 function Violao3D({ onTocar }: { onTocar: () => void }) {
   const g = useRef<THREE.Group>(null)
   const brilho = useRef<THREE.MeshBasicMaterial>(null)
   const [perto, setPerto] = useState(false)
-  // em pé no banco, encostado, com a boca virada pro motorista
+  // (27/11, o dono: "bugado no banco") sentado em cima do assento (não afundado nele),
+  // a boca virada pro motorista e o braço deitado pra trás, encostado no encosto
   useLayoutEffect(() => { const x = g.current; if (!x) return; x.lookAt(OLHO.x, x.position.y, OLHO.z) }, [])
   useFrame((st) => { if (brilho.current) brilho.current.opacity = (perto ? 0.5 : 0.18) + Math.sin(st.clock.elapsedTime * 2.4) * 0.08 })
   const madeira = "#c47a35", tampo = "#e0a65c", escuro = "#2a160b"
   return (
-    <group ref={g} position={[0.52, 0.86, -0.4]}>
-      <group rotation-x={-0.3} scale={0.6}
+    <group ref={g} position={VIOLAO_POS}>
+      <group rotation={VIOLAO_ROT} scale={0.6}
         onClick={(e) => { e.stopPropagation(); onTocar() }}
         onPointerOver={(e) => { e.stopPropagation(); setPerto(true); document.body.style.cursor = "pointer" }}
         onPointerOut={() => { setPerto(false); document.body.style.cursor = "" }}>
@@ -407,9 +412,40 @@ function Violao3D({ onTocar }: { onTocar: () => void }) {
   )
 }
 
+// ── os teclados (os dois sintetizadores na lateral e o MIDI da mesa, lá atrás): são da
+// malha parada do estúdio, então o toque é numa caixa invisível por cima de cada um ──
+function aMundo(x: number, y: number, z: number): [number, number, number] {
+  return [x * ESCALA[0] + DESLOCA[0], y * ESCALA[1] + DESLOCA[1], z * ESCALA[2] + DESLOCA[2]]
+}
+const TECLADOS: { pos: [number, number, number]; tam: [number, number, number] }[] = [
+  { pos: aMundo(0.6, 0.72, 0.95), tam: [0.3, 0.42, 0.95] }, // os dois do suporte
+  { pos: aMundo(0.05, 0.83, 1.54), tam: [0.5, 0.08, 0.2] }, // o MIDI da mesa
+]
+function Teclados({ onTocar }: { onTocar: () => void }) {
+  const brilho = useRef<THREE.SpriteMaterial>(null)
+  const [perto, setPerto] = useState(false)
+  useFrame((st) => { if (brilho.current) brilho.current.opacity = (perto ? 0.45 : 0.12) + Math.sin(st.clock.elapsedTime * 2.1 + 1) * 0.06 })
+  return (
+    <group
+      onClick={(e) => { e.stopPropagation(); onTocar() }}
+      onPointerOver={(e) => { e.stopPropagation(); setPerto(true); document.body.style.cursor = "pointer" }}
+      onPointerOut={() => { setPerto(false); document.body.style.cursor = "" }}>
+      {TECLADOS.map((t, i) => (
+        <mesh key={i} position={t.pos}><boxGeometry args={t.tam} /><meshBasicMaterial transparent opacity={0} depthWrite={false} /></mesh>
+      ))}
+      <sprite position={TECLADOS[0].pos} scale={[0.9, 0.9, 1]}><spriteMaterial ref={brilho} map={texBrilho()} color="#6ff0d6" transparent opacity={0.12} depthWrite={false} blending={THREE.AdditiveBlending} toneMapped={false} /></sprite>
+    </group>
+  )
+}
+
 export type RadioDaKombi = Omit<RadioPainelProps, "focado" | "onFoco">
 
-export function KombiEntrada({ estado, radio, onEstudio, onViolao }: { estado: React.RefObject<EstadoKombi>; radio: RadioDaKombi; onEstudio?: () => void; onViolao?: () => void }) {
+// (27/11, o dono) cada coisa da Kombi é clicável: o rádio toca a música dele, a MPC abre a
+// batida, o toca-discos o acervo antigo, o violão e o teclado abrem pra tocar (no tom da música)
+export function KombiEntrada({ estado, radio, disco, onBatida, onDisco, onViolao, onTeclado }: {
+  estado: React.RefObject<EstadoKombi>; radio: RadioDaKombi; disco: boolean
+  onBatida?: () => void; onDisco?: () => void; onViolao?: () => void; onTeclado?: () => void
+}) {
   // a cabine pede refs da estrada: parada, sem curva, volante reto
   const zero = useRef(0), volante = useRef(0), vel = useRef(0)
   const [focado, setFocado] = useState(false)
@@ -424,12 +460,13 @@ export function KombiEntrada({ estado, radio, onEstudio, onViolao }: { estado: R
       <pointLight position={[0, OLHO.y + 0.35, OLHO.z + 0.2]} intensity={1.4} distance={3.2} color="#ffd6a0" />
       <pointLight position={[POS_RADIO[0], POS_RADIO[1] - 0.15, POS_RADIO[2] + 0.25]} intensity={0.9} distance={1.6} color="#ff3fb0" />
       <Suspense fallback={null}>
-        <Cabine balanco={zero} disco={radio.tocando} objetos={[]} carona={null} onTocaDiscos={radio.onLigar} onEstudio={onEstudio} volante={volante} vel={vel} tinta="#ffffff" neon="#ff3fb0" />
+        <Cabine balanco={zero} disco={disco} objetos={[]} carona={null} onTocaDiscos={onDisco} onEstudio={onBatida} volante={volante} vel={vel} tinta="#ffffff" neon="#ff3fb0" />
       </Suspense>
       <RadioNoPainel>
         <RadioPainel3D {...radio} focado={focado} onFoco={() => foco(true)} />
       </RadioNoPainel>
       {onViolao && <Violao3D onTocar={onViolao} />}
+      {onTeclado && <Teclados onTocar={onTeclado} />}
       <Espaco estado={estado} />
       <Olhar estado={estado} sairFoco={sairFoco} />
     </Canvas>

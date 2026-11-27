@@ -15,13 +15,24 @@ import { faixaLancada, linkDaFaixa, salvarFaixa } from "./linha/disco/linksFaixa
 import { voltaSegura } from "@/lib/entrada"
 import type { EstadoKombi } from "./entrada/KombiEntrada"
 import { HIPER } from "./entrada/hiper"
+import { TONS } from "./linha/tons"
+import type { Tom } from "./linha/som"
+import { bip } from "./linha/disco/pecas/sons"
+import VINIS from "./linha/vinis.json"
 import "./entrada.css"
 
 const KombiEntrada = dynamic(() => import("./entrada/KombiEntrada").then((m) => m.KombiEntrada), { ssr: false })
-// (27/11, o dono) o estúdio e o violão de dentro da Kombi, os mesmos do jogo
+// (27/11, o dono) cada coisa da Kombi é clicável: a MPC abre a batida (a do jogo), o
+// toca-discos o acervo antigo, o violão e o teclado abrem pra tocar, SEMPRE no tom da música
+// (a faixa da rádio, ou o disco que está tocando). A batida pausa rádio e disco; saiu, eles
+// voltam de onde estavam
 const KombeatStudio = dynamic(() => import("./linha/estrada/KombeatStudio").then((m) => m.KombeatStudio), { ssr: false })
 const Violao = dynamic(() => import("./linha/disco/Violao").then((m) => m.Violao), { ssr: false })
-type ModoEstudio = "menu" | "instrumento" | "beat"
+type Instrumento = "violao" | "teclado"
+// o teclado: um piano elétrico sintetizado (RASCUNHO, como as vozes de instrumentosLoja.ts)
+const TECLADO = { nome: "teclado", tocar: (f: number, v = 0.32, q = 0) => { bip(f, 0.9, "triangle", v * 0.55, q); bip(f * 2, 0.45, "sine", v * 0.16, q) } }
+// os discos antigos (domínio público), os mesmos do acervo do jogo
+const ACERVO = VINIS as { titulo: string; autor: string; src: string }[]
 
 const INSTAGRAM = "https://www.instagram.com/lu2ca.art"
 const TIKTOK = "https://tiktok.com/@lu2ca.mp3"
@@ -55,15 +66,41 @@ function Entrada() {
 
   const estado = useRef<EstadoKombi>({ partida: false, tocando: false })
   const radio = useRadio()
+  const acervo = useAcervo()
+  // pros testes por dentro (Playwright): virar o olhar sem arrastar (__kombi.pedido = {yaw, pitch})
+  useEffect(() => { (window as unknown as { __kombi: EstadoKombi }).__kombi = estado.current }, [])
   const router = useRouter()
   const [partiu, setPartiu] = useState(false)
-  // o estúdio (os pads da MPC) e o violão (no banco do carona)
-  const [estudio, setEstudio] = useState<ModoEstudio | null>(null)
-  const [violao, setViolao] = useState(0)
-  const abrirEstudio = () => { if (partiu) return; estado.current.pedido = { yaw: Math.PI * 0.92, pitch: -0.22 }; setEstudio("menu") }
-  const fecharEstudio = () => { setEstudio(null); estado.current.pedido = { yaw: 0, pitch: -0.12 } }
+  // o que está aberto por cima: a batida, o acervo ou um instrumento (um de cada vez)
+  const [batida, setBatida] = useState(false)
+  const [estante, setEstante] = useState(false)
+  const [instrumento, setInstrumento] = useState<Instrumento | null>(null)
+  // a batida interrompe rádio e disco; ao sair, volta o que estava tocando, do mesmo ponto
+  const pausados = useRef({ radio: false, disco: false })
+  const abrirBatida = () => {
+    if (partiu || batida) return
+    pausados.current = { radio: radio.tocando, disco: acervo.tocando }
+    radio.parar(); acervo.pausar()
+    setEstante(false); setInstrumento(null); setBatida(true)
+  }
+  const fecharBatida = () => {
+    setBatida(false)
+    if (pausados.current.radio) radio.ligar()
+    else if (pausados.current.disco) acervo.continuar()
+    pausados.current = { radio: false, disco: false }
+  }
+  // rádio e disco não tocam juntos: ligar um desliga o outro
+  const alternarRadio = () => { if (!radio.tocando) acervo.pausar(); radio.alternar() }
+  const tocarDisco = (i: number) => { radio.parar(); acervo.tocar(i) }
+  const abrir = (o: "estante" | Instrumento) => {
+    if (partiu || batida) return
+    setEstante(o === "estante"); setInstrumento(o === "estante" ? null : o)
+  }
+  // o tom: o disco que está tocando; senão a faixa da rádio (tocando ou na vez)
+  const tom: Tom | null = (acervo.tocando && acervo.faixa ? TONS[acervo.faixa.src] : null) ?? radio.faixa?.tom ?? null
   const darPartida = () => {
-    setEstudio(null)
+    if (batida) fecharBatida()
+    setEstante(false); setInstrumento(null)
     estado.current.partida = true
     setPartiu(true)
     roncarMotor()
@@ -76,18 +113,22 @@ function Entrada() {
     setTimeout(() => window.location.assign(alvo), HIPER.troca * 1000)
   }
   return (
-    <main className={`en-pagina ${partiu ? "is-partida" : ""} ${estudio ? "is-estudio" : ""}`}>
-      <KombiEntrada estado={estado} onEstudio={abrirEstudio} onViolao={() => setViolao((n) => n + 1)} radio={{
+    <main className={`en-pagina ${partiu ? "is-partida" : ""} ${batida || estante || instrumento ? "is-estudio" : ""}`}>
+      <KombiEntrada estado={estado} disco={acervo.tocando} onBatida={abrirBatida} onDisco={() => abrir("estante")} onViolao={() => abrir("violao")} onTeclado={() => abrir("teclado")} radio={{
         titulo: radio.faixa?.faixa ?? "", tocando: radio.tocando, temLink: !!(radio.faixa && linkDaFaixa(radio.faixa.id)),
-        onLigar: radio.alternar, onProxima: radio.proxima, onAnterior: radio.anterior, onSalvar: () => { if (radio.faixa) salvarFaixa(radio.faixa.id, "entrada") },
+        onLigar: alternarRadio, onProxima: radio.proxima, onAnterior: radio.anterior, onSalvar: () => { if (radio.faixa) salvarFaixa(radio.faixa.id, "entrada") },
       }} />
-      {estudio && <KombeatStudio modo={estudio} onModo={setEstudio} onDiscos={() => { if (!radio.tocando) radio.alternar(); fecharEstudio() }} onSair={fecharEstudio} />}
-      <Violao temViolao sempre abrir={violao} escondido={partiu || !!estudio} />
+      {batida && <KombeatStudio modo="beat" onModo={(m) => { if (m !== "beat") fecharBatida() }} onDiscos={fecharBatida} onSair={fecharBatida} />}
+      {estante && <Estante tocando={acervo.tocando ? acervo.i : null} onTocar={tocarDisco} onParar={acervo.pausar} onFechar={() => setEstante(false)} />}
+      {instrumento && !partiu && (
+        <Violao key={instrumento} temViolao semBotao abrir={1} tom={tom} voz={instrumento === "teclado" ? TECLADO : undefined} onFechar={() => setInstrumento(null)} />
+      )}
       <RadioAcessivel r={radio} />
       <audio ref={radio.audio} preload="none" onEnded={radio.proxima} />
+      <audio ref={acervo.audio} preload="none" onEnded={acervo.proxima} />
       <header className="en-topo" aria-hidden={partiu}>
         <b>CIDADE NEON</b>
-        <span>arrasta pra olhar em volta · toca no estúdio e no violão</span>
+        <span>arrasta pra olhar em volta · toca nas coisas da Kombi</span>
       </header>
       <Senha onCerta={darPartida} partiu={partiu} />
       <div className="en-clarao" aria-hidden="true" />
@@ -113,9 +154,54 @@ function useRadio() {
   }, [faixa, tocando])
   const proxima = () => setI((x) => (x + 1) % Math.max(1, ordem.length))
   const anterior = () => setI((x) => (x - 1 + ordem.length) % Math.max(1, ordem.length))
-  return { faixa, tocando, alternar: () => setTocando((t) => !t), proxima, anterior, audio }
+  return { faixa, tocando, alternar: () => setTocando((t) => !t), ligar: () => setTocando(true), parar: () => setTocando(false), proxima, anterior, audio }
 }
 type Radio = ReturnType<typeof useRadio>
+
+// ── o toca-discos: o acervo antigo, um disco depois do outro. Pausar guarda o ponto ──
+function useAcervo() {
+  const [i, setI] = useState(0)
+  const [tocando, setTocando] = useState(false)
+  const audio = useRef<HTMLAudioElement | null>(null)
+  const faixa = ACERVO[i]
+  useEffect(() => {
+    const a = audio.current
+    if (!a || !faixa) return
+    if (!a.src.endsWith(faixa.src)) a.src = faixa.src
+    if (tocando) a.play().catch(() => setTocando(false))
+    else a.pause()
+  }, [faixa, tocando])
+  return {
+    i, faixa, tocando, audio,
+    tocar: (k: number) => { setI(k); setTocando(true) },
+    pausar: () => setTocando(false),
+    continuar: () => setTocando(true),
+    proxima: () => setI((x) => (x + 1) % ACERVO.length),
+  }
+}
+
+// a estante: os discos antigos da Kombi (toca no disco que está tocando: para)
+function Estante({ tocando, onTocar, onParar, onFechar }: { tocando: number | null; onTocar: (i: number) => void; onParar: () => void; onFechar: () => void }) {
+  return (
+    <section className="en-estante" role="dialog" aria-label="o acervo de discos antigos" onPointerDown={(e) => e.stopPropagation()}>
+      <header>
+        <b>o acervo antigo</b>
+        <button type="button" onClick={onFechar} aria-label="fechar">✕</button>
+      </header>
+      <p>discos de domínio público. põe um pra tocar: o violão e o teclado entram no tom dele</p>
+      <ul>
+        {ACERVO.map((d, k) => (
+          <li key={d.src}>
+            <button type="button" className={tocando === k ? "is-on" : ""} onClick={() => (tocando === k ? onParar() : onTocar(k))}>
+              <i aria-hidden="true" />
+              <span><b>{d.titulo}</b><small>{tocando === k ? "tocando · toca pra parar" : d.autor}</small></span>
+            </button>
+          </li>
+        ))}
+      </ul>
+    </section>
+  )
+}
 
 // pra teclado e leitor de tela: os mesmos comandos do rádio do painel (invisíveis)
 function RadioAcessivel({ r }: { r: Radio }) {

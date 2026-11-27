@@ -97,19 +97,27 @@ export interface ViolaoProps {
   sempre?: boolean
   // (27/11) muda o número: abre o painel (tocar no violão 3D)
   abrir?: number
+  // (27/11, a entrada) sem o botão redondo: abre só tocando no instrumento 3D
+  semBotao?: boolean
+  // (27/11) o tom vem de quem sabe (a rádio da entrada toca fora do som.ts): manda nele
+  tom?: Tom | null
+  // (27/11) outro instrumento no mesmo painel (o teclado da Kombi)
+  voz?: { nome: string; tocar: (f: number, vol?: number, quando?: number) => void; aquece?: true }
+  // fechou no ×
+  onFechar?: () => void
 }
 
 const nuncaNoTrem = () => false
 
-export function Violao({ temViolao, comprado, escondido, tranca, onTocou, sempre, abrir }: ViolaoProps) {
+export function Violao({ temViolao, comprado, escondido, tranca, onTocou, sempre, abrir, semBotao, tom: tomFixo, voz: vozFora, onFechar }: ViolaoProps) {
   const src = useSomTocando()
   const noTrem = useSyncExternalStore(ouvirSentadoNoTrem, sentadoNoTrem, nuncaNoTrem)
   const [aberto, setAberto] = useState(false)
   // com o violão, é ele; sem ele, o comprado, só no trem
   const outro = !temViolao && noTrem ? comprado ?? null : null
   const podeTocar = temViolao || !!outro
-  const nome = outro?.nome ?? "violão"
-  const voz = outro?.tocar ?? violao
+  const nome = vozFora?.nome ?? outro?.nome ?? "violão"
+  const voz = vozFora?.tocar ?? outro?.tocar ?? violao
   // desceu do trem com o painel do comprado aberto: fecha
   if (aberto && !podeTocar) setAberto(false)
   const [aviso, setAviso] = useState(false)
@@ -137,13 +145,13 @@ export function Violao({ temViolao, comprado, escondido, tranca, onTocou, sempre
   useEffect(() => {
     if (!aberto) return
     const ler = () => {
-      const t = tomDaFaixa(srcTocando())
+      const t = tomFixo ?? tomDaFaixa(srcTocando())
       setTom((a) => (a.tonica === t.tonica && a.modo === t.modo ? a : t))
     }
     ler()
     const i = setInterval(ler, 1000)
     return () => clearInterval(i)
-  }, [aberto, src])
+  }, [aberto, src, tomFixo])
 
   const { tonica, modo } = tom
   const penta = PENTA[modo]
@@ -153,7 +161,7 @@ export function Violao({ temViolao, comprado, escondido, tranca, onTocou, sempre
   // a sugestão: a primeira cadência do modo (I–V–vi–IV ou i–iv–V–i), numerada nos acordes
   const cadencia = (modo === "maior" ? CADENCIAS_MAIOR : CADENCIAS_MENOR)[0]
 
-  const aqueceCorda = !outro || !!outro.aquece
+  const aqueceCorda = vozFora ? !!vozFora.aquece : !outro || !!outro.aquece
   useEffect(() => {
     if (!aberto || !aqueceCorda) return
     const freqs: number[] = []
@@ -200,6 +208,7 @@ export function Violao({ temViolao, comprado, escondido, tranca, onTocou, sempre
     )
   }
   if (!src && !aberto && !noTrem && !sempre) return null
+  if (!aberto && semBotao) return null
 
   if (!aberto) {
     return (
@@ -215,10 +224,10 @@ export function Violao({ temViolao, comprado, escondido, tranca, onTocou, sempre
     <section className="l-vl-painel" data-testid="violao-painel" aria-label={nome}>
       <header>
         <div>
-          <small>tom da faixa</small>
+          <small>{vozFora ? `${nome} · tom da faixa` : "tom da faixa"}</small>
           <b data-testid="violao-tom">{NOMES[tonica]} {modo}</b>
         </div>
-        <button type="button" className="l-vl-fechar" onClick={() => setAberto(false)} aria-label={`guardar ${nome}`}>×</button>
+        <button type="button" className="l-vl-fechar" onClick={() => { setAberto(false); onFechar?.() }} aria-label={`guardar ${nome}`}>×</button>
       </header>
       <div className="l-vl-notas">
         {[1, 0].map((oit) => (

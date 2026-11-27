@@ -33,4 +33,11 @@ export const TONS: Record<string, Tom> = {
   "/audio/tracks/stylist.mp3": { tonica: 8, modo: "menor" }, // r=0.45
   "/audio/tracks/swav.mp3": { tonica: 2, modo: "maior" }, // r=0.71
   "/audio/tracks/tedio.mp3": { tonica: 9, modo: "maior" }, // r=0.70
+  "/loja-discos/disco-02.mp3": { tonica: 8, modo: "maior" }, // r=0.80
+  "/loja-discos/disco-03.mp3": { tonica: 9, modo: "maior" }, // r=0.67
+  "/loja-discos/disco-04.mp3": { tonica: 7, modo: "maior" }, // r=0.77
+  "/loja-discos/disco-05.mp3": { tonica: 9, modo: "menor" }, // r=0.77
+  "/loja-discos/disco-09.mp3": { tonica: 9, modo: "menor" }, // r=0.32
+  "/vinis/james-scott-ragtime-climax-rag-1914-by-james-scott.mp3": { tonica: 3, modo: "maior" }, // r=0.83
+  "/vinis/king-oliver-dippermouth-blues-king-oliver-s-jazz-band.mp3": { tonica: 11, modo: "maior" }, // r=0.84
 }

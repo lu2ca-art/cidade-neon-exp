@@ -14,7 +14,8 @@ import subprocess
 import numpy as np
 
 RAIZ = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
-PASTA = os.path.join(RAIZ, "public", "audio", "tracks")
+# (27/11) os discos do acervo antigo também: o violão e o teclado da Kombi tocam no tom deles
+PASTAS = [("/audio/tracks", os.path.join(RAIZ, "public", "audio", "tracks")), ("/loja-discos", os.path.join(RAIZ, "public", "loja-discos")), ("/vinis", os.path.join(RAIZ, "public", "vinis"))]
 SR = 44100
 KM = [6.35, 2.23, 3.48, 2.33, 4.38, 4.09, 2.52, 5.19, 2.39, 3.66, 2.29, 2.88]
 KN = [6.33, 2.68, 3.52, 5.38, 2.6, 3.53, 2.54, 4.75, 3.98, 2.69, 3.34, 3.17]
@@ -51,12 +52,17 @@ def croma(caminho):
 
 
 linhas = []
-for arq in sorted(os.listdir(PASTA)):
-    if not arq.endswith(".mp3"):
-        continue
-    r, t, modo = tom(croma(os.path.join(PASTA, arq)))
-    linhas.append(f'  "/audio/tracks/{arq}": {{ tonica: {t}, modo: "{modo}" }}, // r={r:.2f}')
-    print(arq, t, modo, f"{r:.2f}")
+for url, pasta in PASTAS:
+    for arq in sorted(os.listdir(pasta)):
+        if not arq.endswith(".mp3"):
+            continue
+        try:
+            r, t, modo = tom(croma(os.path.join(pasta, arq)))
+        except subprocess.CalledProcessError:
+            print(arq, "não é áudio: pulei")
+            continue
+        linhas.append(f'  "{url}/{arq}": {{ tonica: {t}, modo: "{modo}" }}, // r={r:.2f}')
+        print(arq, t, modo, f"{r:.2f}")
 
 saida = os.path.join(RAIZ, "app", "linha", "tons.ts")
 with open(saida, "w") as f:
