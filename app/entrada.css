@@ -55,19 +55,10 @@
 }
 @media (prefers-reduced-motion: reduce) { .en-radio-lcd b span, .en-senha.is-errou .en-senha-campo input { animation: none; padding-left: 0; } }
 
-/* (27/11) a estante do toca-discos: o acervo antigo */
-.en-estante { position: fixed; left: 50%; bottom: 24px; transform: translateX(-50%); width: min(420px, calc(100vw - 24px)); max-height: 62vh; z-index: 30; display: flex; flex-direction: column; padding: 14px; border-radius: 20px; background: rgba(14, 10, 6, 0.94); border: 1px solid rgba(255, 200, 87, 0.45); backdrop-filter: blur(12px); color: #f4ead7; font-family: var(--sans); }
-.en-estante header { display: flex; justify-content: space-between; align-items: center; }
-.en-estante header b { font: 700 18px var(--mono); letter-spacing: 0.06em; text-transform: uppercase; color: #ffc857; }
-.en-estante header button { background: none; border: 0; color: #c9b38a; font-size: 16px; cursor: pointer; padding: 4px 8px; }
-.en-estante p { margin: 4px 0 10px; font: 11px/1.4 var(--mono); color: #d9c39a; }
-.en-estante ul { list-style: none; margin: 0; padding: 0; overflow-y: auto; display: grid; gap: 6px; }
-.en-estante li button { width: 100%; display: flex; align-items: center; gap: 12px; padding: 8px 10px; border-radius: 12px; border: 1px solid rgba(255, 200, 87, 0.18); background: rgba(255, 255, 255, 0.03); color: inherit; text-align: left; cursor: pointer; }
-.en-estante li button:hover { border-color: rgba(255, 200, 87, 0.5); }
-.en-estante li button.is-on { border-color: #ffc857; background: rgba(255, 200, 87, 0.12); }
-.en-estante li i { flex: none; width: 38px; height: 38px; border-radius: 50%; background: radial-gradient(circle, #e6d3a3 0 18%, #111 19% 22%, #1b1b1b 23% 100%); box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.08); }
-.en-estante li button.is-on i { animation: en-gira 1.8s linear infinite; }
-.en-estante li span { display: flex; flex-direction: column; min-width: 0; }
-.en-estante li b { font-size: 14px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-.en-estante li small { font: 11px var(--mono); color: #c9b38a; }
-@keyframes en-gira { to { transform: rotate(360deg); } }
+/* (27/11) a legenda da gaveta de discos (os discos são 3D, na gaveta embaixo do toca-discos) */
+.en-gaveta { position: fixed; left: 50%; bottom: 24px; transform: translateX(-50%); width: min(420px, calc(100vw - 24px)); z-index: 30; display: flex; align-items: center; gap: 12px; padding: 10px 12px; border-radius: 16px; background: rgba(14, 10, 6, 0.9); border: 1px solid rgba(255, 200, 87, 0.45); backdrop-filter: blur(12px); color: #f4ead7; font-family: var(--sans); }
+.en-gaveta i { flex: none; width: 34px; height: 34px; border-radius: 50%; background: #3a2a14; box-shadow: 0 0 0 6px #111, 0 0 0 7px rgba(255, 255, 255, 0.08); transform: scale(0.62); }
+.en-gaveta span { flex: 1; display: flex; flex-direction: column; min-width: 0; }
+.en-gaveta b { font-size: 14px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.en-gaveta small { font: 11px var(--mono); color: #c9b38a; }
+.en-gaveta button { background: none; border: 0; color: #c9b38a; font-size: 16px; cursor: pointer; padding: 4px 8px; }

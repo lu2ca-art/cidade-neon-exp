@@ -38,6 +38,7 @@ type Props = {
   carona: EstacaoId | null // alguém de carona agora (o Drewboy na missão dele)
   onTocaDiscos?: () => void // tocou no toca-discos: abre a estante de discos
   onEstudio?: () => void // (27/11, a entrada) tocou nos pads da MPC: abre o estúdio
+  semMpc?: boolean // (27/11, a entrada) a MPC sai do painel (lá ela fica na mesa do estúdio)
   volante: React.MutableRefObject<number> // o volante gira junto
   vel: React.MutableRefObject<number> // m/s (o velocímetro)
   tinta: string // a pintura (o painel é de lata pintada)
@@ -107,7 +108,7 @@ const LUGARES: { pos: [number, number, number]; vira: number }[] = [
   { pos: [-0.62, 0.36, 1.32], vira: -Math.PI / 2 },
 ]
 
-export function Cabine({ balanco, disco, objetos, carona, onTocaDiscos, onEstudio, volante, vel, tinta, neon }: Props) {
+export function Cabine({ balanco, disco, objetos, carona, onTocaDiscos, onEstudio, semMpc, volante, vel, tinta, neon }: Props) {
   const pendulo = useRef<THREE.Group>(null)
   const ang = useRef({ a: 0, w: 0 })
 
@@ -141,7 +142,7 @@ export function Cabine({ balanco, disco, objetos, carona, onTocaDiscos, onEstudi
     <Suspense fallback={null}><InteriorModelado tinta={lata(tinta)} onPronto={pronto} /></Suspense>
     <InstrumentosKombi escala={ESCALA} desloca={DESLOCA} />
     <group scale={ESCALA} position={DESLOCA}>
-      <KombiHippie isPlaying={disco} hideExterior semTeto semPainel semParedes onItemClick={(item) => { if (item === "toca") onTocaDiscos?.(); else if (item === "pads") onEstudio?.() }} />
+      <KombiHippie isPlaying={disco} hideExterior semTeto semPainel semParedes semPads={semMpc} onItemClick={(item) => { if (item === "toca") onTocaDiscos?.(); else if (item === "pads") onEstudio?.() }} />
       <EstudioKombi escala={ESCALA} tinta={lata(tinta)} estatico={!modelado} />
       <InteriorKombi escala={ESCALA} tinta={tinta} neon={neon} volante={volante} vel={vel} balanco={balanco} estatico={!modelado} />
       {gente.map((g) => <Pessoa key={g.id} cor={g.cor} pos={g.pos} vira={g.vira} />)}

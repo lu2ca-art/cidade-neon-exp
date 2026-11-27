@@ -23,6 +23,7 @@ import { Stars } from "@react-three/drei"
 import { Suspense, useEffect, useLayoutEffect, useMemo, useRef, useState } from "react"
 import * as THREE from "three"
 import { Cabine, DESLOCA, ESCALA, OLHO } from "../linha/estrada/Cabine"
+import { PadsMPC } from "@/components/DriveCockpit/Kombi"
 import { KOMBI_LAYOUT } from "@/lib/kombi-layout"
 import { RadioPainel3D, type RadioPainelProps } from "./RadioPainel3D"
 import { curvaHiper } from "./hiper"
@@ -37,6 +38,8 @@ export type EstadoKombi = {
   pedido?: { yaw: number; pitch: number } | null
   // com o estúdio aberto, arrastar não tira o foco de nada
   estudio?: boolean
+  // o último toque foi o fim de um arrasto (pra olhar em volta): não abre nada
+  arrastou?: boolean
 }
 
 
@@ -69,6 +72,8 @@ function Olhar({ estado, sairFoco }: { estado: React.RefObject<EstadoKombi>; sai
     const move = (e: PointerEvent) => {
       const s = o.current
       if (!s.arrasta) return
+      // o soltar se perdeu (soltou fora da janela): nenhum botão apertado, o arrasto acabou
+      if (e.pointerType === "mouse" && e.buttons === 0) { s.arrasta = false; return }
       // arrastou com o rádio em foco: a cabeça volta pro banco
       if (estado.current?.foco) { if (Math.hypot(e.clientX - s.x0, e.clientY - s.y0) > 10) sairFoco(); else return }
       const k = 2.4 / Math.max(320, el.clientWidth)
@@ -77,7 +82,12 @@ function Olhar({ estado, sairFoco }: { estado: React.RefObject<EstadoKombi>; sai
       s.alvoPitch = Math.max(-0.8, Math.min(0.6, s.alvoPitch + (e.clientY - s.y) * k))
       s.x = e.clientX; s.y = e.clientY
     }
-    const sobe = () => { if (o.current.arrasta) { o.current.arrasta = false; o.current.soltou = performance.now() } }
+    const sobe = (e: PointerEvent) => {
+      if (!o.current.arrasta) return
+      o.current.arrasta = false; o.current.soltou = performance.now()
+      // arrastou pra olhar: soltar em cima de uma coisa não é tocar nela
+      if (estado.current) estado.current.arrastou = Math.hypot(e.clientX - o.current.x0, e.clientY - o.current.y0) > 8
+    }
     el.addEventListener("pointerdown", desce)
     window.addEventListener("pointermove", move)
     window.addEventListener("pointerup", sobe)
@@ -412,14 +422,36 @@ function Violao3D({ onTocar }: { onTocar: () => void }) {
   )
 }
 
+// ── a MPC (27/11, o dono): menor, em cima da mesa do estúdio, lá atrás, ao lado do
+// teclado MIDI. Tocar nela abre a batida ──
+const MPC_MESA = { position: aMundo(-0.33, 0.84, 1.52), rotation: [0.12, Math.PI, 0] as [number, number, number], size: [0.2, 0.03, 0.2] as [number, number, number], color: "#ff8a3d" }
+// (27/11, o dono) o toque vale pra mesa inteira do estúdio, em volta da MPC: monitor, caixas
+// de som, o MIDI e a MPC (uma caixa invisível por cima); com o dedo em cima, a mesa acende
+const MESA_POS = aMundo(-0.04, 1.0, 1.61)
+const MESA_TAM: [number, number, number] = [1.2 * ESCALA[0], 0.48 * ESCALA[1], 0.4 * ESCALA[2]]
+function MpcNaMesa({ tocando, onTocar }: { tocando: boolean; onTocar: () => void }) {
+  const brilho = useRef<THREE.SpriteMaterial>(null)
+  const [perto, setPerto] = useState(false)
+  useFrame((st) => { if (brilho.current) brilho.current.opacity = (perto ? 0.35 : 0.08) + Math.sin(st.clock.elapsedTime * 1.9 + 2) * 0.04 })
+  return (
+    <group
+      onClick={(e) => { e.stopPropagation(); onTocar() }}
+      onPointerOver={(e) => { e.stopPropagation(); setPerto(true); document.body.style.cursor = "pointer" }}
+      onPointerOut={() => { setPerto(false); document.body.style.cursor = "" }}>
+      <PadsMPC part={MPC_MESA} isPlaying={tocando} />
+      <mesh position={MESA_POS}><boxGeometry args={MESA_TAM} /><meshBasicMaterial transparent opacity={0} depthWrite={false} /></mesh>
+      <sprite position={MESA_POS} scale={[1.6, 0.9, 1]}><spriteMaterial ref={brilho} map={texBrilho()} color="#ff8a3d" transparent opacity={0.08} depthWrite={false} blending={THREE.AdditiveBlending} toneMapped={false} /></sprite>
+    </group>
+  )
+}
+
 // ── os teclados (os dois sintetizadores na lateral e o MIDI da mesa, lá atrás): são da
 // malha parada do estúdio, então o toque é numa caixa invisível por cima de cada um ──
 function aMundo(x: number, y: number, z: number): [number, number, number] {
   return [x * ESCALA[0] + DESLOCA[0], y * ESCALA[1] + DESLOCA[1], z * ESCALA[2] + DESLOCA[2]]
 }
 const TECLADOS: { pos: [number, number, number]; tam: [number, number, number] }[] = [
-  { pos: aMundo(0.6, 0.72, 0.95), tam: [0.3, 0.42, 0.95] }, // os dois do suporte
-  { pos: aMundo(0.05, 0.83, 1.54), tam: [0.5, 0.08, 0.2] }, // o MIDI da mesa
+  { pos: aMundo(0.6, 0.72, 0.95), tam: [0.3, 0.42, 0.95] }, // os dois do suporte (o MIDI da mesa é do estúdio)
 ]
 function Teclados({ onTocar }: { onTocar: () => void }) {
   const brilho = useRef<THREE.SpriteMaterial>(null)
@@ -438,19 +470,104 @@ function Teclados({ onTocar }: { onTocar: () => void }) {
   )
 }
 
+// ── a gaveta dos discos (27/11, o dono): a caixa quadrada embaixo do toca-discos. Tocar no
+// toca-discos (ou nela) e ela desliza pra fora; dentro, os discos antigos de pé, lado a lado,
+// como um pacote de bolacha deitado. Tocar num disco põe ele pra tocar (o que está tocando
+// sobe e brilha); tocar nele de novo, para ──
+export type GavetaProps = {
+  aberta: boolean
+  cores: string[] // uma cor de selo por disco
+  tocando: number | null
+  onAbrir: () => void
+  onEscolher: (i: number) => void
+  onPerto: (i: number | null) => void
+}
+// a frente da caixa do toca-discos (medida na cena), virada como ele
+const GAVETA_POS: [number, number, number] = [0.45, 1.3, -1.44]
+const GAVETA_GIRO = 0.15
+const GW = 0.36, GH = 0.11, GD = 0.26, SAI = 0.25
+function Gaveta({ aberta, cores, tocando, onAbrir, onEscolher, onPerto }: GavetaProps) {
+  const corpo = useRef<THREE.Group>(null)
+  const discos = useRef<(THREE.Group | null)[]>([])
+  const [perto, setPerto] = useState<number | null>(null)
+  const passo = Math.min(0.045, (GW - 0.06) / Math.max(1, cores.length))
+  useFrame((_, dtRaw) => {
+    const dt = Math.min(0.05, dtRaw)
+    const g = corpo.current
+    if (g) g.position.z += ((aberta ? SAI : 0) - g.position.z) * Math.min(1, dt * 7)
+    discos.current.forEach((d, i) => {
+      if (!d) return
+      const alvo = i === tocando ? 0.05 : i === perto ? 0.025 : 0
+      d.position.y += (alvo - d.position.y) * Math.min(1, dt * 10)
+    })
+  })
+  const madeira = "#5a3a1a", escura = "#2e1c0c"
+  const sobre = (i: number | null) => { setPerto(i); onPerto(i); document.body.style.cursor = i === null ? "" : "pointer" }
+  return (
+    <group position={GAVETA_POS} rotation-y={GAVETA_GIRO}>
+      <group ref={corpo}>
+        {/* a caixa: fundo, lados, trás e a frente com o puxador (a frente é o que se vê fechada) */}
+        <mesh position={[0, -GH / 2 + 0.006, -GD / 2]}><boxGeometry args={[GW, 0.012, GD]} /><meshStandardMaterial color={escura} roughness={0.8} /></mesh>
+        {[-1, 1].map((l) => <mesh key={l} position={[l * (GW / 2 - 0.006), 0, -GD / 2]}><boxGeometry args={[0.012, GH, GD]} /><meshStandardMaterial color={madeira} roughness={0.7} /></mesh>)}
+        <mesh position={[0, 0, -GD + 0.006]}><boxGeometry args={[GW, GH, 0.012]} /><meshStandardMaterial color={madeira} roughness={0.7} /></mesh>
+        <group onClick={(e) => { e.stopPropagation(); onAbrir() }}
+          onPointerOver={(e) => { e.stopPropagation(); document.body.style.cursor = "pointer" }}
+          onPointerOut={() => { document.body.style.cursor = "" }}>
+          <mesh position={[0, 0, 0.008]}><boxGeometry args={[GW + 0.012, GH + 0.01, 0.016]} /><meshStandardMaterial color={madeira} roughness={0.6} /></mesh>
+          <mesh position={[0, 0, 0.022]} rotation-x={Math.PI / 2}><cylinderGeometry args={[0.011, 0.011, 0.014, 16]} /><meshStandardMaterial color="#d8c8a0" metalness={0.6} roughness={0.3} /></mesh>
+          {/* um fio de neon na borda: chama o dedo */}
+          <mesh position={[0, -GH / 2 - 0.002, 0.017]}><boxGeometry args={[GW, 0.004, 0.004]} /><meshBasicMaterial color="#ffc857" toneMapped={false} /></mesh>
+        </group>
+        {/* os discos de pé, lado a lado, inclinados de leve (como bolacha no pacote) */}
+        {cores.map((cor, i) => {
+          const x = -((cores.length - 1) * passo) / 2 + i * passo
+          return (
+            <group key={i} position={[x, 0, -GD / 2]}>
+              {/* o toque: a fatia inteira do disco na gaveta (o disco é fino; de longe, um cobre o outro) */}
+              <mesh position={[0, 0.03, 0]}
+                onClick={(e) => { e.stopPropagation(); onEscolher(i) }}
+                onPointerOver={(e) => { e.stopPropagation(); sobre(i) }}
+                onPointerOut={() => sobre(null)}>
+                <boxGeometry args={[passo * 0.98, 0.2, 0.2]} />
+                <meshBasicMaterial transparent opacity={0} depthWrite={false} />
+              </mesh>
+              <group ref={(r) => { discos.current[i] = r }}>
+                <group position={[0, 0.03, 0]} rotation={[0, Math.PI / 2, 0.12]}>
+                  <mesh rotation-x={Math.PI / 2}><cylinderGeometry args={[0.085, 0.085, 0.006, 40]} /><meshStandardMaterial color="#0b0b0d" roughness={0.35} metalness={0.2} /></mesh>
+                  {[-1, 1].map((l) => (
+                    <mesh key={l} position={[0, 0, l * 0.0035]} rotation-y={l < 0 ? Math.PI : 0}><circleGeometry args={[0.03, 24]} /><meshBasicMaterial color={cor} toneMapped={false} /></mesh>
+                  ))}
+                  {/* a borda colorida: dá pra saber qual é olhando de cima */}
+                  <mesh><torusGeometry args={[0.085, 0.0035, 6, 40]} /><meshBasicMaterial color={i === tocando ? "#ffffff" : cor} toneMapped={false} /></mesh>
+                  {i === tocando && <sprite scale={[0.3, 0.3, 1]}><spriteMaterial map={texBrilho()} color={cor} transparent opacity={0.55} depthWrite={false} blending={THREE.AdditiveBlending} toneMapped={false} /></sprite>}
+                </group>
+              </group>
+            </group>
+          )
+        })}
+      </group>
+    </group>
+  )
+}
+
 export type RadioDaKombi = Omit<RadioPainelProps, "focado" | "onFoco">
 
 // (27/11, o dono) cada coisa da Kombi é clicável: o rádio toca a música dele, a MPC abre a
 // batida, o toca-discos o acervo antigo, o violão e o teclado abrem pra tocar (no tom da música)
-export function KombiEntrada({ estado, radio, disco, onBatida, onDisco, onViolao, onTeclado }: {
+export function KombiEntrada({ estado, radio, disco, onBatida, onDisco, onViolao, onTeclado, gaveta }: {
   estado: React.RefObject<EstadoKombi>; radio: RadioDaKombi; disco: boolean
   onBatida?: () => void; onDisco?: () => void; onViolao?: () => void; onTeclado?: () => void
+  gaveta?: GavetaProps
 }) {
   // a cabine pede refs da estrada: parada, sem curva, volante reto
   const zero = useRef(0), volante = useRef(0), vel = useRef(0)
   const [focado, setFocado] = useState(false)
   const foco = (sim: boolean) => { estado.current.foco = sim; setFocado(sim) }
   const sairFoco = useRef(() => foco(false)).current
+  // só vale como toque se não foi o fim de um arrasto (ver Olhar)
+  const toque = <A extends unknown[]>(f?: (...a: A) => void) => f && ((...a: A) => { if (!estado.current.arrastou) f(...a) })
+  const batida = toque(onBatida), discoT = toque(onDisco), violaoT = toque(onViolao), tecladoT = toque(onTeclado)
+  const gavetaT = gaveta && { ...gaveta, onAbrir: toque(gaveta.onAbrir)!, onEscolher: toque(gaveta.onEscolher)! }
   return (
     <Canvas className="en-canvas" onPointerMissed={() => { if (estado.current.foco) foco(false) }} dpr={[1, 2]} camera={{ fov: 64, near: 0.03, far: 2000, position: [OLHO.x, OLHO.y, OLHO.z] }} gl={{ antialias: true, powerPreference: "high-performance" }}>
       <Velocimetro estado={estado} vel={vel} />
@@ -460,13 +577,15 @@ export function KombiEntrada({ estado, radio, disco, onBatida, onDisco, onViolao
       <pointLight position={[0, OLHO.y + 0.35, OLHO.z + 0.2]} intensity={1.4} distance={3.2} color="#ffd6a0" />
       <pointLight position={[POS_RADIO[0], POS_RADIO[1] - 0.15, POS_RADIO[2] + 0.25]} intensity={0.9} distance={1.6} color="#ff3fb0" />
       <Suspense fallback={null}>
-        <Cabine balanco={zero} disco={disco} objetos={[]} carona={null} onTocaDiscos={onDisco} onEstudio={onBatida} volante={volante} vel={vel} tinta="#ffffff" neon="#ff3fb0" />
+        <Cabine balanco={zero} disco={disco} objetos={[]} carona={null} onTocaDiscos={discoT} semMpc volante={volante} vel={vel} tinta="#ffffff" neon="#ff3fb0" />
       </Suspense>
       <RadioNoPainel>
         <RadioPainel3D {...radio} focado={focado} onFoco={() => foco(true)} />
       </RadioNoPainel>
-      {onViolao && <Violao3D onTocar={onViolao} />}
-      {onTeclado && <Teclados onTocar={onTeclado} />}
+      {violaoT && <Violao3D onTocar={violaoT} />}
+      {tecladoT && <Teclados onTocar={tecladoT} />}
+      {batida && <MpcNaMesa tocando={disco || radio.tocando} onTocar={batida} />}
+      {gavetaT && <Gaveta {...gavetaT} />}
       <Espaco estado={estado} />
       <Olhar estado={estado} sairFoco={sairFoco} />
     </Canvas>

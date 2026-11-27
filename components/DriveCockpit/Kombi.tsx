@@ -248,7 +248,7 @@ function TocaDiscos({ part, isPlaying = false }: { part: KombiPart; isPlaying?: 
 }
 
 // Pads MPC: 4x4 quadrados coloridos piscando
-function PadsMPC({ part, isPlaying = false }: { part: KombiPart; isPlaying?: boolean }) {
+export function PadsMPC({ part, isPlaying = false }: { part: KombiPart; isPlaying?: boolean }) {
   const [W, H, D] = part.size
   const padSize = (W - 0.04) / 4
   const gap = 0.008
@@ -384,6 +384,8 @@ export interface KombiProps {
   semPainel?: boolean
   /** sem paredes internas, bancos e piso (a Linha 222 tem os dela, modelados) */
   semParedes?: boolean
+  /** (27/11, a entrada) sem a MPC do painel: lá ela fica na mesa do estúdio */
+  semPads?: boolean
 }
 
 export function Kombi({
@@ -397,6 +399,7 @@ export function Kombi({
   semTeto = false,
   semPainel = false,
   semParedes = false,
+  semPads = false,
 }: KombiProps) {
   const K = KOMBI_LAYOUT
   return (
@@ -486,11 +489,13 @@ export function Kombi({
           <group onClick={onItemClick ? (e) => { e.stopPropagation(); onItemClick("toca") } : undefined}>
             <TocaDiscos part={K.tocaDiscos} isPlaying={isPlaying} />
           </group>
-          <group onClick={onItemClick ? (e) => { e.stopPropagation(); onItemClick("pads") } : undefined}>
-            <PadsMPC part={K.padsMPC} isPlaying={isPlaying} />
-            {/* Pedestal fino sustentando a MPC (sai do piso até a MPC) */}
-            <PartMesh part={K.pedestalMPC} />
-          </group>
+          {!semPads && (
+            <group onClick={onItemClick ? (e) => { e.stopPropagation(); onItemClick("pads") } : undefined}>
+              <PadsMPC part={K.padsMPC} isPlaying={isPlaying} />
+              {/* Pedestal fino sustentando a MPC (sai do piso até a MPC) */}
+              <PartMesh part={K.pedestalMPC} />
+            </group>
+          )}
           <Retrovisor part={K.retrovisor} />
           {/* Porta-luvas clicável — abre inventário. Detalhes de OURO na face
               frontal (gaveta virada pro banco motorista, Z+). */}

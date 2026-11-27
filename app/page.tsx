@@ -16,6 +16,7 @@ import { voltaSegura } from "@/lib/entrada"
 import type { EstadoKombi } from "./entrada/KombiEntrada"
 import { HIPER } from "./entrada/hiper"
 import { TONS } from "./linha/tons"
+import TONS_TEMPO from "./linha/tons-tempo.json"
 import type { Tom } from "./linha/som"
 import { bip } from "./linha/disco/pecas/sons"
 import VINIS from "./linha/vinis.json"
@@ -33,6 +34,20 @@ type Instrumento = "violao" | "teclado"
 const TECLADO = { nome: "teclado", tocar: (f: number, v = 0.32, q = 0) => { bip(f, 0.9, "triangle", v * 0.55, q); bip(f * 2, 0.45, "sine", v * 0.16, q) } }
 // os discos antigos (domínio público), os mesmos do acervo do jogo
 const ACERVO = VINIS as { titulo: string; autor: string; src: string }[]
+// a cor do selo de cada disco na gaveta
+const SELOS = ["#ffc857", "#ff6b6b", "#6ff0d6", "#b38cff", "#ff8fc8", "#8fd16a", "#5aa9ff", "#f4ead7"]
+// (27/11, o dono: "mudam de tom sozinhos com a música") o tom de cada trecho de cada faixa
+// (scripts/linha-tons-tempo.py): [segundo, tônica, modo], cada um vale até o próximo
+const LINHA_TOM = TONS_TEMPO as unknown as Record<string, [number, number, Tom["modo"]][]>
+function tomNoTempo(src: string, t: number): Tom | null {
+  const l = LINHA_TOM[src]
+  if (!l?.length) return null
+  let k = 0
+  while (k + 1 < l.length && l[k + 1][0] <= t) k++
+  return { tonica: l[k][1], modo: l[k][2] }
+}
+// o caminho da faixa (sem o domínio), como está nas tabelas
+const caminho = (a: HTMLAudioElement | null) => { try { return a?.src ? new URL(a.src).pathname : "" } catch { return "" } }
 
 const INSTAGRAM = "https://www.instagram.com/lu2ca.art"
 const TIKTOK = "https://tiktok.com/@lu2ca.mp3"
@@ -92,12 +107,36 @@ function Entrada() {
   // rádio e disco não tocam juntos: ligar um desliga o outro
   const alternarRadio = () => { if (!radio.tocando) acervo.pausar(); radio.alternar() }
   const tocarDisco = (i: number) => { radio.parar(); acervo.tocar(i) }
+  // a gaveta: abre (e o olhar desce até ela), fecha no mesmo toque
+  const [discoPerto, setDiscoPerto] = useState<number | null>(null)
   const abrir = (o: "estante" | Instrumento) => {
     if (partiu || batida) return
-    setEstante(o === "estante"); setInstrumento(o === "estante" ? null : o)
+    if (o === "estante") {
+      const abre = !estante
+      setEstante(abre); setInstrumento(null); setDiscoPerto(null)
+      if (abre) estado.current.pedido = { yaw: -0.45, pitch: -0.5 }
+      return
+    }
+    setEstante(false); setInstrumento(o)
   }
-  // o tom: o disco que está tocando; senão a faixa da rádio (tocando ou na vez)
-  const tom: Tom | null = (acervo.tocando && acervo.faixa ? TONS[acervo.faixa.src] : null) ?? radio.faixa?.tom ?? null
+  // o tom AGORA: o trecho do disco que está tocando, ou o da faixa da rádio (tocando ou na
+  // vez). Relido a cada meio segundo com um instrumento aberto: trocou o tom na música, troca
+  // no instrumento
+  const [tom, setTom] = useState<Tom | null>(null)
+  useEffect(() => {
+    if (!instrumento) return
+    const ler = () => {
+      const fonte = acervo.tocando ? acervo.audio.current : radio.audio.current
+      // a rádio ainda sem tocar não tem src: vale o começo da faixa da vez
+      const src = caminho(fonte) || (acervo.tocando ? "" : radio.faixa?.voz ?? "")
+      const geral = acervo.tocando && acervo.faixa ? TONS[acervo.faixa.src] : radio.faixa?.tom
+      const t = (src ? tomNoTempo(src, fonte?.currentTime ?? 0) : null) ?? geral ?? null
+      setTom((a) => (a && t && a.tonica === t.tonica && a.modo === t.modo ? a : t))
+    }
+    ler()
+    const id = setInterval(ler, 500)
+    return () => clearInterval(id)
+  }, [instrumento, acervo.tocando, acervo.faixa, acervo.audio, radio.faixa, radio.audio])
   const darPartida = () => {
     if (batida) fecharBatida()
     setEstante(false); setInstrumento(null)
@@ -114,12 +153,16 @@ function Entrada() {
   }
   return (
     <main className={`en-pagina ${partiu ? "is-partida" : ""} ${batida || estante || instrumento ? "is-estudio" : ""}`}>
-      <KombiEntrada estado={estado} disco={acervo.tocando} onBatida={abrirBatida} onDisco={() => abrir("estante")} onViolao={() => abrir("violao")} onTeclado={() => abrir("teclado")} radio={{
+      <KombiEntrada estado={estado} disco={acervo.tocando} gaveta={{
+        aberta: estante && !partiu, cores: ACERVO.map((_, k) => SELOS[k % SELOS.length]), tocando: acervo.tocando ? acervo.i : null,
+        onAbrir: () => abrir("estante"), onPerto: setDiscoPerto,
+        onEscolher: (k) => { if (!estante) { abrir("estante"); return } if (acervo.tocando && acervo.i === k) acervo.pausar(); else tocarDisco(k) },
+      }} onBatida={abrirBatida} onDisco={() => abrir("estante")} onViolao={() => abrir("violao")} onTeclado={() => abrir("teclado")} radio={{
         titulo: radio.faixa?.faixa ?? "", tocando: radio.tocando, temLink: !!(radio.faixa && linkDaFaixa(radio.faixa.id)),
         onLigar: alternarRadio, onProxima: radio.proxima, onAnterior: radio.anterior, onSalvar: () => { if (radio.faixa) salvarFaixa(radio.faixa.id, "entrada") },
       }} />
       {batida && <KombeatStudio modo="beat" onModo={(m) => { if (m !== "beat") fecharBatida() }} onDiscos={fecharBatida} onSair={fecharBatida} />}
-      {estante && <Estante tocando={acervo.tocando ? acervo.i : null} onTocar={tocarDisco} onParar={acervo.pausar} onFechar={() => setEstante(false)} />}
+      {estante && !partiu && <LegendaGaveta perto={discoPerto} tocando={acervo.tocando ? acervo.i : null} onFechar={() => setEstante(false)} />}
       {instrumento && !partiu && (
         <Violao key={instrumento} temViolao semBotao abrir={1} tom={tom} voz={instrumento === "teclado" ? TECLADO : undefined} onFechar={() => setInstrumento(null)} />
       )}
@@ -180,26 +223,19 @@ function useAcervo() {
   }
 }
 
-// a estante: os discos antigos da Kombi (toca no disco que está tocando: para)
-function Estante({ tocando, onTocar, onParar, onFechar }: { tocando: number | null; onTocar: (i: number) => void; onParar: () => void; onFechar: () => void }) {
+// a legenda da gaveta: o disco sob o dedo (ou o que está tocando); os discos são 3D
+function LegendaGaveta({ perto, tocando, onFechar }: { perto: number | null; tocando: number | null; onFechar: () => void }) {
+  const k = perto ?? tocando
+  const d = k === null ? null : ACERVO[k]
   return (
-    <section className="en-estante" role="dialog" aria-label="o acervo de discos antigos" onPointerDown={(e) => e.stopPropagation()}>
-      <header>
-        <b>o acervo antigo</b>
-        <button type="button" onClick={onFechar} aria-label="fechar">✕</button>
-      </header>
-      <p>discos de domínio público. põe um pra tocar: o violão e o teclado entram no tom dele</p>
-      <ul>
-        {ACERVO.map((d, k) => (
-          <li key={d.src}>
-            <button type="button" className={tocando === k ? "is-on" : ""} onClick={() => (tocando === k ? onParar() : onTocar(k))}>
-              <i aria-hidden="true" />
-              <span><b>{d.titulo}</b><small>{tocando === k ? "tocando · toca pra parar" : d.autor}</small></span>
-            </button>
-          </li>
-        ))}
-      </ul>
-    </section>
+    <div className="en-gaveta" role="status" onPointerDown={(e) => e.stopPropagation()}>
+      <i aria-hidden="true" style={k === null ? undefined : { background: SELOS[k % SELOS.length] }} />
+      <span>
+        {d ? <><b>{d.titulo}</b><small>{d.autor}{k === tocando ? " · tocando, toca de novo pra parar" : " · toca pra pôr no prato"}</small></>
+          : <><b>o acervo antigo</b><small>escolhe um disco na gaveta</small></>}
+      </span>
+      <button type="button" onClick={onFechar} aria-label="fechar a gaveta">✕</button>
+    </div>
   )
 }
 

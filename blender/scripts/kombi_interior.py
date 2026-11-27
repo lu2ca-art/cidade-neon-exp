@@ -463,24 +463,8 @@ for k in range(9):
     esfera(f"folha_{k}", P(-0.66, 0.9, 1.66) + Vector((math.cos(a) * r, math.sin(a) * r, 0.02 + (k % 4) * 0.018)), 0.03,
            "fosco", "#3f9b4a" if k % 2 else "#56b85c", achata=(1.3, 0.6, 0.35), rot=Matrix.Rotation(a, 4, "Z") @ Matrix.Rotation(0.5, 4, "X"), seg=10)
 
-# a cadeira de tela, virada pra mesa
-C = P(0.05, 0, 1.2)
-for k in range(5):
-    a = k / 5 * 2 * math.pi + 0.3
-    d = Vector((math.cos(a), math.sin(a), 0))
-    bloco(f"cad_pe_{k}", C + d * 0.12 + Vector((0, 0, 0.66)), (0.24, 0.025, 0.02), "cromo", CROMADO, rot=Matrix.Rotation(a, 4, "Z"), bevel=0.006)
-    esfera(f"cad_roda_{k}", C + d * 0.235 + Vector((0, 0, 0.645)), 0.02, "fosco", "#1b1b20", seg=10)
-cil("cad_coluna", C + Vector((0, 0, 0.82)), 0.022, 0.022, 0.32, "cromo", CROMADO, seg=14)
-caixa("cad_assento", (0.05, 0.56, 1.2), (0.42, 0.06, 0.4), "fosco", "#f1ece4", bevel=0.025, seg=4, sub=1)
-# encosto curvo de ripas (como a tela da cadeira do vídeo), arcos laterais
-for k in range(10):
-    o = caixa(f"cad_ripa_{k}", (0.05, 0.66 + k * 0.048, 0.995 - 0.004 * k), (0.38, 0.028, 0.018), "fosco", AGUA if k % 2 else "#f1ece4", bevel=0.007, seg=3)
-    aplica(o)
-    for v in o.data.vertices:
-        dx = v.co.x - C.x
-        v.co.y += -1.6 * dx * dx  # as pontas curvam pra frente (pra mesa)
-for s in (-1, 1):
-    cil(f"cad_arco_{s}", P(0.05 + s * 0.2, 0.86, 0.99) + Vector((0, 0.06, 0)), 0.012, 0.012, 0.6, "fosco", "#f1ece4", seg=10)
+# (27/11, o dono) a cadeira de tela com o encosto de ripas listradas ("a cadeira gamer") saiu.
+# InteriorModelado esconde ela (murchaCaixa) até este script rodar de novo.
 
 # os dois sintetizadores no suporte em X, na direita; banquinho de pelúcia
 def sinte(nome, yl, inclina):

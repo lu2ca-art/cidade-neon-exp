@@ -215,16 +215,7 @@ export function EstudioKombi({ escala, tinta, estatico = true }: Props) {
         [-0.66 + Math.cos(a) * 0.035, 0.91 + (k % 3) * 0.03, 1.66 + Math.sin(a) * 0.03], [0, 0, 0], true))
     }
 
-    // ── a cadeira de tela, virada pra mesa ──
-    const cad: V3 = [0.05, 0, 1.2]
-    for (let k = 0; k < 5; k++) {
-      const a = (k / 5) * Math.PI * 2
-      cromo.push(poe(cx(0.2, 0.015, 0.025), cromado, [cad[0] + Math.cos(a) * 0.09, 0.28, cad[2] + Math.sin(a) * 0.09], [0, -a, 0]))
-    }
-    cromo.push(poe(new THREE.CylinderGeometry(0.018, 0.018, 0.27, 10), cromado, [cad[0], 0.41, cad[2]], [0, 0, 0], true))
-    fosco.push(poe(cx(0.4, 0.05, 0.38), BRANCO, [cad[0], 0.56, cad[2]]))
-    for (const s of [-1, 1]) fosco.push(poe(cx(0.025, 0.5, 0.03), BRANCO, [cad[0] + s * 0.19, 0.83, cad[2] - 0.19]))
-    for (let k = 0; k < 9; k++) fosco.push(poe(cx(0.36, 0.03, 0.02), k % 2 ? AGUA : BRANCO, [cad[0], 0.65 + k * 0.05, cad[2] - 0.19]))
+    // (27/11, o dono) a cadeira de ripas listradas saiu
 
     // ── os sintetizadores no suporte, na lateral direita ──
     const sinte = (y: number, inclina: number, z: number) => {

@@ -29,3 +29,6 @@
 .l-vl-botao.is-trancado .l-vl-icone { filter: grayscale(1) brightness(0.7); }
 .l-vl-botao.is-trancado small { display: flex; align-items: center; gap: 3px; }
 .l-vl-aviso { position: fixed; right: 16px; bottom: calc(216px + env(safe-area-inset-bottom)); z-index: 40; max-width: 260px; }
+/* (27/11) o tom trocou com a música: o nome acende um instante */
+.l-vl-tom { display: inline-block; animation: l-vl-tom-troca 0.9s ease-out; }
+@keyframes l-vl-tom-troca { 0% { color: #fff; text-shadow: 0 0 14px currentColor; transform: scale(1.12); } 100% { text-shadow: none; transform: none; } }

@@ -66,7 +66,11 @@ export function InteriorModelado({ tinta, onPronto }: Props) {
     // (o script já não faz o casulo), os vértices dele somem aqui: viram um ponto só
     if (lata) murcha(lata, CASULO, 0.115)
     if (cromo) murcha(cromo, AROC, 0.07)
-    return { lata, fosco: pega("fosco"), cromo, brilho: pega("brilho"), pelo }
+    // (27/11, o dono) a cadeira de ripas listradas (a "cadeira gamer") saiu do script;
+    // até o próximo export, some aqui também
+    const fosco = pega("fosco")
+    for (const p of [fosco, cromo]) if (p) murchaCaixa(p, CADEIRA_MIN, CADEIRA_MAX)
+    return { lata, fosco, cromo, brilho: pega("brilho"), pelo }
   }, [nodes])
 
   useEffect(() => { onPronto?.() }, [onPronto])
@@ -93,6 +97,21 @@ useGLTF.preload(URL)
 // o casulo e o aro no espaço da Kombi (metros): o layout × ESCALA + DESLOCA (Cabine.tsx)
 const CASULO = new THREE.Vector3(-0.4 * 0.98, 0.865 * 1.3 + 0.3, -0.965 * 1.3 - 0.35)
 const AROC = new THREE.Vector3(-0.4 * 0.98, 0.873 * 1.3 + 0.3, -0.937 * 1.3 - 0.35)
+// a caixa da cadeira (no mundo): entre o sofá e o suporte dos teclados, antes da mesa
+const CADEIRA_MIN = new THREE.Vector3(-0.23, 0.2, 0.84), CADEIRA_MAX = new THREE.Vector3(0.33, 1.8, 1.5)
+/** junta num ponto só os vértices dentro da caixa */
+function murchaCaixa(p: Parte, min: THREE.Vector3, max: THREE.Vector3) {
+  const a = p.geo.attributes.position as THREE.BufferAttribute
+  const m = new THREE.Matrix4().compose(p.pos, p.quat, p.esc), v = new THREE.Vector3(), caixa = new THREE.Box3(min, max)
+  let alvo = -1
+  for (let i = 0; i < a.count; i++) {
+    v.fromBufferAttribute(a, i).applyMatrix4(m)
+    if (!caixa.containsPoint(v)) continue
+    if (alvo < 0) { alvo = i; continue }
+    a.setXYZ(i, a.getX(alvo), a.getY(alvo), a.getZ(alvo))
+  }
+  if (alvo >= 0) a.needsUpdate = true
+}
 type Parte = { geo: THREE.BufferGeometry; pos: THREE.Vector3; quat: THREE.Quaternion; esc: THREE.Vector3 }
 /** junta num ponto só os vértices a menos de `r` do centro (os triângulos somem) */
 function murcha(p: Parte, centro: THREE.Vector3, r: number) {

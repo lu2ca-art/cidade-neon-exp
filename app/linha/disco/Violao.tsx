@@ -225,7 +225,7 @@ export function Violao({ temViolao, comprado, escondido, tranca, onTocou, sempre
       <header>
         <div>
           <small>{vozFora ? `${nome} · tom da faixa` : "tom da faixa"}</small>
-          <b data-testid="violao-tom">{NOMES[tonica]} {modo}</b>
+          <b data-testid="violao-tom" key={`${tonica}${modo}`} className="l-vl-tom">{NOMES[tonica]} {modo}</b>
         </div>
         <button type="button" className="l-vl-fechar" onClick={() => { setAberto(false); onFechar?.() }} aria-label={`guardar ${nome}`}>×</button>
       </header>
