@@ -60,7 +60,13 @@ export function InteriorModelado({ tinta, onPronto }: Props) {
       }
       pelo.geo.setAttribute("uv", new THREE.BufferAttribute(uv, 2))
     }
-    return { lata: pega("lata"), fosco: pega("fosco"), cromo: pega("cromo"), brilho: pega("brilho"), pelo }
+    const lata = pega("lata"), cromo = pega("cromo")
+    // (27/11) o casulo do velocímetro do .glb estava inclinado ao contrário (a "pálpebra"
+    // por cima do mostrador). Agora ele é do código (InteriorKombi); até o próximo export
+    // (o script já não faz o casulo), os vértices dele somem aqui: viram um ponto só
+    if (lata) murcha(lata, CASULO, 0.115)
+    if (cromo) murcha(cromo, AROC, 0.07)
+    return { lata, fosco: pega("fosco"), cromo, brilho: pega("brilho"), pelo }
   }, [nodes])
 
   useEffect(() => { onPronto?.() }, [onPronto])
@@ -83,3 +89,21 @@ export function InteriorModelado({ tinta, onPronto }: Props) {
 }
 
 useGLTF.preload(URL)
+
+// o casulo e o aro no espaço da Kombi (metros): o layout × ESCALA + DESLOCA (Cabine.tsx)
+const CASULO = new THREE.Vector3(-0.4 * 0.98, 0.865 * 1.3 + 0.3, -0.965 * 1.3 - 0.35)
+const AROC = new THREE.Vector3(-0.4 * 0.98, 0.873 * 1.3 + 0.3, -0.937 * 1.3 - 0.35)
+type Parte = { geo: THREE.BufferGeometry; pos: THREE.Vector3; quat: THREE.Quaternion; esc: THREE.Vector3 }
+/** junta num ponto só os vértices a menos de `r` do centro (os triângulos somem) */
+function murcha(p: Parte, centro: THREE.Vector3, r: number) {
+  const a = p.geo.attributes.position as THREE.BufferAttribute
+  const m = new THREE.Matrix4().compose(p.pos, p.quat, p.esc), v = new THREE.Vector3()
+  let alvo = -1
+  for (let i = 0; i < a.count; i++) {
+    v.fromBufferAttribute(a, i).applyMatrix4(m)
+    if (v.distanceTo(centro) > r) continue
+    if (alvo < 0) { alvo = i; continue }
+    a.setXYZ(i, a.getX(alvo), a.getY(alvo), a.getZ(alvo))
+  }
+  if (alvo >= 0) a.needsUpdate = true
+}

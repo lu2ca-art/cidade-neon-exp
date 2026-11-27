@@ -13,6 +13,7 @@ import { fazerMusica } from "../som"
 import { INSTRUMENTOS_ANCESTRAIS, tocarInstrumento, type InstrumentoId } from "../disco/instrumentos"
 import { naKombiAgora, ouvirNaKombi } from "../disco/instrumentosMundo"
 import { KOMBI_CABE } from "../disco/portas"
+import "./kombeat.css"
 
 export type ModoEstudio = "menu" | "instrumento" | "beat"
 // a cena 3D (CenaBase) lê isto a cada quadro: com o estúdio aberto o olhar não volta

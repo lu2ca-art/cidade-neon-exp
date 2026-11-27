@@ -43,6 +43,8 @@ const CASULO_POS: V3 = [-0.4, 0.865, -0.965]
 const CASULO_INCLINA = 0.26 // virado pro olho
 const HAVAIANA_POS: V3 = [-0.1, 0.822, -1.12]
 const HAVAIANA_TAM = 1.7
+// a altura do quadril sobre a base, em metros, no modelo do Blender (a saia vai até 0,1325)
+const QUADRIL_BLENDER = 0.124
 const FRANJA_Y = 1.36
 const FRANJA_Z = -1.29
 const N_POMPOM = 28
@@ -198,9 +200,10 @@ export function InteriorKombi({ escala, tinta: tintaPura, neon, volante, vel, ba
     fosco.push(poe(new THREE.BoxGeometry(1.66, 0.46, 0.04), tinta, [0, 0.54, -0.89]))
     fosco.push(poe(new THREE.BoxGeometry(1.66, 0.04, 0.47), vinil, [0, 0.79, -1.105]))
     fosco.push(poe(new THREE.CylinderGeometry(0.035, 0.035, 1.66, 16), vinil, [0, 0.79, -0.875], [0, 0, Math.PI / 2]))
-    // o casulo do velocímetro
-    fosco.push(poe(new THREE.CylinderGeometry(0.095, 0.1, 0.075, 28), tinta, CASULO_POS, [Math.PI / 2 - CASULO_INCLINA, 0, 0], true))
-    cromo.push(poe(new THREE.TorusGeometry(0.083, 0.008, 8, 32), cromado, [CASULO_POS[0], CASULO_POS[1] + 0.008, CASULO_POS[2] + 0.028], [-CASULO_INCLINA, 0, 0], true))
+    // o casulo do velocímetro: fica sempre no código (27/11: o do Blender estava inclinado
+    // ao contrário e a borda de cima cobria o mostrador, a "pálpebra")
+    const casuloF = [poe(new THREE.CylinderGeometry(0.095, 0.1, 0.075, 28), tinta, CASULO_POS, [Math.PI / 2 - CASULO_INCLINA, 0, 0], true)]
+    const casuloC = [poe(new THREE.TorusGeometry(0.083, 0.008, 8, 32), cromado, [CASULO_POS[0], CASULO_POS[1] + 0.008, CASULO_POS[2] + 0.028], [-CASULO_INCLINA, 0, 0], true)]
 
     // para-brisa: soleira, colunas, travessa de cima (e a coluna do meio)
     fosco.push(poe(new THREE.BoxGeometry(1.66, 0.04, 0.06), tinta, [0, 0.82, -1.33]))
@@ -317,7 +320,7 @@ export function InteriorKombi({ escala, tinta: tintaPura, neon, volante, vel, ba
     return {
       fosco: junta(fosco), cromo: junta(cromo), brilho: junta(brilho),
       volF: junta(volF), volC: junta(volC), volB: junta(volB), coluna: junta(coluna),
-      tronco: junta(tronco), pompom,
+      tronco: junta(tronco), pompom, casuloF: junta(casuloF), casuloC: junta(casuloC),
     }
   }, [inv, escala, tinta, neon])
 
@@ -373,9 +376,13 @@ export function InteriorKombi({ escala, tinta: tintaPura, neon, volante, vel, ba
     const kmh = Math.min(250, v * 3.6)
     p.agulha += (kmh - p.agulha) * Math.min(1, dt * 6)
     if (ponteiro.current) ponteiro.current.rotation.z = ((135 - (p.agulha / 240) * 270) * Math.PI) / 180 + Math.sin(t * 31) * 0.006 * trepida
+    // (27/11, o dono) a havaiana balança a cintura sempre, como as de mola: o quadril
+    // gira em círculo (hula), e a estrada (a curva, a trepidação) soma por cima
     if (quadril.current) {
-      quadril.current.rotation.z = -a * 0.9 + Math.sin(t * 7) * 0.12 * trepida
-      quadril.current.rotation.x = Math.sin(t * 3.5) * 0.06 * trepida
+      const w = t * 4.2
+      quadril.current.rotation.z = -a * 0.9 + Math.sin(w) * 0.2 + Math.sin(t * 7) * 0.08 * trepida
+      quadril.current.rotation.x = Math.cos(w) * 0.13 + Math.sin(t * 3.5) * 0.05 * trepida
+      quadril.current.position.x = Math.sin(w) * 0.004
     }
     const f = franja.current
     if (f) {
@@ -406,6 +413,8 @@ export function InteriorKombi({ escala, tinta: tintaPura, neon, volante, vel, ba
       <mesh position={[0, 0.54, -0.8685]} material={matPainel}>
         <planeGeometry args={[1.66, 0.46]} />
       </mesh>
+      <mesh geometry={geo.casuloF} material={mats.fosco} />
+      <mesh geometry={geo.casuloC} material={mats.cromo} />
       {/* velocímetro */}
       <group position={CASULO_POS}>
         <group scale={[inv.x, inv.y, inv.z]} rotation-x={-CASULO_INCLINA}>
@@ -432,7 +441,9 @@ export function InteriorKombi({ escala, tinta: tintaPura, neon, volante, vel, ba
         </group>
       </group>
       {/* havaiana (o tronco requebra) */}
-      <group position={[HAVAIANA_POS[0], HAVAIANA_POS[1] + 0.085 * HAVAIANA_TAM, HAVAIANA_POS[2]]}>
+      {/* (27/11) o quadril em cima da saia: a do Blender termina 13 cm acima da base (em
+          metros), a do código em 0,085·TAM no layout. Antes o tronco boiava 4 cm acima */}
+      <group position={[HAVAIANA_POS[0], HAVAIANA_POS[1] + (estatico ? 0.085 * HAVAIANA_TAM : QUADRIL_BLENDER / escala[1]), HAVAIANA_POS[2]]}>
         <group scale={[inv.x * HAVAIANA_TAM, inv.y * HAVAIANA_TAM, inv.z * HAVAIANA_TAM]}>
           <group ref={quadril}>
             <mesh geometry={geo.tronco} material={mats.fosco} />

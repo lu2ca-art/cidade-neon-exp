@@ -93,11 +93,15 @@ export interface ViolaoProps {
   tranca?: string | null
   // cada toque (nota ou acorde), pra quem quiser contar
   onTocou?: (o: { nota?: string; acorde?: string }) => void
+  // (27/11, a entrada na Kombi) o botão aparece mesmo sem nada tocando (Ré menor)
+  sempre?: boolean
+  // (27/11) muda o número: abre o painel (tocar no violão 3D)
+  abrir?: number
 }
 
 const nuncaNoTrem = () => false
 
-export function Violao({ temViolao, comprado, escondido, tranca, onTocou }: ViolaoProps) {
+export function Violao({ temViolao, comprado, escondido, tranca, onTocou, sempre, abrir }: ViolaoProps) {
   const src = useSomTocando()
   const noTrem = useSyncExternalStore(ouvirSentadoNoTrem, sentadoNoTrem, nuncaNoTrem)
   const [aberto, setAberto] = useState(false)
@@ -109,6 +113,8 @@ export function Violao({ temViolao, comprado, escondido, tranca, onTocou }: Viol
   // desceu do trem com o painel do comprado aberto: fecha
   if (aberto && !podeTocar) setAberto(false)
   const [aviso, setAviso] = useState(false)
+  // tocaram no violão de fora (3D): abre
+  useEffect(() => { if (abrir) { audioCtx(); setAberto(true) } }, [abrir])
 
   // (T64) tocando o violão, a trilha abaixa (não para: ele toca junto, no tom dela)
   const tocando = aberto && podeTocar && !escondido
@@ -193,7 +199,7 @@ export function Violao({ temViolao, comprado, escondido, tranca, onTocou }: Viol
       </>
     )
   }
-  if (!src && !aberto && !noTrem) return null
+  if (!src && !aberto && !noTrem && !sempre) return null
 
   if (!aberto) {
     return (

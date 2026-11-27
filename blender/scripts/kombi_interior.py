@@ -269,8 +269,8 @@ cil("painel_friso", P(0, 0.79, -0.88), 0.032, 0.032, 1.66 * E[0], "fosco", VINIL
 CAS = (-0.4, 0.865, -0.965)
 rc = Matrix.Rotation(math.pi / 2 - 0.26, 4, "X")  # eixo Z do cilindro -> pra trás e pra cima
 rc_b = Matrix.Rotation(-(math.pi / 2 - 0.26), 4, "X")
-cil("casulo", P(*CAS), 0.1, 0.095, 0.075, "lata", "#ffffff", rot=rc_b, seg=32, bevel=0.01)
-toro("casulo_aro", P(CAS[0], CAS[1] + 0.008, CAS[2] + 0.028), 0.083, 0.007, "cromo", CROMADO, rot=rc_b, seg=36, segr=8)
+# (27/11) o casulo e o aro saíram daqui: com rc_b ficavam inclinados ao contrário e a
+# borda cobria o mostrador. Agora são do código (InteriorKombi.tsx), sempre
 
 # chave no contato
 caixa("chave", (-0.63, 0.66, -0.864), (0.022, 0.03, 0.008), "cromo", CROMADO, bevel=0.003)

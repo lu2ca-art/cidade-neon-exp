@@ -1,4 +1,5 @@
 "use client"
+/* eslint-disable react-hooks/immutability -- three.js: a cena (partículas, cometas, supernovas) mexe por quadro */
 
 // A PÁGINA INICIAL DENTRO DA KOMBI (22/11, o dono: "a página inicial do jogo vai ser
 // dentro da kombi... que o usuário se sinta de verdade dentro do veículo. E a rádio tem
@@ -10,6 +11,12 @@
 // marcha lenta treme a cabine de leve; dá pra olhar em volta arrastando (e o olhar volta
 // pra frente sozinho, como no jogo). O display do rádio fica preso no painel, no lugar
 // do rádio do layout. A senha é a partida: certa, o motor pega e a Kombi entra na cidade.
+//
+// (27/11, o dono) "o cenário do horizonte é como se ele tivesse viajando no espaço, não tem
+// cidade: cometas, supernovas distantes, estrelas, ele tá voando na Kombi (igual no Midnight
+// Gospel). Por enquanto estamos viajando no universo." E: rodar a visão em 360°, tocar no
+// estúdio (os pads da MPC abrem o KOMBEAT) e no violão (no banco do carona). A partida vira
+// o hiperlapso sem degrau: as mesmas partículas que passam devagar viram os riscos de luz.
 
 import { Canvas, useFrame, useThree } from "@react-three/fiber"
 import { Stars } from "@react-three/drei"
@@ -24,7 +31,13 @@ import { curvaHiper } from "./hiper"
 const R = KOMBI_LAYOUT.radio.position
 export const POS_RADIO: [number, number, number] = [R[0] * ESCALA[0] + DESLOCA[0], R[1] * ESCALA[1] + DESLOCA[1], R[2] * ESCALA[2] + DESLOCA[2]]
 
-export type EstadoKombi = { partida: boolean; tocando: boolean; foco?: boolean; hiper?: number }
+export type EstadoKombi = {
+  partida: boolean; tocando: boolean; foco?: boolean; hiper?: number
+  // vira o olhar (o estúdio pede o fundo da Kombi; fechar pede a frente)
+  pedido?: { yaw: number; pitch: number } | null
+  // com o estúdio aberto, arrastar não tira o foco de nada
+  estudio?: boolean
+}
 
 
 // o rádio: um pouco à frente do rádio do layout (cobre o pequeno), virado pra cabeça
@@ -46,7 +59,7 @@ function Olhar({ estado, sairFoco }: { estado: React.RefObject<EstadoKombi>; sai
     cam.updateProjectionMatrix()
     o.current.fov0 = cam.fov
   }, [camera, size])
-  const o = useRef({ yaw: 0, pitch: base, alvoYaw: 0, alvoPitch: base, arrasta: false, soltou: 0, x: 0, y: 0, x0: 0, y0: 0, f: 0, fov0: 0 })
+  const o = useRef({ yaw: 0, pitch: base, alvoYaw: 0, alvoPitch: base, arrasta: false, soltou: 0, x: 0, y: 0, x0: 0, y0: 0, f: 0, fov0: 0, partiu: false })
   useEffect(() => { o.current.alvoPitch = base }, [base])
   useEffect(() => {
     const el = gl.domElement
@@ -57,8 +70,9 @@ function Olhar({ estado, sairFoco }: { estado: React.RefObject<EstadoKombi>; sai
       // arrastou com o rádio em foco: a cabeça volta pro banco
       if (estado.current?.foco) { if (Math.hypot(e.clientX - s.x0, e.clientY - s.y0) > 10) sairFoco(); else return }
       const k = 2.4 / Math.max(320, el.clientWidth)
-      s.alvoYaw = Math.max(-1.9, Math.min(1.9, s.alvoYaw + (e.clientX - s.x) * k * 1.6))
-      s.alvoPitch = Math.max(-0.7, Math.min(0.45, s.alvoPitch + (e.clientY - s.y) * k))
+      // (27/11) 360°: o giro é livre (sem trava dos lados)
+      s.alvoYaw += (e.clientX - s.x) * k * 1.6
+      s.alvoPitch = Math.max(-0.8, Math.min(0.6, s.alvoPitch + (e.clientY - s.y) * k))
       s.x = e.clientX; s.y = e.clientY
     }
     const sobe = () => { if (o.current.arrasta) { o.current.arrasta = false; o.current.soltou = performance.now() } }
@@ -70,16 +84,19 @@ function Olhar({ estado, sairFoco }: { estado: React.RefObject<EstadoKombi>; sai
   }, [gl, estado, sairFoco])
   useFrame((st, dtRaw) => {
     const dt = Math.min(0.05, dtRaw), s = o.current, t = st.clock.elapsedTime
-    if (!s.arrasta && s.soltou && performance.now() - s.soltou > 7000) { s.alvoYaw = 0; s.alvoPitch = base; s.soltou = 0 }
-    // a partida: o olhar volta pra frente (a estrada andando, a cidade chegando)
-    if (estado.current?.partida) { s.arrasta = false; s.alvoYaw = 0; s.alvoPitch = base }
-    const r = s.arrasta ? 14 : 3
+    // (27/11) o olhar fica onde a pessoa deixou (não volta sozinho): é pra passear
+    const e = estado.current
+    if (e?.pedido) { pertoDe(s, e.pedido.yaw); s.alvoPitch = e.pedido.pitch; e.pedido = null }
+    // a partida: o olhar volta pra frente pelo caminho mais curto
+    if (e?.partida && !s.partiu) { s.partiu = true; s.arrasta = false; pertoDe(s, 0); s.alvoPitch = base }
+    const r = s.arrasta ? 14 : e?.partida ? 1.6 : 3
     s.yaw += (s.alvoYaw - s.yaw) * Math.min(1, dt * r)
     s.pitch += (s.alvoPitch - s.pitch) * Math.min(1, dt * r)
     // o motor: marcha lenta treme de leve; a partida sacode e a Kombi anda
     const partida = !!estado.current?.partida
     const hi = estado.current?.hiper ?? 0
-    const treme = partida ? 0.006 + hi * 0.012 : 0.0016
+    // (27/11) sem degrau: o tremor cresce junto com o hiperlapso
+    const treme = 0.0012 + hi * 0.012
     // a lente abre com a velocidade (o hiperlapso)
     const cam = camera as THREE.PerspectiveCamera
     if (!s.fov0) s.fov0 = cam.fov
@@ -88,7 +105,8 @@ function Olhar({ estado, sairFoco }: { estado: React.RefObject<EstadoKombi>; sai
     const fx = (Math.sin(t * 47) + Math.sin(t * 83.3) * 0.5) * treme
     const fy = (Math.sin(t * 59.1 + 1.3) + Math.sin(t * 97.7) * 0.5) * treme
     // respirar: a cabeça mexe um tiquinho (ninguém fica parado feito câmera)
-    const resp = Math.sin(t * 0.9) * 0.004
+    // e a Kombi flutua (voando no espaço): sobe e desce devagar
+    const resp = Math.sin(t * 0.9) * 0.004 + Math.sin(t * 0.37) * 0.012
     // o foco no rádio: a cabeça vai até ele (e volta), suave
     s.f += ((estado.current?.foco && !partida ? 1 : 0) - s.f) * Math.min(1, dt * 4)
     const cp = Math.cos(s.pitch)
@@ -100,72 +118,298 @@ function Olhar({ estado, sairFoco }: { estado: React.RefObject<EstadoKombi>; sai
   return null
 }
 const tmpA = new THREE.Vector3(), tmpB = new THREE.Vector3()
+// o alvo do giro no ângulo `a`, pelo caminho mais curto a partir de onde o olhar está
+function pertoDe(s: { yaw: number; alvoYaw: number }, a: number) {
+  const volta = Math.PI * 2
+  s.yaw = ((s.yaw % volta) + volta) % volta
+  if (s.yaw > Math.PI) s.yaw -= volta
+  let d = (a - s.yaw) % volta
+  if (d > Math.PI) d -= volta
+  if (d < -Math.PI) d += volta
+  s.alvoYaw = s.yaw + d
+}
 
-// ── lá fora: o deserto de noite e a cidade no horizonte (a cidade chama) ──
-function LaFora({ estado }: { estado: React.RefObject<EstadoKombi> }) {
-  const chao = useRef<THREE.Group>(null)
-  const predios = useMemo(() => {
-    const l: { x: number; h: number; w: number; cor: string }[] = []
-    const cores = ["#ff3fb0", "#2fe8ff", "#ffc857", "#9b8cff", "#ff6a35"]
-    let s = 7
-    const rnd = () => { s = (s * 16807) % 2147483647; return s / 2147483647 }
-    for (let i = 0; i < 46; i++) l.push({ x: (rnd() - 0.5) * 520, h: 18 + rnd() * rnd() * 150, w: 6 + rnd() * 16, cor: cores[Math.floor(rnd() * cores.length)] })
-    return l
+// ── lá fora: o espaço (27/11). A Kombi voa entre estrelas, nebulosas, planetas
+// listrados, cometas que cruzam e supernovas que explodem lá longe. Tudo leve: texturas
+// de canvas feitas uma vez, sprites e uma malha instanciada; por quadro só mexem as
+// partículas, os cometas e as supernovas (sem alocar). ──
+
+// um brilho redondo (o centro forte, a borda sumindo), feito uma vez
+let _brilho: THREE.Texture | null = null
+function texBrilho() {
+  if (_brilho) return _brilho
+  const c = document.createElement("canvas"); c.width = c.height = 128
+  const g = c.getContext("2d")!, r = g.createRadialGradient(64, 64, 0, 64, 64, 64)
+  r.addColorStop(0, "rgba(255,255,255,1)"); r.addColorStop(0.18, "rgba(255,255,255,0.75)"); r.addColorStop(0.45, "rgba(255,255,255,0.18)"); r.addColorStop(1, "rgba(255,255,255,0)")
+  g.fillStyle = r; g.fillRect(0, 0, 128, 128)
+  _brilho = new THREE.CanvasTexture(c); _brilho.colorSpace = THREE.SRGBColorSpace
+  return _brilho
+}
+// a nuvem da nebulosa: manchas sobrepostas (irregular, não um círculo)
+function texNebulosa(seed: number) {
+  const c = document.createElement("canvas"); c.width = c.height = 256
+  const g = c.getContext("2d")!
+  let s = seed; const rnd = () => { s = (s * 16807) % 2147483647; return s / 2147483647 }
+  for (let k = 0; k < 26; k++) {
+    const x = 128 + (rnd() - 0.5) * 140, y = 128 + (rnd() - 0.5) * 110, rr = 30 + rnd() * 70
+    const r = g.createRadialGradient(x, y, 0, x, y, rr)
+    r.addColorStop(0, `rgba(255,255,255,${0.1 + rnd() * 0.12})`); r.addColorStop(1, "rgba(255,255,255,0)")
+    g.fillStyle = r; g.fillRect(0, 0, 256, 256)
+  }
+  const t = new THREE.CanvasTexture(c); t.colorSpace = THREE.SRGBColorSpace
+  return t
+}
+// o planeta listrado (cores de desenho animado)
+function texPlaneta(cores: string[]) {
+  const c = document.createElement("canvas"); c.width = 16; c.height = 256
+  const g = c.getContext("2d")!
+  let y = 0, i = 0
+  while (y < 256) { const h = 10 + ((i * 37) % 23); g.fillStyle = cores[i % cores.length]; g.fillRect(0, y, 16, h); y += h; i++ }
+  const t = new THREE.CanvasTexture(c); t.colorSpace = THREE.SRGBColorSpace
+  return t
+}
+
+const rndDe = (seed: number) => { let s = seed; return () => { s = (s * 16807) % 2147483647; return s / 2147483647 } }
+// um ponto na casca de uma esfera (tudo em volta: dá pra olhar em 360°)
+function naEsfera(rnd: () => number, r: number, v: THREE.Vector3) {
+  const u = rnd() * 2 - 1, a = rnd() * Math.PI * 2, k = Math.sqrt(1 - u * u)
+  return v.set(Math.cos(a) * k * r, u * r * 0.6, Math.sin(a) * k * r)
+}
+
+function Espaco({ estado }: { estado: React.RefObject<EstadoKombi> }) {
+  const ceu = useRef<THREE.Group>(null)
+  const brilho = useMemo(() => texBrilho(), [])
+  const nebulosas = useMemo(() => {
+    const cores = ["#ff3fb0", "#2fe8ff", "#8a5cff", "#ff8a3d", "#3dffb0", "#ff3f6e"]
+    const rnd = rndDe(31), v = new THREE.Vector3()
+    return Array.from({ length: 7 }, (_, i) => ({ pos: naEsfera(rnd, 900, v).toArray() as [number, number, number], tam: 420 + rnd() * 420, cor: cores[i % cores.length], tex: texNebulosa(100 + i * 7), gira: rnd() * 6 }))
   }, [])
-  // a partida: o chão anda (a Kombi sai), cada vez mais rápido
-  const cidade = useRef<THREE.Group>(null)
-  useFrame((_, dt) => {
-    const hi = estado.current?.hiper ?? 0
-    // a estrada: de parada a um borrão
-    const v = estado.current?.partida ? 8 + hi * 420 : 0
-    if (chao.current) chao.current.position.z = (chao.current.position.z + v * dt) % 24
-    // a cidade vem correndo (no fim do hiperlapso ela está em cima)
-    if (cidade.current) cidade.current.position.z = -420 + hi * 380
+  const planetas = useMemo(() => [
+    { pos: [420, 150, -760] as [number, number, number], r: 95, tex: texPlaneta(["#ff6ac1", "#ffd23f", "#ff8a3d", "#b38cff", "#ff3fb0"]), anel: "#2fe8ff" },
+    { pos: [-520, -90, -420] as [number, number, number], r: 38, tex: texPlaneta(["#2fe8ff", "#3dffb0", "#1c7a8c"]), anel: null },
+    { pos: [-300, 220, 640] as [number, number, number], r: 70, tex: texPlaneta(["#8a5cff", "#ff3fb0", "#2a1460", "#ffc857"]), anel: "#ffc857" },
+  ], [])
+  useEffect(() => () => { nebulosas.forEach((n) => n.tex.dispose()); planetas.forEach((p) => p.tex.dispose()) }, [nebulosas, planetas])
+
+  useFrame((st, dtRaw) => {
+    const dt = Math.min(0.05, dtRaw)
+    // o céu gira devagar (a Kombi vai fazendo a curva no espaço)
+    if (ceu.current) ceu.current.rotation.y += dt * (0.004 + (estado.current?.hiper ?? 0) * 0.02)
   })
   return (
     <>
-      <color attach="background" args={["#05040b"]} />
-      <fog attach="fog" args={["#120a22", 120, 1400]} />
-      <Stars radius={600} depth={120} count={2600} factor={7} saturation={0.4} fade speed={0.4} />
-      {/* o brilho da cidade no céu, atrás dos prédios */}
-      <mesh position={[0, 30, -470]}>
-        <planeGeometry args={[1400, 160]} />
-        <meshBasicMaterial color="#ff3fb0" transparent opacity={0.22} depthWrite={false} toneMapped={false} />
-      </mesh>
-      <group ref={cidade} position={[0, -1, -420]}>
-        {predios.map((p, i) => (
-          <group key={i} position={[p.x, p.h / 2, (i % 5) * -14]}>
-            <mesh><boxGeometry args={[p.w, p.h, p.w]} /><meshBasicMaterial color="#0a0814" /></mesh>
-            {/* a coroa de neon de cada prédio */}
-            <mesh position={[0, p.h / 2 - 1.2, p.w / 2 + 0.05]}><planeGeometry args={[p.w * 0.9, 2.6]} /><meshBasicMaterial color={p.cor} toneMapped={false} /></mesh>
-            <mesh position={[0, p.h * 0.1, p.w / 2 + 0.05]}><planeGeometry args={[p.w * 0.12, p.h * 0.6]} /><meshBasicMaterial color={p.cor} transparent opacity={0.7} toneMapped={false} /></mesh>
+      <color attach="background" args={["#04020a"]} />
+      <group ref={ceu}>
+        <Stars radius={500} depth={260} count={5200} factor={7} saturation={0.9} fade speed={0.8} />
+        {nebulosas.map((n, i) => (
+          <sprite key={i} position={n.pos} scale={[n.tam, n.tam * 0.7, 1]}>
+            <spriteMaterial map={n.tex} color={n.cor} transparent opacity={0.55} depthWrite={false} blending={THREE.AdditiveBlending} toneMapped={false} rotation={n.gira} />
+          </sprite>
+        ))}
+        {planetas.map((p, i) => (
+          <group key={i} position={p.pos} rotation={[0.35, 0, 0.3]}>
+            <mesh><sphereGeometry args={[p.r, 40, 24]} /><meshBasicMaterial map={p.tex} toneMapped={false} /></mesh>
+            {/* o brilho em volta (a atmosfera) */}
+            <sprite scale={[p.r * 3.2, p.r * 3.2, 1]}><spriteMaterial map={brilho} color={p.anel ?? "#2fe8ff"} transparent opacity={0.35} depthWrite={false} blending={THREE.AdditiveBlending} /></sprite>
+            {p.anel && <mesh rotation-x={Math.PI / 2.3}><ringGeometry args={[p.r * 1.4, p.r * 1.9, 64]} /><meshBasicMaterial color={p.anel} transparent opacity={0.45} side={THREE.DoubleSide} depthWrite={false} toneMapped={false} /></mesh>}
           </group>
         ))}
+        <Supernovas brilho={brilho} />
       </group>
-      {/* a areia e a estrada de terra, com marcas que passam quando a Kombi anda */}
-      <mesh rotation-x={-Math.PI / 2} position={[0, -0.02, -400]}>
-        <planeGeometry args={[2400, 900]} />
-        <meshStandardMaterial color="#2a1a2e" roughness={1} />
-      </mesh>
-      <group ref={chao}>
-        {Array.from({ length: 30 }, (_, i) => (
-          <mesh key={i} rotation-x={-Math.PI / 2} position={[0, 0, 6 - i * 24]}>
-            <planeGeometry args={[0.25, 6]} />
-            <meshBasicMaterial color="#ffc857" transparent opacity={0.35} />
-          </mesh>
-        ))}
-      </group>
-      <mesh rotation-x={-Math.PI / 2} position={[0, -0.01, -400]}>
-        <planeGeometry args={[7, 900]} />
-        <meshStandardMaterial color="#1a1220" roughness={1} />
-      </mesh>
+      <Cometas brilho={brilho} />
+      <Particulas estado={estado} />
     </>
+  )
+}
+
+// as supernovas: estrelas lá longe que acendem num clarão e somem devagar, uma de cada vez
+const N_NOVAS = 6
+function Supernovas({ brilho }: { brilho: THREE.Texture }) {
+  const refs = useRef<(THREE.Sprite | null)[]>([])
+  const aneis = useRef<(THREE.Sprite | null)[]>([])
+  const novas = useMemo(() => {
+    const rnd = rndDe(77), v = new THREE.Vector3(), cores = ["#ffffff", "#bff9ff", "#ffd6f0", "#fff1b0"]
+    return Array.from({ length: N_NOVAS }, (_, i) => ({ pos: naEsfera(rnd, 820, v).toArray() as [number, number, number], cor: cores[i % cores.length], quando: 1.5 + i * 2.7 + rnd() * 2, dura: 3.5 + rnd() * 2.5, tam: 60 + rnd() * 70 }))
+  }, [])
+  useFrame((st) => {
+    const t = st.clock.elapsedTime
+    novas.forEach((n, i) => {
+      if (t > n.quando + n.dura) n.quando = t + 4 + ((i * 53) % 9) // a próxima, daqui a pouco
+      const u = Math.max(0, (t - n.quando) / n.dura) // 0 → 1 durante a explosão
+      const vivo = t >= n.quando && u <= 1
+      // o clarão: acende rápido, apaga devagar; o anel abre
+      const luz = vivo ? Math.min(1, u * 12) * Math.pow(1 - u, 1.6) : 0
+      const s = refs.current[i], a = aneis.current[i]
+      if (s) { s.visible = luz > 0.01; s.scale.setScalar(n.tam * (0.4 + luz * 1.2)); (s.material as THREE.SpriteMaterial).opacity = luz }
+      if (a) { a.visible = vivo; a.scale.setScalar(n.tam * (0.5 + u * 4)); (a.material as THREE.SpriteMaterial).opacity = vivo ? 0.5 * (1 - u) : 0 }
+    })
+  })
+  return (
+    <>
+      {novas.map((n, i) => (
+        <group key={i} position={n.pos}>
+          <sprite ref={(el) => { refs.current[i] = el }} visible={false}><spriteMaterial map={brilho} color={n.cor} transparent opacity={0} depthWrite={false} blending={THREE.AdditiveBlending} toneMapped={false} /></sprite>
+          <sprite ref={(el) => { aneis.current[i] = el }} visible={false}><spriteMaterial map={texAnel()} color="#ff9ae0" transparent opacity={0} depthWrite={false} blending={THREE.AdditiveBlending} toneMapped={false} /></sprite>
+        </group>
+      ))}
+    </>
+  )
+}
+// o anel da onda de choque
+let _anel: THREE.Texture | null = null
+function texAnel() {
+  if (_anel) return _anel
+  const c = document.createElement("canvas"); c.width = c.height = 128
+  const g = c.getContext("2d")!, r = g.createRadialGradient(64, 64, 40, 64, 64, 64)
+  r.addColorStop(0, "rgba(255,255,255,0)"); r.addColorStop(0.7, "rgba(255,255,255,0.8)"); r.addColorStop(1, "rgba(255,255,255,0)")
+  g.fillStyle = r; g.fillRect(0, 0, 128, 128)
+  _anel = new THREE.CanvasTexture(c)
+  return _anel
+}
+
+// os cometas: a cabeça brilhando e a cauda comprida, cruzando o céu e voltando por outro lado
+const N_COMETAS = 5
+function Cometas({ brilho }: { brilho: THREE.Texture }) {
+  const grupos = useRef<(THREE.Group | null)[]>([])
+  const rnd = useMemo(() => rndDe(909), [])
+  const cometas = useMemo(() => Array.from({ length: N_COMETAS }, () => ({ p: new THREE.Vector3(), v: new THREE.Vector3(), vida: 0, dura: 1 })), [])
+  const nasce = (c: (typeof cometas)[number], t0: number) => {
+    const v = new THREE.Vector3()
+    naEsfera(rnd, 520 + rnd() * 200, c.p)
+    // atravessa: vai pra um ponto do outro lado, devagar e às vezes rápido
+    naEsfera(rnd, 520, v).multiplyScalar(-1).add(new THREE.Vector3((rnd() - 0.5) * 400, (rnd() - 0.5) * 200, (rnd() - 0.5) * 400))
+    const vel = 40 + rnd() * 90
+    c.v.subVectors(v, c.p).normalize().multiplyScalar(vel)
+    c.dura = c.p.distanceTo(v) / vel
+    c.vida = t0
+  }
+  const alvo = useMemo(() => new THREE.Vector3(), [])
+  useFrame((st, dtRaw) => {
+    const dt = Math.min(0.05, dtRaw), t = st.clock.elapsedTime
+    cometas.forEach((c, i) => {
+      if (c.vida === 0) { nasce(c, t + i * 3.2); c.p.addScaledVector(c.v, -i * 3.2) }
+      if (t - c.vida > c.dura) nasce(c, t)
+      c.p.addScaledVector(c.v, dt)
+      const g = grupos.current[i]
+      if (!g) return
+      g.position.copy(c.p)
+      g.lookAt(alvo.copy(c.p).add(c.v))
+      // aparece e some nas pontas do caminho (nunca surge do nada)
+      const u = (t - c.vida) / c.dura
+      g.scale.setScalar(Math.max(0, Math.min(1, Math.min(u, 1 - u) * 6)))
+    })
+  })
+  return (
+    <>
+      {cometas.map((_, i) => (
+        <group key={i} ref={(el) => { grupos.current[i] = el }}>
+          <sprite scale={[14, 14, 1]}><spriteMaterial map={brilho} color="#e8fbff" transparent depthWrite={false} blending={THREE.AdditiveBlending} toneMapped={false} /></sprite>
+          {/* a cauda: um cone deitado pra trás, que some na ponta */}
+          <mesh position={[0, 0, -55]} rotation-x={-Math.PI / 2}>
+            <coneGeometry args={[3.2, 110, 12, 1, true]} />
+            <meshBasicMaterial color={i % 2 ? "#7df9ff" : "#ff9ae0"} transparent opacity={0.28} depthWrite={false} blending={THREE.AdditiveBlending} toneMapped={false} side={THREE.DoubleSide} />
+          </mesh>
+        </group>
+      ))}
+    </>
+  )
+}
+
+// ── as partículas que passam pela Kombi: devagar é poeira de estrela (a Kombi voando);
+// na partida, as MESMAS aceleram e esticam até virarem os riscos do hiperlapso (sem
+// degrau, sem trocar de efeito no meio) ──
+const N_RISCOS = 520
+function Particulas({ estado }: { estado: React.RefObject<EstadoKombi> }) {
+  const malha = useRef<THREE.InstancedMesh>(null)
+  const inicio = useRef<number | null>(null)
+  const vel = useRef(0)
+  const riscos = useMemo(() => { const rnd = rndDe(222); return Array.from({ length: N_RISCOS }, (_, i) => {
+    const a = rnd() * Math.PI * 2, r = 5 + Math.pow(rnd(), 0.6) * 90
+    return { x: Math.cos(a) * r, y: Math.sin(a) * r * 0.7, z: -10 - rnd() * 610, cor: i % 5 === 0 ? "#ff3fb0" : i % 3 === 0 ? "#ffc857" : "#7df9ff" }
+  }) }, [])
+  const tmp = useMemo(() => new THREE.Object3D(), [])
+  const cor = useMemo(() => new THREE.Color(), [])
+  useLayoutEffect(() => {
+    const m = malha.current
+    if (!m) return
+    riscos.forEach((r, i) => m.setColorAt(i, cor.set(r.cor)))
+    if (m.instanceColor) m.instanceColor.needsUpdate = true
+  }, [riscos, cor])
+  useFrame((st, dtRaw) => {
+    const dt = Math.min(0.05, dtRaw), e = estado.current
+    let hi = 0
+    if (e?.partida) {
+      if (inicio.current === null) inicio.current = st.clock.elapsedTime
+      hi = curvaHiper(st.clock.elapsedTime - inicio.current)
+    } else inicio.current = null
+    if (e) e.hiper = hi
+    const m = malha.current
+    if (!m) return
+    // a velocidade segue a curva com um amortecedor (nenhum quadro dá salto)
+    const alvo = 9 + hi * 900
+    vel.current += (alvo - vel.current) * Math.min(1, dt * 6)
+    const v = vel.current, comp = 0.35 + (v / 900) * 60
+    for (let i = 0; i < N_RISCOS; i++) {
+      const r = riscos[i]
+      r.z += v * dt
+      if (r.z > 4) r.z -= 620
+      tmp.position.set(r.x, r.y, r.z)
+      tmp.scale.set(1, 1, comp)
+      tmp.updateMatrix()
+      m.setMatrixAt(i, tmp.matrix)
+    }
+    m.instanceMatrix.needsUpdate = true
+    ;(m.material as THREE.MeshBasicMaterial).opacity = 0.55 + Math.min(0.45, hi)
+  })
+  return (
+    <instancedMesh ref={malha} args={[undefined, undefined, N_RISCOS]} frustumCulled={false}>
+      <boxGeometry args={[0.07, 0.07, 1]} />
+      <meshBasicMaterial transparent opacity={0.55} toneMapped={false} depthWrite={false} blending={THREE.AdditiveBlending} />
+    </instancedMesh>
+  )
+}
+
+// ── o violão no banco do carona: tocar nele abre o braço com as notas ──
+function Violao3D({ onTocar }: { onTocar: () => void }) {
+  const g = useRef<THREE.Group>(null)
+  const brilho = useRef<THREE.MeshBasicMaterial>(null)
+  const [perto, setPerto] = useState(false)
+  // em pé no banco, encostado, com a boca virada pro motorista
+  useLayoutEffect(() => { const x = g.current; if (!x) return; x.lookAt(OLHO.x, x.position.y, OLHO.z) }, [])
+  useFrame((st) => { if (brilho.current) brilho.current.opacity = (perto ? 0.5 : 0.18) + Math.sin(st.clock.elapsedTime * 2.4) * 0.08 })
+  const madeira = "#c47a35", tampo = "#e0a65c", escuro = "#2a160b"
+  return (
+    <group ref={g} position={[0.5, 0.88, -0.42]}>
+      <group rotation-x={-0.32} scale={0.8}
+        onClick={(e) => { e.stopPropagation(); onTocar() }}
+        onPointerOver={(e) => { e.stopPropagation(); setPerto(true); document.body.style.cursor = "pointer" }}
+        onPointerOut={() => { setPerto(false); document.body.style.cursor = "" }}>
+        {/* o corpo: a parte de baixo maior, a de cima menor (o 8 do violão) */}
+        <mesh position={[0, 0.2, 0]} scale={[1, 1, 0.26]}><sphereGeometry args={[0.19, 28, 18]} /><meshStandardMaterial color={madeira} roughness={0.45} /></mesh>
+        <mesh position={[0, 0.44, 0]} scale={[1, 1, 0.26]}><sphereGeometry args={[0.145, 28, 18]} /><meshStandardMaterial color={madeira} roughness={0.45} /></mesh>
+        {/* o tampo claro e a boca */}
+        <mesh position={[0, 0.2, 0.05]}><circleGeometry args={[0.17, 32]} /><meshStandardMaterial color={tampo} roughness={0.5} /></mesh>
+        <mesh position={[0, 0.44, 0.039]}><circleGeometry args={[0.128, 32]} /><meshStandardMaterial color={tampo} roughness={0.5} /></mesh>
+        <mesh position={[0, 0.33, 0.052]}><circleGeometry args={[0.055, 28]} /><meshBasicMaterial color="#0d0604" /></mesh>
+        <mesh position={[0, 0.33, 0.051]}><ringGeometry args={[0.058, 0.068, 28]} /><meshBasicMaterial color="#ff3fb0" toneMapped={false} /></mesh>
+        {/* o cavalete, o braço e a cabeça */}
+        <mesh position={[0, 0.14, 0.055]}><boxGeometry args={[0.11, 0.022, 0.012]} /><meshStandardMaterial color={escuro} /></mesh>
+        <mesh position={[0, 0.82, 0.02]}><boxGeometry args={[0.052, 0.62, 0.03]} /><meshStandardMaterial color={escuro} roughness={0.6} /></mesh>
+        <mesh position={[0, 1.18, 0.012]} rotation-x={-0.25}><boxGeometry args={[0.075, 0.16, 0.022]} /><meshStandardMaterial color={escuro} /></mesh>
+        {/* as cordas */}
+        {[-0.018, -0.011, -0.004, 0.004, 0.011, 0.018].map((x) => (
+          <mesh key={x} position={[x, 0.66, 0.058]}><boxGeometry args={[0.0018, 1.04, 0.0018]} /><meshBasicMaterial color="#f4eede" /></mesh>
+        ))}
+        {/* o brilho que chama (pulsa devagar; mais forte com o mouse em cima) */}
+        <sprite position={[0, 0.3, 0.1]} scale={[0.75, 0.9, 1]}><spriteMaterial ref={brilho} map={texBrilho()} color="#b38cff" transparent opacity={0.2} depthWrite={false} blending={THREE.AdditiveBlending} toneMapped={false} /></sprite>
+      </group>
+    </group>
   )
 }
 
 export type RadioDaKombi = Omit<RadioPainelProps, "focado" | "onFoco">
 
-export function KombiEntrada({ estado, radio }: { estado: React.RefObject<EstadoKombi>; radio: RadioDaKombi }) {
+export function KombiEntrada({ estado, radio, onEstudio, onViolao }: { estado: React.RefObject<EstadoKombi>; radio: RadioDaKombi; onEstudio?: () => void; onViolao?: () => void }) {
   // a cabine pede refs da estrada: parada, sem curva, volante reto
   const zero = useRef(0), volante = useRef(0), vel = useRef(0)
   const [focado, setFocado] = useState(false)
@@ -180,13 +424,13 @@ export function KombiEntrada({ estado, radio }: { estado: React.RefObject<Estado
       <pointLight position={[0, OLHO.y + 0.35, OLHO.z + 0.2]} intensity={1.4} distance={3.2} color="#ffd6a0" />
       <pointLight position={[POS_RADIO[0], POS_RADIO[1] - 0.15, POS_RADIO[2] + 0.25]} intensity={0.9} distance={1.6} color="#ff3fb0" />
       <Suspense fallback={null}>
-        <Cabine balanco={zero} disco={false} objetos={[]} carona={null} volante={volante} vel={vel} tinta="#ffffff" neon="#ff3fb0" />
+        <Cabine balanco={zero} disco={radio.tocando} objetos={[]} carona={null} onTocaDiscos={radio.onLigar} onEstudio={onEstudio} volante={volante} vel={vel} tinta="#ffffff" neon="#ff3fb0" />
       </Suspense>
       <RadioNoPainel>
         <RadioPainel3D {...radio} focado={focado} onFoco={() => foco(true)} />
       </RadioNoPainel>
-      <LaFora estado={estado} />
-      <Hiperlapso estado={estado} />
+      {onViolao && <Violao3D onTocar={onViolao} />}
+      <Espaco estado={estado} />
       <Olhar estado={estado} sairFoco={sairFoco} />
     </Canvas>
   )
@@ -208,48 +452,3 @@ function RadioNoPainel({ children }: { children: React.ReactNode }) {
   return <group ref={g}>{children}</group>
 }
 
-// ── o hiperlapso: os riscos de luz (cada luz do deserto vira um traço que passa) ──
-const N_RISCOS = 420
-function Hiperlapso({ estado }: { estado: React.RefObject<EstadoKombi> }) {
-  const malha = useRef<THREE.InstancedMesh>(null)
-  const inicio = useRef<number | null>(null)
-  const riscos = useMemo(() => { let s = 222; const rnd = () => { s = (s * 16807) % 2147483647; return s / 2147483647 }; return Array.from({ length: N_RISCOS }, (_, i) => {
-    const a = rnd() * Math.PI * 2, r = 4 + Math.pow(rnd(), 0.6) * 70
-    return { x: Math.cos(a) * r, y: Math.abs(Math.sin(a)) * r * 0.55 + 0.5, z: -20 - rnd() * 600, cor: i % 5 === 0 ? "#ff3fb0" : i % 3 === 0 ? "#ffc857" : "#7df9ff" }
-  }) }, [])
-  const tmp = useMemo(() => new THREE.Object3D(), [])
-  const cor = useMemo(() => new THREE.Color(), [])
-  useLayoutEffect(() => {
-    const m = malha.current
-    if (!m) return
-    riscos.forEach((r, i) => m.setColorAt(i, cor.set(r.cor)))
-    if (m.instanceColor) m.instanceColor.needsUpdate = true
-  }, [riscos, cor])
-  useFrame((st, dt) => {
-    const e = estado.current
-    if (!e?.partida) { inicio.current = null; e && (e.hiper = 0); if (malha.current) malha.current.visible = false; return }
-    if (inicio.current === null) inicio.current = st.clock.elapsedTime
-    const hi = curvaHiper(st.clock.elapsedTime - inicio.current)
-    e.hiper = hi
-    const m = malha.current
-    if (!m) return
-    m.visible = hi > 0.01
-    const v = 30 + hi * 900, comp = 0.5 + hi * 60
-    riscos.forEach((r, i) => {
-      r.z += v * dt
-      if (r.z > 4) r.z -= 620
-      tmp.position.set(r.x, r.y, r.z)
-      tmp.scale.set(1, 1, comp)
-      tmp.updateMatrix()
-      m.setMatrixAt(i, tmp.matrix)
-    })
-    m.instanceMatrix.needsUpdate = true
-    ;(m.material as THREE.MeshBasicMaterial).opacity = Math.min(1, hi * 2)
-  })
-  return (
-    <instancedMesh ref={malha} args={[undefined, undefined, N_RISCOS]} visible={false} frustumCulled={false}>
-      <boxGeometry args={[0.06, 0.06, 1]} />
-      <meshBasicMaterial transparent opacity={0} toneMapped={false} depthWrite={false} blending={THREE.AdditiveBlending} />
-    </instancedMesh>
-  )
-}

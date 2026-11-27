@@ -9,7 +9,7 @@
 
 import dynamic from "next/dynamic"
 import { Suspense, useEffect, useRef, useState } from "react"
-import { useSearchParams } from "next/navigation"
+import { useRouter, useSearchParams } from "next/navigation"
 import { PISTAS } from "./linha/estrada/pistas"
 import { faixaLancada, linkDaFaixa, salvarFaixa } from "./linha/disco/linksFaixas"
 import { voltaSegura } from "@/lib/entrada"
@@ -18,6 +18,10 @@ import { HIPER } from "./entrada/hiper"
 import "./entrada.css"
 
 const KombiEntrada = dynamic(() => import("./entrada/KombiEntrada").then((m) => m.KombiEntrada), { ssr: false })
+// (27/11, o dono) o estúdio e o violão de dentro da Kombi, os mesmos do jogo
+const KombeatStudio = dynamic(() => import("./linha/estrada/KombeatStudio").then((m) => m.KombeatStudio), { ssr: false })
+const Violao = dynamic(() => import("./linha/disco/Violao").then((m) => m.Violao), { ssr: false })
+type ModoEstudio = "menu" | "instrumento" | "beat"
 
 const INSTAGRAM = "https://www.instagram.com/lu2ca.art"
 const TIKTOK = "https://tiktok.com/@lu2ca.mp3"
@@ -51,27 +55,39 @@ function Entrada() {
 
   const estado = useRef<EstadoKombi>({ partida: false, tocando: false })
   const radio = useRadio()
+  const router = useRouter()
   const [partiu, setPartiu] = useState(false)
+  // o estúdio (os pads da MPC) e o violão (no banco do carona)
+  const [estudio, setEstudio] = useState<ModoEstudio | null>(null)
+  const [violao, setViolao] = useState(0)
+  const abrirEstudio = () => { if (partiu) return; estado.current.pedido = { yaw: Math.PI * 0.92, pitch: -0.22 }; setEstudio("menu") }
+  const fecharEstudio = () => { setEstudio(null); estado.current.pedido = { yaw: 0, pitch: -0.12 } }
   const darPartida = () => {
+    setEstudio(null)
     estado.current.partida = true
     setPartiu(true)
     roncarMotor()
-    // direto pro jogo (?entrar=1: sem a tela de entrada do /linha)
+    // direto pro jogo (?entrar=1: sem a tela de entrada do /linha). O jogo já começa a
+    // baixar agora (o cookie da senha acabou de chegar): na troca não fica esperando
     const u = new URL(volta, window.location.origin)
     u.searchParams.set("entrar", "1")
-    setTimeout(() => window.location.assign(u.pathname + u.search), HIPER.troca * 1000)
+    const alvo = u.pathname + u.search
+    try { router.prefetch(alvo) } catch { /* segue */ }
+    setTimeout(() => window.location.assign(alvo), HIPER.troca * 1000)
   }
   return (
-    <main className={`en-pagina ${partiu ? "is-partida" : ""}`}>
-      <KombiEntrada estado={estado} radio={{
+    <main className={`en-pagina ${partiu ? "is-partida" : ""} ${estudio ? "is-estudio" : ""}`}>
+      <KombiEntrada estado={estado} onEstudio={abrirEstudio} onViolao={() => setViolao((n) => n + 1)} radio={{
         titulo: radio.faixa?.faixa ?? "", tocando: radio.tocando, temLink: !!(radio.faixa && linkDaFaixa(radio.faixa.id)),
         onLigar: radio.alternar, onProxima: radio.proxima, onAnterior: radio.anterior, onSalvar: () => { if (radio.faixa) salvarFaixa(radio.faixa.id, "entrada") },
       }} />
+      {estudio && <KombeatStudio modo={estudio} onModo={setEstudio} onDiscos={() => { if (!radio.tocando) radio.alternar(); fecharEstudio() }} onSair={fecharEstudio} />}
+      <Violao temViolao sempre abrir={violao} escondido={partiu || !!estudio} />
       <RadioAcessivel r={radio} />
       <audio ref={radio.audio} preload="none" onEnded={radio.proxima} />
       <header className="en-topo" aria-hidden={partiu}>
         <b>CIDADE NEON</b>
-        <span>arrasta pra olhar em volta</span>
+        <span>arrasta pra olhar em volta · toca no estúdio e no violão</span>
       </header>
       <Senha onCerta={darPartida} partiu={partiu} />
       <div className="en-clarao" aria-hidden="true" />

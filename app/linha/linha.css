@@ -3149,25 +3149,6 @@ button.l-aneis.is-agua { cursor: pointer; font: inherit; color: inherit; }
 /* (14/11, o dono) com o mapa aberto, o botão do violão some: tocar é coisa de dentro da Kombi, no piloto */
 .cn-mapa-aberto .l-vl-botao, .cn-mapa-aberto .l-vl-aviso, .cn-estudio .l-vl-botao, .cn-estudio .l-vl-aviso { display: none !important; }
 
-/* (14/11) KOMBEAT STUDIO (estrada/KombeatStudio.tsx): o menu lá atrás, embaixo e no meio, sem cobrir a vista */
-.l-kombeat { --cor: #ff6b6b; position: absolute; z-index: 74; left: 50%; bottom: calc(24px + env(safe-area-inset-bottom)); transform: translateX(-50%); width: min(92vw, 520px); display: grid; gap: 12px; padding: 14px 14px 12px; border-radius: 18px; background: rgba(9, 8, 16, 0.82); border: 1px solid color-mix(in srgb, var(--cor) 45%, transparent); backdrop-filter: blur(8px); -webkit-backdrop-filter: blur(8px); color: #fff; animation: l-sobe 0.3s both; }
-.l-kombeat header { display: flex; align-items: baseline; gap: 10px; min-width: 0; }
-.l-kombeat header b { font: 800 14px var(--font-geist-mono), monospace; letter-spacing: 0.16em; color: var(--cor); white-space: nowrap; }
-.l-kombeat header small { flex: 1; min-width: 0; font: 11px system-ui, sans-serif; opacity: 0.65; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-.l-kombeat-sair { flex: none; width: 32px; height: 32px; border-radius: 50%; border: 1px solid rgba(255, 255, 255, 0.2); background: rgba(255, 255, 255, 0.06); color: #fff; font-size: 14px; cursor: pointer; }
-.l-kombeat-opcoes { display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px; }
-.l-kombeat-opcoes button { display: grid; justify-items: center; gap: 8px; padding: 16px 8px 12px; border-radius: 14px; border: 1px solid color-mix(in srgb, var(--cor) 35%, transparent); background: color-mix(in srgb, var(--cor) 10%, transparent); color: var(--cor); cursor: pointer; transition: background 0.15s ease, transform 0.15s ease; }
-.l-kombeat-opcoes button span { font: 700 13px system-ui, sans-serif; color: #fff; }
-.l-kombeat-opcoes button:hover:not(:disabled), .l-kombeat-opcoes button:focus-visible { background: color-mix(in srgb, var(--cor) 26%, transparent); transform: translateY(-2px); outline: none; }
-.l-kombeat-opcoes button:disabled { opacity: 0.4; cursor: not-allowed; }
-.l-kombeat-kombi { margin: 0; font: 11px var(--font-geist-mono), monospace; opacity: 0.6; text-align: center; }
-.l-kombeat-inst { display: flex; gap: 6px; flex-wrap: wrap; }
-.l-kombeat-inst button { padding: 6px 12px; border-radius: 999px; border: 1px solid color-mix(in srgb, var(--c) 50%, transparent); background: transparent; color: #fff; font: 600 12px system-ui, sans-serif; cursor: pointer; }
-.l-kombeat-inst button.is-sel { background: var(--c); color: #0b0a12; }
-.l-kombeat-pads { display: grid; grid-template-columns: repeat(4, 1fr); gap: 8px; }
-.l-kombeat-pads button { aspect-ratio: 1.618; border-radius: 12px; border: 1px solid color-mix(in srgb, var(--cor) 50%, transparent); background: color-mix(in srgb, var(--cor) 14%, transparent); color: rgba(255, 255, 255, 0.55); font: 700 12px var(--font-geist-mono), monospace; cursor: pointer; touch-action: manipulation; }
-.l-kombeat-pads button.is-bate { animation: l-kombeat-bate 0.22s ease-out; }
-@keyframes l-kombeat-bate { from { background: var(--cor); color: #0b0a12; } }
 
 /* (14/11, o dono) a rádio desligada encolhe: fica só a bola (o liga/desliga) */
 .l-holo-som:not(.is-on):not(.is-menu) { width: auto; grid-template-columns: auto; padding-right: 4px; background: none; border-color: transparent; backdrop-filter: none; -webkit-backdrop-filter: none; }
