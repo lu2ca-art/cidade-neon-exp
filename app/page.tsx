@@ -19,6 +19,7 @@ import { TONS } from "./linha/tons"
 import TONS_TEMPO from "./linha/tons-tempo.json"
 import type { Tom } from "./linha/som"
 import { bip } from "./linha/disco/pecas/sons"
+import { violao } from "./linha/som"
 import VINIS from "./linha/vinis.json"
 import "./entrada.css"
 
@@ -31,7 +32,11 @@ const KombeatStudio = dynamic(() => import("./linha/estrada/KombeatStudio").then
 const Violao = dynamic(() => import("./linha/disco/Violao").then((m) => m.Violao), { ssr: false })
 type Instrumento = "violao" | "teclado"
 // o teclado: um piano elétrico sintetizado (RASCUNHO, como as vozes de instrumentosLoja.ts)
-const TECLADO = { nome: "teclado", tocar: (f: number, v = 0.32, q = 0) => { bip(f, 0.9, "triangle", v * 0.55, q); bip(f * 2, 0.45, "sine", v * 0.16, q) } }
+// (27/11, o dono: "o balanço música × instrumento tá desproporcional") os instrumentos daqui
+// tocam mais alto que no jogo, e a música abaixa enquanto um deles está aberto (MUSICA_TOCANDO)
+const TECLADO = { nome: "teclado", tocar: (f: number, v = 0.32, q = 0) => { bip(f, 0.9, "triangle", v * 1.5, q); bip(f * 2, 0.45, "sine", v * 0.45, q) } }
+const VIOLAO = { nome: "violão", aquece: true as const, tocar: (f: number, v = 0.32, q = 0) => violao(f, v * 2.4, q) }
+const MUSICA_TOCANDO = 0.4
 // os discos antigos (domínio público), os mesmos do acervo do jogo
 const ACERVO = VINIS as { titulo: string; autor: string; src: string }[]
 // a cor do selo de cada disco na gaveta
@@ -137,6 +142,21 @@ function Entrada() {
     const id = setInterval(ler, 500)
     return () => clearInterval(id)
   }, [instrumento, acervo.tocando, acervo.faixa, acervo.audio, radio.faixa, radio.audio])
+  // instrumento aberto: a música (rádio e disco) desce pra MUSICA_TOCANDO num fade curto; fechou, volta
+  useEffect(() => {
+    const alvo = instrumento ? MUSICA_TOCANDO : 1
+    const els = [radio.audio.current, acervo.audio.current].filter((a): a is HTMLAudioElement => !!a)
+    const ini = els.map((a) => a.volume)
+    const t0 = performance.now()
+    let id = 0
+    const passo = () => {
+      const k = Math.min(1, (performance.now() - t0) / 400)
+      els.forEach((a, i) => { a.volume = ini[i] + (alvo - ini[i]) * k })
+      if (k < 1) id = requestAnimationFrame(passo)
+    }
+    passo()
+    return () => cancelAnimationFrame(id)
+  }, [instrumento, radio.audio, acervo.audio])
   const darPartida = () => {
     if (batida) fecharBatida()
     setEstante(false); setInstrumento(null)
@@ -164,7 +184,7 @@ function Entrada() {
       {batida && <KombeatStudio modo="beat" onModo={(m) => { if (m !== "beat") fecharBatida() }} onDiscos={fecharBatida} onSair={fecharBatida} />}
       {estante && !partiu && <LegendaGaveta perto={discoPerto} tocando={acervo.tocando ? acervo.i : null} onFechar={() => setEstante(false)} />}
       {instrumento && !partiu && (
-        <Violao key={instrumento} temViolao semBotao abrir={1} tom={tom} voz={instrumento === "teclado" ? TECLADO : undefined} onFechar={() => setInstrumento(null)} />
+        <Violao key={instrumento} temViolao semBotao abrir={1} tom={tom} voz={instrumento === "teclado" ? TECLADO : VIOLAO} onFechar={() => setInstrumento(null)} />
       )}
       <RadioAcessivel r={radio} />
       <audio ref={radio.audio} preload="none" onEnded={radio.proxima} />
